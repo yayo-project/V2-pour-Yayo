@@ -38,12 +38,12 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 
 ## Build roadmap (in order — current position marked)
 1. ✅ Landing page (index.html) — done, deployed
-2. → NEXT: acheter.html (marketplace browse with filters, Supabase-connected) + make landing search/chips/"Voir tout" link to it
-3. voiture.html (car detail + landed cost + contact button)
-4. Auth (Google/email via Supabase Auth) + connexion.html
-5. In-app chat (buyer↔dealer, conversations/messages tables)
-6. vendre.html + dealer/agency registration (trust ladder, license photo → later AI pre-fill)
-7. dashboard.html (dealer first, then agency, then admin)
+2. ✅ acheter.html — marketplace browse: filters (brand, price, year, body, fuel), search, sort, URL params, Supabase + demo fallback. Landing fully wired to it.
+3. ✅ voiture.html — detail page: specs, landed cost per city, dealer card, similar cars, contact button
+4. ✅ Auth — connexion.html + js/auth.js (Google + email via Supabase Auth, ?next= redirect, account chip in topbar)
+5. ✅ In-app chat v1 — on voiture.html (conversations/messages tables; demo mode on demo listings). Dealer-side inbox comes with the dashboard.
+6. ✅ vendre.html — benefits, trust ladder, pricing, dealer/agency registration form (admin activates accounts)
+7. → NEXT: dashboard.html (dealer first: stats, leads inbox, inventory CRUD, chat replies with Assistant Yayo; then agency, then admin)
 8. i18n.js — full FR/EN/AR coverage, language switcher
 9. Netlify Functions for Groq (hide API key) + AI features: price verdict badges on listings, price estimate tool, Assistant Yayo reply suggestions
 10. Photo upload to Supabase Storage + AI condition report
