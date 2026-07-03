@@ -12,7 +12,7 @@ let CARS = [];
 // Demo cars shown until real listings exist (marked visually identical)
 const DEMO_CARS = [
   { car_name: "Toyota Land Cruiser GXR 2021", mileage: 78000, fuel: "Essence",  price: 38500, ai: "good", photo_url: "https://images.unsplash.com/photo-1594502184342-2e12f877aa73?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Toyota RAV4 Hybrid 2022",      mileage: 41000, fuel: "Hybride",  price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1633708392839-895ecc4e5d13?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Toyota RAV4 Hybrid 2022",      mileage: 41000, fuel: "Hybride",  price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1706509234538-9831b1b33d66?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
   { car_name: "Toyota Hilux 4x4 2020",        mileage: 96000, fuel: "Diesel",   price: 31200, ai: "good", photo_url: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
   { car_name: "Kia Sportage 2023",            mileage: 22000, fuel: "Essence",  price: 24800, ai: "good", photo_url: "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
   { car_name: "Hyundai Tucson 2022",          mileage: 35000, fuel: "Essence",  price: 23500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },

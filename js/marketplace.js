@@ -12,19 +12,35 @@ let ALL = [];
 let FILTERED = [];
 
 const DEMO_CARS = [
-  { car_name: "Toyota Land Cruiser GXR 2021", year: 2021, mileage: 78000, fuel: "Essence",  price: 38500, ai: "good", photo_url: "https://images.unsplash.com/photo-1594502184342-2e12f877aa73?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Toyota RAV4 Hybrid 2022",      year: 2022, mileage: 41000, fuel: "Hybride",  price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1633708392839-895ecc4e5d13?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Toyota Hilux 4x4 2020",        year: 2020, mileage: 96000, fuel: "Diesel",   price: 31200, ai: "good", photo_url: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Kia Sportage 2023",            year: 2023, mileage: 22000, fuel: "Essence",  price: 24800, ai: "good", photo_url: "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Hyundai Tucson 2022",          year: 2022, mileage: 35000, fuel: "Essence",  price: 23500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Mercedes GLE 400 2021",        year: 2021, mileage: 55000, fuel: "Essence",  price: 52000, ai: "good", photo_url: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Nissan Patrol Platinum 2022",  year: 2022, mileage: 46000, fuel: "Essence",  price: 61500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
-  { car_name: "Toyota Prado 2019",            year: 2019, mileage: 105000, fuel: "Diesel",  price: 29800, ai: "good", photo_url: "https://images.unsplash.com/photo-1580414057403-c5f451f30e1c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Honda CR-V 2021",              year: 2021, mileage: 62000, fuel: "Essence",  price: 22400, ai: "good", photo_url: "https://images.unsplash.com/photo-1568844293986-8d0400bd4745?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Mitsubishi Pajero 2018",       year: 2018, mileage: 128000, fuel: "Diesel",  price: 18900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Lexus RX 350 2020",            year: 2020, mileage: 71000, fuel: "Essence",  price: 42000, ai: "good", photo_url: "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
-  { car_name: "Hyundai Kona Électrique 2023", year: 2023, mileage: 12000, fuel: "Électrique", price: 26900, ai: "good", photo_url: "https://images.unsplash.com/photo-1554223090-7e482851df45?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } }
+  { car_name: "Toyota Land Cruiser GXR 2021", year: 2021, mileage: 78000, fuel: "Essence",  body: "SUV",     price: 38500, ai: "good", photo_url: "https://images.unsplash.com/photo-1594502184342-2e12f877aa73?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
+  { car_name: "Toyota RAV4 Hybrid 2022",      year: 2022, mileage: 41000, fuel: "Hybride",  body: "SUV",     price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1706509234538-9831b1b33d66?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Toyota Hilux 4x4 2020",        year: 2020, mileage: 96000, fuel: "Diesel",   body: "Pick-up", price: 31200, ai: "good", photo_url: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
+  { car_name: "Kia Sportage 2023",            year: 2023, mileage: 22000, fuel: "Essence",  body: "SUV",     price: 24800, ai: "good", photo_url: "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Hyundai Tucson 2022",          year: 2022, mileage: 35000, fuel: "Essence",  body: "SUV",     price: 23500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
+  { car_name: "Mercedes GLE 400 2021",        year: 2021, mileage: 55000, fuel: "Essence",  body: "SUV",     price: 52000, ai: "good", photo_url: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Nissan Patrol Platinum 2022",  year: 2022, mileage: 46000, fuel: "Essence",  body: "SUV",     price: 61500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
+  { car_name: "Toyota Prado 2019",            year: 2019, mileage: 105000, fuel: "Diesel",  body: "SUV",     price: 29800, ai: "good", photo_url: "https://images.unsplash.com/photo-1580414057403-c5f451f30e1c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
+  { car_name: "Honda CR-V 2021",              year: 2021, mileage: 62000, fuel: "Essence",  body: "SUV",     price: 22400, ai: "good", photo_url: "https://images.unsplash.com/photo-1568844293986-8d0400bd4745?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Mitsubishi Pajero 2018",       year: 2018, mileage: 128000, fuel: "Diesel",  body: "SUV",     price: 18900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
+  { car_name: "Lexus RX 350 2020",            year: 2020, mileage: 71000, fuel: "Essence",  body: "SUV",     price: 42000, ai: "good", photo_url: "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
+  { car_name: "Hyundai Kona Électrique 2023", year: 2023, mileage: 12000, fuel: "Électrique", body: "SUV",   price: 26900, ai: "good", photo_url: "https://images.unsplash.com/photo-1554223090-7e482851df45?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Toyota Corolla 2022",          year: 2022, mileage: 38000, fuel: "Essence",  body: "Berline", price: 17800, ai: "good", photo_url: "https://images.unsplash.com/photo-1623869675781-80aa31012a5a?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
+  { car_name: "Mercedes C200 2021",           year: 2021, mileage: 49000, fuel: "Essence",  body: "Berline", price: 33500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1625690096555-a0a4d190901c?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
+  { car_name: "Toyota Hiace 2021",            year: 2021, mileage: 88000, fuel: "Diesel",   body: "Minibus", price: 25400, ai: "good", photo_url: "https://images.unsplash.com/photo-1650807486050-a142ea418b19?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } }
 ];
+
+// Body type from name keywords — used for real listings (no body column in schema yet)
+const BODY_HINTS = [
+  ["Pick-up", ["hilux", "pick-up", "pickup", "ranger", "navara", "l200", "triton", "tundra", "f-150"]],
+  ["Minibus", ["hiace", "minibus", "quantum", "coaster", "urvan", "h1 "]],
+  ["Berline", ["corolla", "camry", "c200", "c300", "e200", "accent", "elantra", "sonata", "cerato", "altima", "sunny", "civic", "accord", "yaris", "berline"]]
+];
+function bodyOf(c) {
+  if (c.body) return c.body;
+  const n = (c.car_name || "").toLowerCase();
+  for (const [type, words] of BODY_HINTS) if (words.some(w => n.includes(w))) return type;
+  return "SUV";
+}
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
 function landedTotal(price, key) { const d = DEST[key]; if (!d || key === "dubai") return price; return price + d.ship + price * d.duty + d.fees; }
@@ -72,6 +88,8 @@ function readParams() {
   document.querySelectorAll("#f-brand button").forEach(b => b.classList.toggle("on", brands.includes(b.dataset.v)));
   const fuels = (p.get("fuel") || "").split(",").filter(Boolean);
   document.querySelectorAll("#f-fuel button").forEach(b => b.classList.toggle("on", fuels.includes(b.dataset.v)));
+  const bodies = (p.get("body") || "").split(",").filter(Boolean);
+  document.querySelectorAll("#f-body button").forEach(b => b.classList.toggle("on", bodies.includes(b.dataset.v)));
 }
 
 function writeParams() {
@@ -83,6 +101,7 @@ function writeParams() {
   const sort = document.getElementById("mkt-sort").value;
   const brands = [...document.querySelectorAll("#f-brand button.on")].map(b => b.dataset.v);
   const fuels = [...document.querySelectorAll("#f-fuel button.on")].map(b => b.dataset.v);
+  const bodies = [...document.querySelectorAll("#f-body button.on")].map(b => b.dataset.v);
   if (q) p.set("q", q);
   if (min) p.set("min", min);
   if (max) p.set("max", max);
@@ -90,6 +109,7 @@ function writeParams() {
   if (sort && sort !== "recent") p.set("sort", sort);
   if (brands.length) p.set("brand", brands.join(","));
   if (fuels.length) p.set("fuel", fuels.join(","));
+  if (bodies.length) p.set("body", bodies.join(","));
   const s = p.toString();
   history.replaceState(null, "", s ? "?" + s : location.pathname);
 }
@@ -102,6 +122,7 @@ function applyFilters() {
   const year = parseInt(document.getElementById("f-year").value, 10);
   const brands = [...document.querySelectorAll("#f-brand button.on")].map(b => b.dataset.v);
   const fuels = [...document.querySelectorAll("#f-fuel button.on")].map(b => b.dataset.v);
+  const bodies = [...document.querySelectorAll("#f-body button.on")].map(b => b.dataset.v);
   const sort = document.getElementById("mkt-sort").value;
 
   FILTERED = ALL.filter(c => {
@@ -111,6 +132,7 @@ function applyFilters() {
     if (!isNaN(year) && (c.year || 0) < year) return false;
     if (brands.length && !brands.includes(brandOf(c))) return false;
     if (fuels.length && !fuels.includes(c.fuel)) return false;
+    if (bodies.length && !bodies.includes(bodyOf(c))) return false;
     return true;
   });
 
@@ -174,7 +196,7 @@ function clearFilters() {
   document.getElementById("f-min").value = "";
   document.getElementById("f-max").value = "";
   document.getElementById("f-year").value = "";
-  document.querySelectorAll("#f-brand button, #f-fuel button").forEach(b => b.classList.remove("on"));
+  document.querySelectorAll("#f-brand button, #f-fuel button, #f-body button").forEach(b => b.classList.remove("on"));
   document.getElementById("mkt-sort").value = "recent";
   applyFilters();
 }
@@ -197,7 +219,7 @@ function buildBrandFilter() {
   const el = document.getElementById("f-brand");
   el.innerHTML = BRANDS.map(b => `<button type="button" data-v="${b}">${b}</button>`).join("");
   el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { b.classList.toggle("on"); applyFilters(); }));
-  document.querySelectorAll("#f-fuel button").forEach(b => b.addEventListener("click", () => { b.classList.toggle("on"); applyFilters(); }));
+  document.querySelectorAll("#f-fuel button, #f-body button").forEach(b => b.addEventListener("click", () => { b.classList.toggle("on"); applyFilters(); }));
 }
 
 let searchTimer;
