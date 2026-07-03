@@ -118,9 +118,9 @@ function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"
 
 function doSearch() {
   const q = document.getElementById("hero-search").value.trim();
-  alert(q ? `Recherche "${q}" — page marketplace en construction (étape suivante)` : "Tapez une voiture, ex : Land Cruiser 2021");
+  location.href = q ? "acheter.html?q=" + encodeURIComponent(q) : "acheter.html";
 }
-function quickSearch(q) { document.getElementById("hero-search").value = q; doSearch(); }
+function quickSearch(q) { location.href = "acheter.html?q=" + encodeURIComponent(q); }
 function openCar(id) { alert("Page voiture détaillée — étape suivante de construction"); }
 function soon(e, msg) { e.preventDefault(); e.stopPropagation(); alert(msg); }
 

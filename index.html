@@ -19,7 +19,7 @@
   <div class="wrap topbar-in">
     <a href="#" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
     <nav class="nav">
-      <a href="#voitures" class="on">Acheter</a>
+      <a href="acheter.html">Acheter</a>
       <a href="#" onclick="soon(event,'Page Vendre — dédiée aux dealers')">Vendre</a>
       <a href="#expedier">Expédier</a>
       <a href="#comment">Comment ça marche</a>
@@ -34,7 +34,7 @@
   </div>
 </header>
 <div class="mobile-menu" id="mmenu">
-  <a href="#voitures" onclick="toggleMenu()">Acheter <span>Voitures vérifiées à Dubai</span></a>
+  <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
   <a href="#" onclick="toggleMenu();soon(event,'Page Vendre — dédiée aux dealers')">Vendre <span>Dealers &amp; agences</span></a>
   <a href="#expedier" onclick="toggleMenu()">Expédier <span>Coût rendu chez vous</span></a>
   <a href="#comment" onclick="toggleMenu()">Comment ça marche <span>4 étapes simples</span></a>
@@ -54,11 +54,11 @@
       <button class="search-btn" onclick="doSearch()">Rechercher</button>
     </div>
     <div class="hero-chips">
-      <button class="chip" onclick="quickSearch('SUV moins de $25 000')">SUV moins de $25k</button>
-      <button class="chip" onclick="quickSearch('Toyota')">Toyota</button>
-      <button class="chip" onclick="quickSearch('Hybride')">Hybride</button>
-      <button class="chip" onclick="quickSearch('Pick-up')">Pick-up</button>
-      <button class="chip" onclick="quickSearch('7 places')">7 places</button>
+      <a class="chip" href="acheter.html?max=25000">SUV moins de $25k</a>
+      <a class="chip" href="acheter.html?brand=Toyota">Toyota</a>
+      <a class="chip" href="acheter.html?fuel=Hybride">Hybride</a>
+      <a class="chip" href="acheter.html?q=Pick-up">Pick-up</a>
+      <a class="chip" href="acheter.html?q=7%20places">7 places</a>
     </div>
     <div class="trust">
       <div class="trust-item">
@@ -100,14 +100,14 @@
 <section class="brands">
   <div class="wrap">
     <div class="brands-row">
-      <div class="brand" onclick="quickSearch('Toyota')"><span>🚙</span>Toyota</div>
-      <div class="brand" onclick="quickSearch('Kia')"><span>🚗</span>Kia</div>
-      <div class="brand" onclick="quickSearch('Hyundai')"><span>🚗</span>Hyundai</div>
-      <div class="brand" onclick="quickSearch('Nissan')"><span>🚙</span>Nissan</div>
-      <div class="brand" onclick="quickSearch('Mercedes')"><span>🏎️</span>Mercedes</div>
-      <div class="brand" onclick="quickSearch('Honda')"><span>🚗</span>Honda</div>
-      <div class="brand" onclick="quickSearch('Mitsubishi')"><span>🛻</span>Mitsubishi</div>
-      <div class="brand" onclick="quickSearch('Lexus')"><span>🚘</span>Lexus</div>
+      <a class="brand" href="acheter.html?brand=Toyota"><span>🚙</span>Toyota</a>
+      <a class="brand" href="acheter.html?brand=Kia"><span>🚗</span>Kia</a>
+      <a class="brand" href="acheter.html?brand=Hyundai"><span>🚗</span>Hyundai</a>
+      <a class="brand" href="acheter.html?brand=Nissan"><span>🚙</span>Nissan</a>
+      <a class="brand" href="acheter.html?brand=Mercedes"><span>🏎️</span>Mercedes</a>
+      <a class="brand" href="acheter.html?brand=Honda"><span>🚗</span>Honda</a>
+      <a class="brand" href="acheter.html?brand=Mitsubishi"><span>🛻</span>Mitsubishi</a>
+      <a class="brand" href="acheter.html?brand=Lexus"><span>🚘</span>Lexus</a>
     </div>
   </div>
 </section>
@@ -120,7 +120,7 @@
         <h2>Voitures vérifiées à Dubai</h2>
         <p>Chaque annonce est contrôlée : dealer certifié, photos réelles, prix analysé.</p>
       </div>
-      <a href="#" class="sec-link">Voir les 124 voitures
+      <a href="acheter.html" class="sec-link">Voir toutes les voitures
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
