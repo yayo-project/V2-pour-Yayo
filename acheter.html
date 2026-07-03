@@ -20,13 +20,13 @@
     <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
     <nav class="nav">
       <a href="acheter.html" class="on">Acheter</a>
-      <a href="#" onclick="soon(event,'Page Vendre — dédiée aux dealers')">Vendre</a>
+      <a href="vendre.html">Vendre</a>
       <a href="index.html#expedier">Expédier</a>
       <a href="index.html#comment">Comment ça marche</a>
     </nav>
     <div class="topbar-right">
       <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
-      <a href="#" class="btn btn-ghost">Connexion</a>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login">Connexion</a>
       <button class="burger" onclick="toggleMenu()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -35,10 +35,10 @@
 </header>
 <div class="mobile-menu" id="mmenu">
   <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
-  <a href="#" onclick="toggleMenu();soon(event,'Page Vendre — dédiée aux dealers')">Vendre <span>Dealers &amp; agences</span></a>
+  <a href="vendre.html">Vendre <span>Dealers &amp; agences</span></a>
   <a href="index.html#expedier" onclick="toggleMenu()">Expédier <span>Coût rendu chez vous</span></a>
   <a href="index.html#comment" onclick="toggleMenu()">Comment ça marche <span>4 étapes simples</span></a>
-  <a href="#" onclick="toggleMenu()">Connexion <span>Mon compte Yayo</span></a>
+  <a href="connexion.html" data-auth="login-mobile">Connexion <span>Mon compte Yayo</span></a>
 </div>
 
 <!-- ═══ DESTINATION BAR ═══ -->
@@ -184,10 +184,10 @@
     </div>
     <div>
       <h4>Yayo</h4>
-      <a href="#">Devenir dealer</a>
-      <a href="#">Devenir agence</a>
-      <a href="#">Tarifs</a>
-      <a href="#">Contact</a>
+      <a href="vendre.html">Devenir dealer</a>
+      <a href="vendre.html#agences">Devenir agence</a>
+      <a href="vendre.html#tarifs">Tarifs</a>
+      <a href="mailto:contact@yayo.digital">Contact</a>
     </div>
   </div>
   <div class="wrap footer-bottom">
@@ -197,6 +197,8 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/marketplace.js"></script>
 </body>
 </html>

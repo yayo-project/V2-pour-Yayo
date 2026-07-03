@@ -4,30 +4,14 @@
 // Client-side filter, sort, URL-param sync.
 // ═══════════════════════════════════════════════
 
-const sb = window.supabase.createClient(YAYO_CONFIG.SUPABASE_URL, YAYO_CONFIG.SUPABASE_KEY);
+const sb = yayoSB();
 const DEST = YAYO_CONFIG.DESTINATIONS;
 const BRANDS = ["Toyota","Kia","Hyundai","Nissan","Mercedes","Honda","Mitsubishi","Lexus"];
 let CUR = YAYO_CONFIG.DEFAULT_DEST;
 let ALL = [];
 let FILTERED = [];
 
-const DEMO_CARS = [
-  { car_name: "Toyota Land Cruiser GXR 2021", year: 2021, mileage: 78000, fuel: "Essence",  body: "SUV",     price: 38500, ai: "good", photo_url: "https://images.unsplash.com/photo-1594502184342-2e12f877aa73?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Toyota RAV4 Hybrid 2022",      year: 2022, mileage: 41000, fuel: "Hybride",  body: "SUV",     price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1706509234538-9831b1b33d66?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Toyota Hilux 4x4 2020",        year: 2020, mileage: 96000, fuel: "Diesel",   body: "Pick-up", price: 31200, ai: "good", photo_url: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Kia Sportage 2023",            year: 2023, mileage: 22000, fuel: "Essence",  body: "SUV",     price: 24800, ai: "good", photo_url: "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Hyundai Tucson 2022",          year: 2022, mileage: 35000, fuel: "Essence",  body: "SUV",     price: 23500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Mercedes GLE 400 2021",        year: 2021, mileage: 55000, fuel: "Essence",  body: "SUV",     price: 52000, ai: "good", photo_url: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Nissan Patrol Platinum 2022",  year: 2022, mileage: 46000, fuel: "Essence",  body: "SUV",     price: 61500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
-  { car_name: "Toyota Prado 2019",            year: 2019, mileage: 105000, fuel: "Diesel",  body: "SUV",     price: 29800, ai: "good", photo_url: "https://images.unsplash.com/photo-1580414057403-c5f451f30e1c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Honda CR-V 2021",              year: 2021, mileage: 62000, fuel: "Essence",  body: "SUV",     price: 22400, ai: "good", photo_url: "https://images.unsplash.com/photo-1568844293986-8d0400bd4745?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Mitsubishi Pajero 2018",       year: 2018, mileage: 128000, fuel: "Diesel",  body: "SUV",     price: 18900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Lexus RX 350 2020",            year: 2020, mileage: 71000, fuel: "Essence",  body: "SUV",     price: 42000, ai: "good", photo_url: "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
-  { car_name: "Hyundai Kona Électrique 2023", year: 2023, mileage: 12000, fuel: "Électrique", body: "SUV",   price: 26900, ai: "good", photo_url: "https://images.unsplash.com/photo-1554223090-7e482851df45?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Toyota Corolla 2022",          year: 2022, mileage: 38000, fuel: "Essence",  body: "Berline", price: 17800, ai: "good", photo_url: "https://images.unsplash.com/photo-1623869675781-80aa31012a5a?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Mercedes C200 2021",           year: 2021, mileage: 49000, fuel: "Essence",  body: "Berline", price: 33500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1625690096555-a0a4d190901c?w=640&q=70", dealer: { name: "Al Manara Motors", verified: true } },
-  { car_name: "Toyota Hiace 2021",            year: 2021, mileage: 88000, fuel: "Diesel",   body: "Minibus", price: 25400, ai: "good", photo_url: "https://images.unsplash.com/photo-1650807486050-a142ea418b19?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } }
-];
+const DEMO_CARS = window.YAYO_DEMO;
 
 // Body type from name keywords — used for real listings (no body column in schema yet)
 const BODY_HINTS = [
@@ -212,7 +196,7 @@ function closeFiltersIfMobile() {
 }
 
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
-function openCar(id) { alert("Page voiture détaillée — étape suivante de construction"); }
+function openCar(id) { location.href = "voiture.html?id=" + encodeURIComponent(id); }
 function soon(e, msg) { e.preventDefault(); e.stopPropagation(); alert(msg); }
 
 function buildBrandFilter() {

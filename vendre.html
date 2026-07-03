@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendre sur Yayo — Dealers &amp; agences Dubai</title>
+<meta name="description" content="Vendez vos voitures aux acheteurs africains. Inscription en 30 secondes, publiez immédiatement, badge Vérifié Yayo. Dealers et agences de transport à Dubai.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html">Acheter</a>
+      <a href="vendre.html" class="on">Vendre</a>
+      <a href="index.html#expedier">Expédier</a>
+      <a href="index.html#comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html">Vendre <span>Dealers &amp; agences</span></a>
+  <a href="index.html#expedier">Expédier <span>Coût rendu chez vous</span></a>
+  <a href="index.html#comment">Comment ça marche <span>4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile">Connexion <span>Mon compte Yayo</span></a>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="wrap hero-in">
+    <h1>Vendez vos voitures à <em>toute l'Afrique francophone</em></h1>
+    <p class="hero-sub">Des milliers d'acheteurs à Kinshasa, Douala, Abidjan et Dakar cherchent leur prochaine voiture à Dubai. Mettez la vôtre devant eux.</p>
+    <a href="#inscription" class="btn btn-solid" style="font-size:15px;padding:14px 30px">Créer mon compte dealer — 30 secondes</a>
+    <div class="trust">
+      <div class="trust-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Publiez immédiatement</div>
+      <div class="trust-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg> Badge Vérifié Yayo</div>
+      <div class="trust-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Leads qualifiés</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BENEFITS ═══ -->
+<section class="section">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>Pourquoi les dealers choisissent Yayo</h2>
+        <p>Tout ce qu'il faut pour vendre vers l'Afrique, sans effort.</p>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Des acheteurs africains sérieux</h3>
+        <p>Votre inventaire devant des acheteurs à Kinshasa, Douala, Abidjan et Dakar — avec le prix rendu déjà calculé pour eux.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-7.6-4.7L3 21l5.7-1.9a8.38 8.38 0 0 1-.2-7.6 8.5 8.5 0 0 1 8-5A8.38 8.38 0 0 1 21 11.5z"/></svg></div>
+        <h3>Assistant Yayo</h3>
+        <p>Recevez des suggestions de réponse prêtes à envoyer pour chaque message d'acheteur. Répondez en 2 clics, même la nuit.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"/></svg></div>
+        <h3>Traduction automatique</h3>
+        <p>Vous écrivez en anglais ou en arabe, l'acheteur lit en français. La langue n'est plus jamais un frein à la vente.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V9m4 8v-5m4 5V7"/></svg></div>
+        <h3>Dashboard complet</h3>
+        <p>Vues, contacts, voitures les plus demandées : pilotez votre inventaire et vos leads depuis un seul écran.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Badge Vérifié Yayo</h3>
+        <p>Envoyez votre trade license et gagnez le badge que les acheteurs recherchent. La confiance, ça se voit.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div>
+        <h3>Leads qualifiés, zéro curieux</h3>
+        <p>Les acheteurs voient le prix total rendu avant de vous écrire. Ceux qui vous contactent savent déjà ce que ça coûte.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TRUST LADDER ═══ -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="how">
+      <div class="sec-head"><div>
+        <h2>Commencez en 30 secondes</h2>
+        <p>Pas de paperasse pour démarrer — la vérification vient après.</p>
+      </div></div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-ico"><b style="font-size:17px">1</b></div>
+          <h3>Créez votre compte</h3>
+          <p>Google ou email, 30 secondes. Aucun document demandé pour commencer.</p>
+        </div>
+        <div class="step">
+          <div class="step-ico"><b style="font-size:17px">2</b></div>
+          <h3>Publiez vos voitures</h3>
+          <p>Ajoutez vos annonces immédiatement : photos, prix, kilométrage. Elles partent devant les acheteurs africains.</p>
+        </div>
+        <div class="step">
+          <div class="step-ico"><b style="font-size:17px">3</b></div>
+          <h3>Devenez Vérifié Yayo</h3>
+          <p>Envoyez votre trade license quand vous voulez et gagnez le badge qui multiplie les contacts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PRICING ═══ -->
+<section class="section" id="tarifs" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>Des tarifs simples</h2>
+        <p>Sans engagement. Les acheteurs ne paient jamais rien.</p>
+      </div>
+    </div>
+    <div class="pricing">
+      <div class="price-card">
+        <h3>Starter</h3>
+        <div class="price-amt">$49<span>/mois</span></div>
+        <ul>
+          <li>Jusqu'à 10 annonces actives</li>
+          <li>Chat acheteurs illimité</li>
+          <li>Assistant Yayo</li>
+        </ul>
+        <a href="#inscription" class="btn btn-ghost-dark btn-block">Commencer</a>
+      </div>
+      <div class="price-card price-hot">
+        <div class="price-tag">Populaire</div>
+        <h3>Pro</h3>
+        <div class="price-amt">$149<span>/mois</span></div>
+        <ul>
+          <li>Jusqu'à 50 annonces actives</li>
+          <li>Badge Vérifié prioritaire</li>
+          <li>Statistiques avancées</li>
+          <li>Support prioritaire</li>
+        </ul>
+        <a href="#inscription" class="btn btn-solid btn-block">Commencer</a>
+      </div>
+      <div class="price-card">
+        <h3>Elite</h3>
+        <div class="price-amt">$299<span>/mois</span></div>
+        <ul>
+          <li>Annonces illimitées</li>
+          <li>Mise en avant sur l'accueil</li>
+          <li>Account manager dédié</li>
+        </ul>
+        <a href="#inscription" class="btn btn-ghost-dark btn-block">Commencer</a>
+      </div>
+      <div class="price-card" id="agences">
+        <h3>Agences de transport</h3>
+        <div class="price-amt">$79–149<span>/mois</span></div>
+        <ul>
+          <li>Vos routes et tarifs sur Yayo</li>
+          <li>Leads d'expédition qualifiés</li>
+          <li>Profil certifié</li>
+        </ul>
+        <a href="#inscription" class="btn btn-ghost-dark btn-block" onclick="pickType('agency')">Inscrire mon agence</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ REGISTRATION ═══ -->
+<section class="section" id="inscription" style="padding-top:0">
+  <div class="wrap">
+    <div class="auth-card auth-card-wide">
+      <h2 style="font-size:24px;letter-spacing:-.6px">Créer mon compte professionnel</h2>
+      <p class="auth-sub">Gratuit pour démarrer — choisissez votre formule plus tard.</p>
+
+      <div class="fpills type-pills" id="v-type">
+        <button type="button" class="on" data-v="dealer">🚗 Je suis dealer</button>
+        <button type="button" data-v="agency">🚢 Je suis agence de transport</button>
+      </div>
+
+      <form onsubmit="return doRegister(event)">
+        <div class="form-grid">
+          <div class="field">
+            <label for="v-company">Nom de l'entreprise</label>
+            <input id="v-company" type="text" required placeholder="Ex : Al Manara Motors">
+          </div>
+          <div class="field">
+            <label for="v-phone">Téléphone (Dubai)</label>
+            <input id="v-phone" type="tel" required placeholder="+971 …">
+          </div>
+          <div class="field">
+            <label for="v-email">Email professionnel</label>
+            <input id="v-email" type="email" autocomplete="email" required placeholder="vous@entreprise.com">
+          </div>
+          <div class="field">
+            <label for="v-pass">Mot de passe</label>
+            <input id="v-pass" type="password" autocomplete="new-password" required minlength="6" placeholder="6 caractères minimum">
+          </div>
+        </div>
+        <div class="auth-error" id="v-error" hidden></div>
+        <div class="auth-ok" id="v-ok" hidden></div>
+        <button type="submit" class="btn btn-solid btn-block" id="v-btn" style="margin-top:14px">Créer mon compte</button>
+        <p class="auth-note">En créant un compte vous acceptez d'être contacté par l'équipe Yayo pour l'activation.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-in">
+    <div class="footer-brand">
+      <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+      <p>Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
+    </div>
+    <div>
+      <h4>Acheter</h4>
+      <a href="acheter.html?brand=Toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="acheter.html?body=SUV&max=25000">SUV moins de $25 000</a>
+      <a href="acheter.html?fuel=Hybride">Voitures hybrides Dubai</a>
+      <a href="acheter.html?body=Pick-up">Pick-up vers Abidjan</a>
+    </div>
+    <div>
+      <h4>Expédier</h4>
+      <a href="#">Coût dédouanement RDC</a>
+      <a href="#">Importer voiture Cameroun</a>
+      <a href="#">Transport Dubai Dakar</a>
+      <a href="#">Agences certifiées</a>
+    </div>
+    <div>
+      <h4>Yayo</h4>
+      <a href="vendre.html">Devenir dealer</a>
+      <a href="vendre.html#agences">Devenir agence</a>
+      <a href="vendre.html#tarifs">Tarifs</a>
+      <a href="mailto:contact@yayo.digital">Contact</a>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
+
+let vType = "dealer";
+document.querySelectorAll("#v-type button").forEach(b => b.addEventListener("click", () => {
+  vType = b.dataset.v;
+  document.querySelectorAll("#v-type button").forEach(x => x.classList.toggle("on", x === b));
+}));
+function pickType(t) {
+  const btn = document.querySelector('#v-type button[data-v="' + t + '"]');
+  if (btn) btn.click();
+}
+
+async function doRegister(e) {
+  e.preventDefault();
+  const err = document.getElementById("v-error");
+  const ok = document.getElementById("v-ok");
+  const btn = document.getElementById("v-btn");
+  err.hidden = true; ok.hidden = true; btn.disabled = true;
+
+  const company = document.getElementById("v-company").value.trim();
+  const phone = document.getElementById("v-phone").value.trim();
+  const email = document.getElementById("v-email").value.trim();
+  const pass = document.getElementById("v-pass").value;
+
+  const { data, error } = await yayoSignUpEmail(email, pass, { role: vType, company, phone });
+  btn.disabled = false;
+  if (error) {
+    err.hidden = false;
+    err.textContent = error.message.includes("already registered")
+      ? "Un compte existe déjà avec cet email. Connectez-vous."
+      : "Erreur : " + error.message;
+    return false;
+  }
+  // Best-effort profile row; admin activates the account afterwards
+  try {
+    const table = vType === "agency" ? "shipping_agencies" : "dealers";
+    await yayoSB().from(table).insert({ name: company, city: "Dubai", verified: false });
+  } catch (ignored) {}
+  ok.hidden = false;
+  ok.textContent = "Compte créé ! Vérifiez votre email pour le confirmer. Notre équipe active votre profil " +
+    (vType === "agency" ? "agence" : "dealer") + " très rapidement.";
+  e.target.reset();
+  return false;
+}
+</script>
+</body>
+</html>

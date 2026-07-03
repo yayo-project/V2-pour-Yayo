@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voiture — Yayo</title>
+<meta name="description" content="Fiche voiture complète : photos, prix total rendu dans votre ville, dealer vérifié. Contactez le dealer directement sur Yayo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" class="on">Acheter</a>
+      <a href="vendre.html">Vendre</a>
+      <a href="index.html#expedier">Expédier</a>
+      <a href="index.html#comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html">Vendre <span>Dealers &amp; agences</span></a>
+  <a href="index.html#expedier">Expédier <span>Coût rendu chez vous</span></a>
+  <a href="index.html#comment">Comment ça marche <span>4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile">Connexion <span>Mon compte Yayo</span></a>
+</div>
+
+<!-- ═══ CAR DETAIL ═══ -->
+<main class="vd-page">
+  <div class="wrap">
+
+    <nav class="crumbs" id="crumbs">
+      <a href="index.html">Accueil</a> <span>›</span>
+      <a href="acheter.html">Acheter</a> <span>›</span>
+      <b id="crumb-name">…</b>
+    </nav>
+
+    <div id="vd-loading" class="vd-loading">Chargement de la voiture…</div>
+
+    <div id="vd-notfound" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🚗</div>
+      <h3>Annonce introuvable</h3>
+      <p>Cette voiture a peut-être été vendue. Découvrez celles qui sont disponibles.</p>
+      <a class="btn btn-solid" href="acheter.html">Voir toutes les voitures</a>
+    </div>
+
+    <div class="vd-layout" id="vd-content" hidden>
+
+      <!-- Left : photo + description -->
+      <div class="vd-main">
+        <div class="vd-photo car-img" id="vd-photo">
+          <img id="vd-img" src="" alt="">
+          <span class="ai-badge" id="vd-ai"></span>
+        </div>
+
+        <div class="vd-card">
+          <h2 class="vd-h">Caractéristiques</h2>
+          <div class="vd-specs" id="vd-specs"></div>
+        </div>
+
+        <div class="vd-card">
+          <h2 class="vd-h">Description</h2>
+          <p class="vd-desc" id="vd-desc"></p>
+        </div>
+      </div>
+
+      <!-- Right : price + landed + dealer + contact -->
+      <aside class="vd-side">
+        <div class="vd-card">
+          <h1 class="vd-title" id="vd-title"></h1>
+          <div class="car-meta" id="vd-meta"></div>
+          <div class="car-price-row" style="margin-top:14px">
+            <span class="car-price" style="font-size:28px" id="vd-price"></span>
+            <span class="car-price-lbl">à Dubai</span>
+          </div>
+        </div>
+
+        <div class="vd-card">
+          <h2 class="vd-h">🚢 Prix total rendu chez vous</h2>
+          <div class="fpills vd-cities" id="vd-cities"></div>
+          <div id="vd-breakdown"></div>
+          <p class="cost-note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
+        </div>
+
+        <div class="vd-card">
+          <h2 class="vd-h">Vendu par</h2>
+          <div class="vd-dealer">
+            <div class="testi-av" id="vd-dealer-av"></div>
+            <div>
+              <b id="vd-dealer-name"></b>
+              <span class="vd-dealer-loc" id="vd-dealer-badge"></span>
+            </div>
+          </div>
+          <button class="btn btn-solid btn-block" id="vd-contact" onclick="openChat()">💬 Contacter le dealer</button>
+          <p class="vd-free">Gratuit · réponse en général sous quelques heures</p>
+        </div>
+
+        <!-- Chat panel (in-app, phase 5) -->
+        <div class="vd-card vd-chat" id="vd-chat" hidden>
+          <h2 class="vd-h">💬 Votre conversation</h2>
+          <div class="chat-box" id="chat-box"></div>
+          <form class="chat-form" onsubmit="return sendMsg(event)">
+            <input id="chat-input" type="text" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
+            <button type="submit" class="btn btn-solid">Envoyer</button>
+          </form>
+          <p class="vd-free">La conversation reste sur Yayo — c'est votre protection.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Similar cars -->
+    <section class="section" id="vd-similar-sec" hidden>
+      <div class="sec-head">
+        <div><h2>Voitures similaires</h2></div>
+        <a class="sec-link" href="acheter.html">Tout voir <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="car-grid" id="vd-similar"></div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-in">
+    <div class="footer-brand">
+      <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+      <p>Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
+    </div>
+    <div>
+      <h4>Acheter</h4>
+      <a href="acheter.html?brand=Toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="acheter.html?body=SUV&max=25000">SUV moins de $25 000</a>
+      <a href="acheter.html?fuel=Hybride">Voitures hybrides Dubai</a>
+      <a href="acheter.html?body=Pick-up">Pick-up vers Abidjan</a>
+    </div>
+    <div>
+      <h4>Expédier</h4>
+      <a href="#">Coût dédouanement RDC</a>
+      <a href="#">Importer voiture Cameroun</a>
+      <a href="#">Transport Dubai Dakar</a>
+      <a href="#">Agences certifiées</a>
+    </div>
+    <div>
+      <h4>Yayo</h4>
+      <a href="vendre.html">Devenir dealer</a>
+      <a href="vendre.html#agences">Devenir agence</a>
+      <a href="vendre.html#tarifs">Tarifs</a>
+      <a href="mailto:contact@yayo.digital">Contact</a>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/voiture.js"></script>
+</body>
+</html>

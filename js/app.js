@@ -4,20 +4,13 @@
 // demo cars while dealers upload their inventory.
 // ═══════════════════════════════════════════════
 
-const sb = window.supabase.createClient(YAYO_CONFIG.SUPABASE_URL, YAYO_CONFIG.SUPABASE_KEY);
+const sb = yayoSB();
 const DEST = YAYO_CONFIG.DESTINATIONS;
 let CUR = YAYO_CONFIG.DEFAULT_DEST;
 let CARS = [];
 
-// Demo cars shown until real listings exist (marked visually identical)
-const DEMO_CARS = [
-  { car_name: "Toyota Land Cruiser GXR 2021", mileage: 78000, fuel: "Essence",  price: 38500, ai: "good", photo_url: "https://images.unsplash.com/photo-1594502184342-2e12f877aa73?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Toyota RAV4 Hybrid 2022",      mileage: 41000, fuel: "Hybride",  price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1706509234538-9831b1b33d66?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Toyota Hilux 4x4 2020",        mileage: 96000, fuel: "Diesel",   price: 31200, ai: "good", photo_url: "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Kia Sportage 2023",            mileage: 22000, fuel: "Essence",  price: 24800, ai: "good", photo_url: "https://images.unsplash.com/photo-1617469767053-d3b523a0b982?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } },
-  { car_name: "Hyundai Tucson 2022",          mileage: 35000, fuel: "Essence",  price: 23500, ai: "nego", photo_url: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=70", dealer: { name: "Mukoma Auto", verified: true } },
-  { car_name: "Mercedes GLE 400 2021",        mileage: 55000, fuel: "Essence",  price: 52000, ai: "good", photo_url: "https://images.unsplash.com/photo-1563720223185-11003d516935?w=640&q=70", dealer: { name: "Kabeya Auto", verified: true } }
-];
+// Demo cars shown until real listings exist (shared list in js/demo.js)
+const DEMO_CARS = window.YAYO_DEMO.slice(0, 6);
 
 function fmt(n) {
   return "$" + Math.round(n).toLocaleString("fr-FR").replace(/\u202f/g, " ");
@@ -121,7 +114,7 @@ function doSearch() {
   location.href = q ? "acheter.html?q=" + encodeURIComponent(q) : "acheter.html";
 }
 function quickSearch(q) { location.href = "acheter.html?q=" + encodeURIComponent(q); }
-function openCar(id) { alert("Page voiture détaillée — étape suivante de construction"); }
+function openCar(id) { location.href = "voiture.html?id=" + encodeURIComponent(id); }
 function soon(e, msg) { e.preventDefault(); e.stopPropagation(); alert(msg); }
 
 // ── Init ──

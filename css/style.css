@@ -268,6 +268,89 @@ body.no-scroll{overflow:hidden}
   .mkt-sort{min-width:0}
 }
 
+/* ── CAR DETAIL (voiture.html) ── */
+.vd-page{padding:26px 0 40px}
+.crumbs{font-size:12.5px;color:var(--ink-3);margin-bottom:16px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.crumbs a:hover{color:var(--teal)}
+.crumbs b{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.vd-loading{padding:60px 0;text-align:center;color:var(--ink-3);font-size:14px}
+.vd-layout{display:grid;grid-template-columns:1.2fr .9fr;gap:22px;align-items:start}
+.vd-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.vd-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.vd-photo{aspect-ratio:16/10;border-radius:var(--radius);overflow:hidden;position:relative;box-shadow:var(--sh)}
+.vd-photo img{width:100%;height:100%;object-fit:cover}
+.vd-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--sh)}
+.vd-h{font-size:14px;font-weight:800;letter-spacing:-.2px;margin-bottom:12px}
+.vd-title{font-size:22px;font-weight:800;letter-spacing:-.7px;line-height:1.2}
+.vd-specs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vd-spec{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 13px;display:flex;flex-direction:column;gap:1px}
+.vd-spec span{font-size:11px;color:var(--ink-3);font-weight:600}
+.vd-spec b{font-size:13.5px;font-weight:700}
+.vd-desc{font-size:13.5px;color:var(--ink-2);line-height:1.7}
+.vd-cities{margin-bottom:12px}
+.vd-dealer{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.vd-dealer b{font-size:14.5px;display:block}
+.vd-dealer-loc{font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:5px;margin-top:2px}
+.vd-free{font-size:11px;color:var(--ink-3);text-align:center;margin-top:8px}
+.btn-block{width:100%;display:flex}
+
+/* ── CHAT ── */
+.chat-box{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;min-height:120px;max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.chat-b{max-width:85%;padding:9px 13px;border-radius:13px;font-size:13.5px;line-height:1.5;word-wrap:break-word}
+.chat-me{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:4px}
+.chat-them{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+.chat-yayo{align-self:flex-start;background:var(--teal-tint);color:var(--teal-dark);border-bottom-left-radius:4px;font-size:12.5px}
+.chat-form{display:flex;gap:8px}
+.chat-form input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13.5px;outline:none;min-width:0}
+.chat-form input:focus{border-color:var(--teal-bright)}
+.chat-form .btn{padding:10px 16px}
+
+/* ── AUTH (connexion.html) ── */
+.auth-page{display:flex;flex-direction:column;min-height:100vh}
+.auth-wrap{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:44px 20px 60px}
+.auth-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px 28px;max-width:420px;width:100%;box-shadow:var(--sh-lg)}
+.auth-card h1{font-size:22px;font-weight:800;letter-spacing:-.6px;margin-bottom:6px}
+.auth-sub{font-size:13.5px;color:var(--ink-2);margin-bottom:20px}
+.btn-google{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--line);border-radius:11px;padding:12px;font-size:14px;font-weight:700;background:#fff;transition:.18s}
+.btn-google:hover{border-color:var(--ink-3)}
+.auth-or{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--ink-3);font-size:12px}
+.auth-or::before,.auth-or::after{content:'';flex:1;height:1px;background:var(--line)}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:700;margin-bottom:5px}
+.field input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;font-family:inherit;font-size:14px;outline:none;transition:.15s;background:#fff;color:var(--ink)}
+.field input:focus{border-color:var(--teal-bright);box-shadow:0 0 0 3px rgba(31,216,201,.15)}
+.auth-error{background:#FDECEC;color:#B3261E;border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:12px}
+.auth-ok{background:var(--teal-tint);color:var(--teal-dark);border-radius:10px;padding:10px 13px;font-size:13px;margin:12px 0;font-weight:600}
+.auth-switch{text-align:center;font-size:13px;color:var(--ink-2);margin-top:16px}
+.auth-switch a,.auth-note a{color:var(--teal);font-weight:700}
+.auth-note{text-align:center;font-size:11.5px;color:var(--ink-3);margin-top:14px;line-height:1.6}
+
+/* ── VENDRE ── */
+.pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.price-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px 22px;box-shadow:var(--sh);position:relative;display:flex;flex-direction:column}
+.price-card h3{font-size:15px;font-weight:800}
+.price-hot{border:2px solid var(--teal-bright);box-shadow:var(--sh-lg)}
+.price-tag{position:absolute;top:-11px;left:20px;background:var(--teal-bright);color:var(--dark);font-size:11px;font-weight:800;border-radius:50px;padding:3px 12px}
+.price-amt{font-size:30px;font-weight:800;letter-spacing:-1px;margin:8px 0 14px}
+.price-amt span{font-size:13px;color:var(--ink-3);font-weight:500;letter-spacing:0}
+.price-card ul{list-style:none;margin-bottom:18px;flex:1}
+.price-card li{font-size:13px;color:var(--ink-2);padding:5px 0 5px 22px;position:relative}
+.price-card li::before{content:'✓';position:absolute;left:0;color:var(--teal);font-weight:800}
+.btn-ghost-dark{border:1.5px solid var(--line);color:var(--ink)}
+.btn-ghost-dark:hover{border-color:var(--teal);color:var(--teal)}
+.auth-card-wide{max-width:640px;margin:0 auto}
+.type-pills{margin-bottom:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+
+@media(max-width:860px){
+  .vd-layout{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .vd-specs{grid-template-columns:1fr 1fr}
+  .auth-card{padding:24px 18px}
+}
+
 /* ── VISUAL POLISH ── */
 .hero{position:relative;overflow:hidden}
 .hero::before{content:'';position:absolute;left:50%;top:-300px;transform:translateX(-50%);width:1000px;height:600px;border-radius:50%;background:radial-gradient(ellipse,rgba(31,216,201,.14),transparent 65%);pointer-events:none}
