@@ -130,7 +130,7 @@ function render() {
 
   count.textContent = FILTERED.length === 0
     ? "Aucune voiture trouvée"
-    : `${FILTERED.length} voiture${FILTERED.length > 1 ? "s" : ""} · rendu ${dst.name}`;
+    : `${FILTERED.length} voiture${FILTERED.length > 1 ? "s" : ""} · ${CUR === "dubai" ? "à Dubai" : "rendu " + dst.name}`;
 
   if (FILTERED.length === 0) { g.innerHTML = ""; empty.hidden = false; return; }
   empty.hidden = true;
@@ -185,6 +185,10 @@ function toggleFilters() {
   document.body.classList.toggle("no-scroll");
 }
 
+function closeFiltersIfMobile() {
+  if (document.getElementById("mkt-filters").classList.contains("open")) toggleFilters();
+}
+
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 function openCar(id) { alert("Page voiture détaillée — étape suivante de construction"); }
 function soon(e, msg) { e.preventDefault(); e.stopPropagation(); alert(msg); }
@@ -198,9 +202,13 @@ function buildBrandFilter() {
 
 let searchTimer;
 function initSearch() {
-  document.getElementById("mkt-q").addEventListener("input", () => {
+  const q = document.getElementById("mkt-q");
+  q.addEventListener("input", () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(applyFilters, 220);
+  });
+  q.addEventListener("keydown", e => {
+    if (e.key === "Enter") { clearTimeout(searchTimer); applyFilters(); }
   });
   ["f-min", "f-max", "f-year"].forEach(id => {
     document.getElementById(id).addEventListener("change", applyFilters);

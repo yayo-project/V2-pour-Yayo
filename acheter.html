@@ -65,6 +65,7 @@
       <div class="mkt-search">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         <input id="mkt-q" type="text" placeholder="Cherchez : Land Cruiser 2021, RAV4 Hybrid...">
+        <button class="mkt-search-btn" onclick="applyFilters()">Rechercher</button>
       </div>
       <button class="mkt-filter-toggle" onclick="toggleFilters()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
@@ -126,7 +127,10 @@
           </div>
         </div>
 
-        <button class="btn-clear" onclick="clearFilters()">Effacer les filtres</button>
+        <div class="factions">
+          <button class="btn-apply" onclick="applyFilters();closeFiltersIfMobile()">Appliquer les filtres</button>
+          <button class="btn-reset" onclick="clearFilters()">Réinitialiser</button>
+        </div>
       </aside>
 
       <!-- Results -->
