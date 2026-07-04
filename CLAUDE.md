@@ -44,7 +44,7 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 5. ✅ In-app chat v1 — on voiture.html (conversations/messages tables; demo mode on demo listings). Dealer-side inbox comes with the dashboard.
 6. ✅ vendre.html — benefits, trust ladder, pricing, dealer/agency registration form (admin activates accounts)
 7. → NEXT: dashboard.html (dealer first: stats, leads inbox, inventory CRUD, chat replies with Assistant Yayo; then agency, then admin)
-8. i18n.js — full FR/EN/AR coverage, language switcher
+8. ✅ i18n.js — full FR/EN/AR coverage, language switcher (topbar + mobile menu), AR = RTL. Done before the dashboard.
 9. Netlify Functions for Groq (hide API key) + AI features: price verdict badges on listings, price estimate tool, Assistant Yayo reply suggestions
 10. Photo upload to Supabase Storage + AI condition report
 11. PWA (manifest, service worker, installable)
