@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comment ça marche — Yayo</title>
+<meta name="description" content="Acheter une voiture à Dubai et la recevoir chez vous en 4 étapes : trouvez, discutez sur Yayo, expédiez, suivez. Gratuit pour les acheteurs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" class="on" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="wrap hero-in">
+    <h1 data-i18n="how_h2">De Dubai à votre porte, en 4 étapes</h1>
+    <p class="hero-sub" data-i18n="how_p">Recherche, discussion, expédition, suivi — tout se passe sur Yayo.</p>
+    <div class="trust">
+      <div class="trust-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span data-i18n="trust_1">Dealers certifiés Yayo</span>
+      </div>
+      <div class="trust-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+        <span data-i18n="trust_2">Prix total sans surprise</span>
+      </div>
+      <div class="trust-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12h4l2-7 4 14 3-10 2 3h5"/></svg>
+        <span data-i18n="trust_3">Suivi de livraison</span>
+      </div>
+      <div class="trust-item">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span data-i18n="trust_4">Support en français 7j/7</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ THE 4 STEPS ═══ -->
+<section class="section">
+  <div class="wrap">
+    <div class="steps">
+      <div class="step">
+        <div class="step-ico"><b style="font-size:17px">1</b></div>
+        <h3 data-i18n="how1_h">Trouvez votre voiture</h3>
+        <p data-i18n="how1_p">Parcourez les voitures des dealers certifiés de Dubai, avec le prix total rendu dans votre ville affiché dès la première page.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><b style="font-size:17px">2</b></div>
+        <h3 data-i18n="how2_h">Discutez sur Yayo</h3>
+        <p data-i18n="how2_p">Chat intégré et sécurisé avec le dealer, en français. Posez vos questions, demandez des photos, négociez — tout reste sur Yayo.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><b style="font-size:17px">3</b></div>
+        <h3 data-i18n="how3_h">Expédiez en confiance</h3>
+        <p data-i18n="how3_p">Choisissez une agence de transport certifiée. Transport, assurance et douane : le coût complet est connu avant de payer.</p>
+      </div>
+      <div class="step">
+        <div class="step-ico"><b style="font-size:17px">4</b></div>
+        <h3 data-i18n="how4_h">Suivez jusqu'à chez vous</h3>
+        <p data-i18n="how4_p">Du port de Dubai à votre ville, chaque étape est suivie sur Yayo. Vous savez toujours où est votre voiture.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ REASSURANCE ═══ -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2 data-i18n="fear_h2">Acheter à Dubai, sans les risques</h2>
+        <p data-i18n="fear_p">Importer une voiture fait peur. Voici comment Yayo vous protège à chaque étape.</p>
+      </div>
+    </div>
+    <div class="testis">
+      <div class="testi">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3 class="fear-q" data-i18n="fear1_q">« Et si je me fais arnaquer ? »</h3>
+        <p data-i18n="fear1_p">Vous n'achetez qu'à des dealers certifiés Yayo. Chaque voiture est analysée par notre Assistant Yayo — photos réelles, prix cohérent — avant d'apparaître sur le site.</p>
+      </div>
+      <div class="testi">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2m3.5-9.5c0-1.4-1.6-2.5-3.5-2.5s-3.5 1.1-3.5 2.5S10.1 11 12 11s3.5 1.1 3.5 2.5S13.9 16 12 16s-3.5-1.1-3.5-2.5"/></svg></div>
+        <h3 class="fear-q" data-i18n="fear2_q">« Combien ça coûte vraiment ? »</h3>
+        <p data-i18n="fear2_p">Le prix total rendu dans votre ville — transport, assurance, douane, dédouanement — est affiché dès la première page. Aucune surprise à l'arrivée.</p>
+      </div>
+      <div class="testi">
+        <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3 class="fear-q" data-i18n="fear3_q">« Où est ma voiture ? »</h3>
+        <p data-i18n="fear3_p">Du port de Dubai à votre ville, chaque étape se suit sur Yayo. Vous n'êtes jamais dans le flou pendant l'expédition.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="cost-section" style="grid-template-columns:1fr;text-align:center">
+      <div class="cost-left">
+        <h2 data-i18n="c_ready_h">Prêt à trouver votre voiture ?</h2>
+        <p data-i18n="c_ready_p" style="margin:10px auto 22px;max-width:520px">Des centaines de voitures vérifiées à Dubai vous attendent, avec le prix total rendu chez vous affiché dès la première page.</p>
+        <a href="acheter.html" class="btn btn-bright"><span data-i18n="nf_btn">Voir toutes les voitures</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-in">
+    <div class="footer-brand">
+      <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+      <p data-i18n="f_tag">Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
+    </div>
+    <div>
+      <h4 data-i18n="f_buy">Acheter</h4>
+      <a href="acheter.html?brand=Toyota" data-i18n="f_l_toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="acheter.html?body=SUV&max=25000" data-i18n="f_l_suv">SUV moins de $25 000</a>
+      <a href="acheter.html?fuel=Hybride" data-i18n="f_l_hybrid">Voitures hybrides Dubai</a>
+      <a href="acheter.html?body=Pick-up" data-i18n="f_l_pickup">Pick-up vers Abidjan</a>
+    </div>
+    <div>
+      <h4 data-i18n="f_ship">Expédier</h4>
+      <a href="index.html#expedier" data-i18n="f_s_rdc">Coût dédouanement RDC</a>
+      <a href="index.html#expedier" data-i18n="f_s_cmr">Importer voiture Cameroun</a>
+      <a href="expedier.html" data-i18n="f_s_dkr">Transport Dubai Dakar</a>
+      <a href="expedier.html" data-i18n="f_s_ag">Agences certifiées</a>
+    </div>
+    <div>
+      <h4 data-i18n="f_yayo">Yayo</h4>
+      <a href="vendre.html" data-i18n="f_dealer">Devenir dealer</a>
+      <a href="expedier.html" data-i18n="f_agency">Devenir agence</a>
+      <a href="vendre.html#tarifs" data-i18n="f_pricing">Tarifs</a>
+      <a href="mailto:contact@yayo.digital" data-i18n="f_contact">Contact</a>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/auth.js"></script>
+<script>
+function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
+</script>
+</body>
+</html>

@@ -21,8 +21,8 @@
     <nav class="nav">
       <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
       <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
-      <a href="#expedier" data-i18n="nav_expedier">Expédier</a>
-      <a href="#comment" data-i18n="nav_comment">Comment ça marche</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
     </nav>
     <div class="topbar-right">
       <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
@@ -35,9 +35,9 @@
 </header>
 <div class="mobile-menu" id="mmenu">
   <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
-  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers &amp; agences</span></a>
-  <a href="#expedier" onclick="toggleMenu()"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Coût rendu chez vous</span></a>
-  <a href="#comment" onclick="toggleMenu()"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
   <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
   <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
 </div>
@@ -236,22 +236,22 @@
     </div>
     <div>
       <h4 data-i18n="f_buy">Acheter</h4>
-      <a href="#" data-i18n="f_l_toyota">Toyota Dubai vers Kinshasa</a>
-      <a href="#" data-i18n="f_l_suv">SUV moins de $25 000</a>
-      <a href="#" data-i18n="f_l_hybrid">Voitures hybrides Dubai</a>
-      <a href="#" data-i18n="f_l_pickup">Pick-up vers Abidjan</a>
+      <a href="acheter.html?brand=Toyota" data-i18n="f_l_toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="acheter.html?body=SUV&max=25000" data-i18n="f_l_suv">SUV moins de $25 000</a>
+      <a href="acheter.html?fuel=Hybride" data-i18n="f_l_hybrid">Voitures hybrides Dubai</a>
+      <a href="acheter.html?body=Pick-up" data-i18n="f_l_pickup">Pick-up vers Abidjan</a>
     </div>
     <div>
       <h4 data-i18n="f_ship">Expédier</h4>
-      <a href="#" data-i18n="f_s_rdc">Coût dédouanement RDC</a>
-      <a href="#" data-i18n="f_s_cmr">Importer voiture Cameroun</a>
-      <a href="#" data-i18n="f_s_dkr">Transport Dubai Dakar</a>
-      <a href="#" data-i18n="f_s_ag">Agences certifiées</a>
+      <a href="#expedier" data-i18n="f_s_rdc">Coût dédouanement RDC</a>
+      <a href="#expedier" data-i18n="f_s_cmr">Importer voiture Cameroun</a>
+      <a href="expedier.html" data-i18n="f_s_dkr">Transport Dubai Dakar</a>
+      <a href="expedier.html" data-i18n="f_s_ag">Agences certifiées</a>
     </div>
     <div>
       <h4 data-i18n="f_yayo">Yayo</h4>
       <a href="vendre.html" data-i18n="f_dealer">Devenir dealer</a>
-      <a href="vendre.html#agences" data-i18n="f_agency">Devenir agence</a>
+      <a href="expedier.html" data-i18n="f_agency">Devenir agence</a>
       <a href="vendre.html#tarifs" data-i18n="f_pricing">Tarifs</a>
       <a href="mailto:contact@yayo.digital" data-i18n="f_contact">Contact</a>
     </div>

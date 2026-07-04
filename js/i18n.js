@@ -9,7 +9,7 @@ const I18N = {
 fr: {
   // Nav + common
   nav_acheter: "Acheter", nav_vendre: "Vendre", nav_expedier: "Expédier", nav_comment: "Comment ça marche", connexion: "Connexion",
-  m_acheter_s: "Voitures vérifiées à Dubai", m_vendre_s: "Dealers & agences", m_expedier_s: "Coût rendu chez vous", m_comment_s: "4 étapes simples", m_connexion_s: "Mon compte Yayo",
+  m_acheter_s: "Voitures vérifiées à Dubai", m_vendre_s: "Dealers Dubai", m_expedier_s: "Agences de transport", m_comment_s: "4 étapes simples", m_connexion_s: "Mon compte Yayo",
   dest_label: "Livraison à :", dest_dubai: "Dubai (sur place)",
   f_tag: "Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.",
   f_buy: "Acheter", f_ship: "Expédier", f_yayo: "Yayo",
@@ -107,11 +107,31 @@ fr: {
   v_company: "Nom de l'entreprise", v_company_ph: "Ex : Al Manara Motors", v_phone: "Téléphone (Dubai)",
   v_email: "Email professionnel", v_email_ph: "vous@entreprise.com",
   v_reg_btn: "Créer mon compte", v_reg_note: "En créant un compte vous acceptez d'être contacté par l'équipe Yayo pour l'activation.",
-  v_ok: "Compte créé ! Vérifiez votre email pour le confirmer. Notre équipe active votre profil très rapidement."
+  v_ok: "Compte créé ! Vérifiez votre email pour le confirmer. Notre équipe active votre profil très rapidement.",
+  v_reg_h_d: "Créer mon compte dealer",
+  // Pricing toggle (vendre + expedier)
+  pr_monthly: "Mensuel", pr_yearly: "Annuel", pr_yr: "/an", pr_save: "2 mois offerts",
+  // Expedier (agencies)
+  e_h1: "Votre agence, au cœur du corridor <em>Dubai → Afrique</em>",
+  e_sub: "Yayo vous apporte des clients qui ont déjà acheté leur voiture à Dubai et cherchent une agence pour l'expédier. Zéro prospection, que des leads sérieux.",
+  e_cta: "Inscrire mon agence — 30 secondes",
+  e_why_h: "Pourquoi les agences choisissent Yayo", e_why_p: "Des leads d'expédition qualifiés, sans prospection.",
+  e_b1_h: "Des clients prêts à expédier", e_b1_p: "Chaque lead a déjà acheté sa voiture à Dubai et cherche une agence pour l'expédier vers Kinshasa, Douala, Abidjan ou Dakar.",
+  e_b2_h: "Vos routes et tarifs affichés", e_b2_p: "Publiez vos routes, délais et tarifs. Les acheteurs découvrent votre offre au moment où ils calculent leur prix rendu.",
+  e_b3_h: "Profil certifié Yayo", e_b3_p: "Envoyez votre licence et gagnez le badge Vérifié Yayo qui rassure les clients avant même le premier message.",
+  e_b4_h: "Tout se passe sur Yayo", e_b4_p: "Devis, échanges et suivi d'expédition restent sur la plateforme — vos clients savent toujours où en est leur voiture.",
+  e_pr_h: "Tarifs agences", e_pr_p: "Sans engagement. Les acheteurs ne paient jamais rien.",
+  e_s1: "Profil agence + vos routes en ligne", e_s2: "Leads d'expédition qualifiés", e_s3: "Chat clients intégré",
+  e_p1: "Priorité sur les leads d'expédition", e_p2: "Badge Vérifié prioritaire", e_p3: "Statistiques avancées", e_p4: "Support prioritaire",
+  e_reg_h: "Inscrire mon agence", e_company_ph: "Ex : Gulf Shipping Services",
+  // Comment ça marche (page)
+  c_step: "Étape",
+  c_ready_h: "Prêt à trouver votre voiture ?",
+  c_ready_p: "Des centaines de voitures vérifiées à Dubai vous attendent, avec le prix total rendu chez vous affiché dès la première page."
 },
 en: {
   nav_acheter: "Buy", nav_vendre: "Sell", nav_expedier: "Ship", nav_comment: "How it works", connexion: "Sign in",
-  m_acheter_s: "Verified cars in Dubai", m_vendre_s: "Dealers & agencies", m_expedier_s: "Landed cost to your city", m_comment_s: "4 simple steps", m_connexion_s: "My Yayo account",
+  m_acheter_s: "Verified cars in Dubai", m_vendre_s: "Dubai dealers", m_expedier_s: "Shipping agencies", m_comment_s: "4 simple steps", m_connexion_s: "My Yayo account",
   dest_label: "Deliver to:", dest_dubai: "Dubai (pick up)",
   f_tag: "The Dubai → Africa car marketplace. Certified dealers, transparent total price, tracked delivery. Always free for buyers.",
   f_buy: "Buy", f_ship: "Ship", f_yayo: "Yayo",
@@ -203,11 +223,28 @@ en: {
   v_company: "Company name", v_company_ph: "E.g. Al Manara Motors", v_phone: "Phone (Dubai)",
   v_email: "Business email", v_email_ph: "you@company.com",
   v_reg_btn: "Create my account", v_reg_note: "By creating an account you agree to be contacted by the Yayo team for activation.",
-  v_ok: "Account created! Check your email to confirm it. Our team activates your profile very quickly."
+  v_ok: "Account created! Check your email to confirm it. Our team activates your profile very quickly.",
+  v_reg_h_d: "Create my dealer account",
+  pr_monthly: "Monthly", pr_yearly: "Yearly", pr_yr: "/year", pr_save: "2 months free",
+  e_h1: "Your agency, at the heart of the <em>Dubai → Africa</em> corridor",
+  e_sub: "Yayo brings you customers who have already bought their car in Dubai and are looking for an agency to ship it. Zero prospecting, only serious leads.",
+  e_cta: "Register my agency — 30 seconds",
+  e_why_h: "Why agencies choose Yayo", e_why_p: "Qualified shipping leads, no prospecting.",
+  e_b1_h: "Customers ready to ship", e_b1_p: "Every lead has already bought their car in Dubai and needs an agency to ship it to Kinshasa, Douala, Abidjan or Dakar.",
+  e_b2_h: "Your routes and rates on display", e_b2_p: "Publish your routes, transit times and rates. Buyers discover your offer the moment they calculate their landed price.",
+  e_b3_h: "Yayo certified profile", e_b3_p: "Upload your license and earn the Yayo Verified badge that reassures customers before the first message.",
+  e_b4_h: "Everything happens on Yayo", e_b4_p: "Quotes, messages and shipment tracking stay on the platform — your customers always know where their car is.",
+  e_pr_h: "Agency pricing", e_pr_p: "No commitment. Buyers never pay anything.",
+  e_s1: "Agency profile + your routes online", e_s2: "Qualified shipping leads", e_s3: "Built-in customer chat",
+  e_p1: "Priority on shipping leads", e_p2: "Priority Verified badge", e_p3: "Advanced statistics", e_p4: "Priority support",
+  e_reg_h: "Register my agency", e_company_ph: "E.g. Gulf Shipping Services",
+  c_step: "Step",
+  c_ready_h: "Ready to find your car?",
+  c_ready_p: "Hundreds of verified cars in Dubai are waiting for you, with the full landed price shown from the very first page."
 },
 ar: {
   nav_acheter: "اشترِ", nav_vendre: "بِع", nav_expedier: "الشحن", nav_comment: "كيف يعمل", connexion: "تسجيل الدخول",
-  m_acheter_s: "سيارات موثّقة في دبي", m_vendre_s: "تجار ووكالات", m_expedier_s: "التكلفة حتى مدينتك", m_comment_s: "٤ خطوات بسيطة", m_connexion_s: "حسابي في يايو",
+  m_acheter_s: "سيارات موثّقة في دبي", m_vendre_s: "تجار دبي", m_expedier_s: "وكالات الشحن", m_comment_s: "٤ خطوات بسيطة", m_connexion_s: "حسابي في يايو",
   dest_label: "التوصيل إلى:", dest_dubai: "دبي (استلام مباشر)",
   f_tag: "سوق السيارات من دبي إلى أفريقيا. تجار موثّقون، سعر إجمالي شفاف، وتتبع للتسليم. مجاني دائماً للمشترين.",
   f_buy: "اشترِ", f_ship: "الشحن", f_yayo: "يايو",
@@ -299,7 +336,24 @@ ar: {
   v_company: "اسم الشركة", v_company_ph: "مثال: النمارة موتورز", v_phone: "الهاتف (دبي)",
   v_email: "البريد المهني", v_email_ph: "you@company.com",
   v_reg_btn: "إنشاء حسابي", v_reg_note: "بإنشاء حساب فإنك توافق على تواصل فريق يايو معك للتفعيل.",
-  v_ok: "تم إنشاء الحساب! تحقق من بريدك لتأكيده. فريقنا يفعّل ملفك بسرعة."
+  v_ok: "تم إنشاء الحساب! تحقق من بريدك لتأكيده. فريقنا يفعّل ملفك بسرعة.",
+  v_reg_h_d: "أنشئ حساب التاجر",
+  pr_monthly: "شهري", pr_yearly: "سنوي", pr_yr: "/سنوياً", pr_save: "شهران مجاناً",
+  e_h1: "وكالتك في قلب ممر <em>دبي ← أفريقيا</em>",
+  e_sub: "يايو يجلب لك عملاء اشتروا سياراتهم في دبي بالفعل ويبحثون عن وكالة لشحنها. صفر تنقيب، وعملاء جادّون فقط.",
+  e_cta: "سجّل وكالتك — ٣٠ ثانية",
+  e_why_h: "لماذا تختار الوكالات يايو", e_why_p: "طلبات شحن جادّة، بدون تنقيب عن العملاء.",
+  e_b1_h: "عملاء جاهزون للشحن", e_b1_p: "كل عميل اشترى سيارته في دبي بالفعل ويحتاج وكالة لشحنها إلى كينشاسا أو دوالا أو أبيدجان أو داكار.",
+  e_b2_h: "مساراتك وأسعارك معروضة", e_b2_p: "انشر مساراتك ومدد النقل وأسعارك. يكتشف المشترون عرضك لحظة حسابهم للسعر الإجمالي.",
+  e_b3_h: "ملف معتمد من يايو", e_b3_p: "ارفع رخصتك واحصل على شارة موثّق من يايو التي تطمئن العملاء قبل أول رسالة.",
+  e_b4_h: "كل شيء يتم على يايو", e_b4_p: "العروض والمحادثات وتتبع الشحن تبقى على المنصة — عملاؤك يعرفون دائماً أين سيارتهم.",
+  e_pr_h: "أسعار الوكالات", e_pr_p: "بدون التزام. المشترون لا يدفعون شيئاً أبداً.",
+  e_s1: "ملف الوكالة + مساراتك على الإنترنت", e_s2: "طلبات شحن جادّة", e_s3: "محادثة مدمجة مع العملاء",
+  e_p1: "أولوية في طلبات الشحن", e_p2: "أولوية شارة التوثيق", e_p3: "إحصائيات متقدمة", e_p4: "دعم ذو أولوية",
+  e_reg_h: "سجّل وكالتي", e_company_ph: "مثال: Gulf Shipping Services",
+  c_step: "الخطوة",
+  c_ready_h: "جاهز للعثور على سيارتك؟",
+  c_ready_p: "مئات السيارات الموثّقة في دبي بانتظارك، مع السعر الإجمالي حتى بابك معروضاً من الصفحة الأولى."
 }
 };
 

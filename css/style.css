@@ -328,6 +328,14 @@ body.no-scroll{overflow:hidden}
 .auth-note{text-align:center;font-size:11.5px;color:var(--ink-3);margin-top:14px;line-height:1.6}
 
 /* ── VENDRE ── */
+.bill-toggle{display:flex;justify-content:center;margin-bottom:28px}
+.bill-toggle-in{display:inline-flex;background:var(--card);border:1.5px solid var(--line);border-radius:50px;padding:4px;gap:2px;box-shadow:var(--sh)}
+.bill-toggle button{padding:9px 20px;border-radius:50px;font-size:13.5px;font-weight:700;color:var(--ink-2);display:flex;align-items:center;gap:8px;transition:.18s}
+.bill-toggle button:hover{color:var(--ink)}
+.bill-toggle button.on{background:var(--ink);color:#fff}
+.bill-badge{background:var(--teal-tint);color:var(--teal-dark);font-size:10.5px;font-weight:800;border-radius:50px;padding:2px 9px}
+.bill-toggle button.on .bill-badge{background:var(--teal-bright);color:var(--dark)}
+.price-save{display:inline-block;background:var(--teal-tint);color:var(--teal-dark);font-size:11px;font-weight:800;border-radius:50px;padding:3px 11px;margin-bottom:12px}
 .pricing{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
 .price-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px 22px;box-shadow:var(--sh);position:relative;display:flex;flex-direction:column}
 .price-card h3{font-size:15px;font-weight:800}
