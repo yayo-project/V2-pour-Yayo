@@ -63,19 +63,19 @@ function renderCars() {
   <div class="car-card" onclick="openCar('${c.id || ""}')">
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
-      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? "✓ Bon prix" : "~ Négociable"}</span>
+      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
       <button class="fav" onclick="event.stopPropagation()" aria-label="Sauvegarder">♥</button>
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
-      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(c.fuel) : ""}</div>
+      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(tFuel(c.fuel)) : ""}</div>
       <div class="car-price-row">
         <span class="car-price">${fmt(c.price)}</span>
-        <span class="car-price-lbl">à Dubai</span>
+        <span class="car-price-lbl">${t("a_dubai")}</span>
       </div>
       ${CUR === "dubai" ? "" : `
       <div class="landed">
-        <span class="landed-lbl">🚢 Rendu ${dst.name}</span>
+        <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
         <span class="landed-val">${fmt(landedTotal(c.price, CUR))}</span>
       </div>`}
       <div class="car-dealer">
@@ -116,6 +116,9 @@ function doSearch() {
 function quickSearch(q) { location.href = "acheter.html?q=" + encodeURIComponent(q); }
 function openCar(id) { location.href = "voiture.html?id=" + encodeURIComponent(id); }
 function soon(e, msg) { e.preventDefault(); e.stopPropagation(); alert(msg); }
+
+// Re-render dynamic content when the language changes
+window.onLangChange = () => { renderCars(); updateCostCard(); };
 
 // ── Init ──
 loadCars();

@@ -135,8 +135,8 @@ function render() {
   const dst = DEST[CUR];
 
   count.textContent = FILTERED.length === 0
-    ? "Aucune voiture trouvée"
-    : `${FILTERED.length} voiture${FILTERED.length > 1 ? "s" : ""} · ${CUR === "dubai" ? "à Dubai" : "rendu " + dst.name}`;
+    ? t("count_none")
+    : `${FILTERED.length} ${FILTERED.length > 1 ? t("count_cars") : t("count_car")} · ${CUR === "dubai" ? t("a_dubai") : t("count_rendu") + " " + dst.name}`;
 
   if (FILTERED.length === 0) { g.innerHTML = ""; empty.hidden = false; return; }
   empty.hidden = true;
@@ -145,19 +145,19 @@ function render() {
   <div class="car-card" onclick="openCar('${c.id || ""}')">
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
-      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? "✓ Bon prix" : "~ Négociable"}</span>
+      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
       <button class="fav" onclick="event.stopPropagation()" aria-label="Sauvegarder">♥</button>
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
-      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(c.fuel) : ""}</div>
+      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(tFuel(c.fuel)) : ""}</div>
       <div class="car-price-row">
         <span class="car-price">${fmt(c.price)}</span>
-        <span class="car-price-lbl">à Dubai</span>
+        <span class="car-price-lbl">${t("a_dubai")}</span>
       </div>
       ${CUR === "dubai" ? "" : `
       <div class="landed">
-        <span class="landed-lbl">🚢 Rendu ${dst.name}</span>
+        <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
         <span class="landed-val">${fmt(landedTotal(c.price, CUR))}</span>
       </div>`}
       <div class="car-dealer">
@@ -220,6 +220,9 @@ function initSearch() {
     document.getElementById(id).addEventListener("change", applyFilters);
   });
 }
+
+// Re-render results when the language changes (skip until first load is done)
+window.onLangChange = () => { if (ALL.length) render(); };
 
 buildBrandFilter();
 initSearch();

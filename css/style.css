@@ -54,6 +54,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mobile-menu a{display:flex;align-items:center;justify-content:space-between;padding:15px 6px;font-size:16px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
 .mobile-menu a:last-child{border-bottom:none}
 .mobile-menu a span{color:rgba(255,255,255,.45);font-size:13px;font-weight:400}
+.mobile-menu a b{font-weight:600}
+.mobile-menu .lang{display:flex;width:max-content;margin:12px 0 2px}
 
 /* ── HERO ── */
 .hero{background:linear-gradient(175deg,var(--dark) 0%,var(--dark-2) 55%,var(--dark-3) 100%);border-bottom:none;color:#fff}

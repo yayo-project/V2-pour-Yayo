@@ -41,10 +41,10 @@ async function initAuthNav() {
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
     el.href = "#";
-    el.onclick = e => { e.preventDefault(); if (confirm("Se déconnecter de Yayo ?")) yayoSignOut(); };
+    el.onclick = e => { e.preventDefault(); if (confirm(t("logout_confirm"))) yayoSignOut(); };
   });
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
-    el.innerHTML = "Déconnexion <span>" + name.replace(/</g, "&lt;") + "</span>";
+    el.innerHTML = "<b>" + t("logout") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
     el.href = "#";
     el.onclick = e => { e.preventDefault(); yayoSignOut(); };
   });

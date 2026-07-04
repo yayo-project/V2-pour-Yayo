@@ -19,14 +19,14 @@
   <div class="wrap topbar-in">
     <a href="#" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
     <nav class="nav">
-      <a href="acheter.html">Acheter</a>
-      <a href="vendre.html">Vendre</a>
-      <a href="#expedier">Expédier</a>
-      <a href="#comment">Comment ça marche</a>
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="#expedier" data-i18n="nav_expedier">Expédier</a>
+      <a href="#comment" data-i18n="nav_comment">Comment ça marche</a>
     </nav>
     <div class="topbar-right">
       <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
-      <a href="connexion.html" class="btn btn-ghost" data-auth="login">Connexion</a>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
       <button class="burger" onclick="toggleMenu()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -34,48 +34,49 @@
   </div>
 </header>
 <div class="mobile-menu" id="mmenu">
-  <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
-  <a href="vendre.html">Vendre <span>Dealers &amp; agences</span></a>
-  <a href="#expedier" onclick="toggleMenu()">Expédier <span>Coût rendu chez vous</span></a>
-  <a href="#comment" onclick="toggleMenu()">Comment ça marche <span>4 étapes simples</span></a>
-  <a href="connexion.html" data-auth="login-mobile">Connexion <span>Mon compte Yayo</span></a>
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers &amp; agences</span></a>
+  <a href="#expedier" onclick="toggleMenu()"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Coût rendu chez vous</span></a>
+  <a href="#comment" onclick="toggleMenu()"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
 </div>
 
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="wrap hero-in">
-    <h1>Votre voiture, de Dubai <em>à chez vous</em></h1>
-    <p class="hero-sub">Des voitures vérifiées à Dubai, un prix total transparent, une livraison suivie jusqu'à votre ville. 100% gratuit pour les acheteurs.</p>
+    <h1 data-i18n-html="hero_title">Votre voiture, de Dubai <em>à chez vous</em></h1>
+    <p class="hero-sub" data-i18n="hero_sub">Des voitures vérifiées à Dubai, un prix total transparent, une livraison suivie jusqu'à votre ville. 100% gratuit pour les acheteurs.</p>
     <div class="search-shell">
       <div class="search-input">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" id="hero-search" placeholder="Cherchez : Land Cruiser 2021, RAV4 Hybrid...">
+        <input type="text" id="hero-search" data-i18n-ph="search_ph" placeholder="Cherchez : Land Cruiser 2021, RAV4 Hybrid...">
       </div>
-      <button class="search-btn" onclick="doSearch()">Rechercher</button>
+      <button class="search-btn" onclick="doSearch()" data-i18n="search_btn">Rechercher</button>
     </div>
     <div class="hero-chips">
-      <a class="chip" href="acheter.html?body=SUV&max=25000">SUV moins de $25k</a>
+      <a class="chip" href="acheter.html?body=SUV&max=25000" data-i18n="chip_suv">SUV moins de $25k</a>
       <a class="chip" href="acheter.html?brand=Toyota">Toyota</a>
-      <a class="chip" href="acheter.html?fuel=Hybride">Hybride</a>
-      <a class="chip" href="acheter.html?body=Pick-up">Pick-up</a>
-      <a class="chip" href="acheter.html?q=7%20places">7 places</a>
+      <a class="chip" href="acheter.html?fuel=Hybride" data-i18n="chip_hybride">Hybride</a>
+      <a class="chip" href="acheter.html?body=Pick-up" data-i18n="chip_pickup">Pick-up</a>
+      <a class="chip" href="acheter.html?q=7%20places" data-i18n="chip_places">7 places</a>
     </div>
     <div class="trust">
       <div class="trust-item">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-        Dealers certifiés Yayo
+        <span data-i18n="trust_1">Dealers certifiés Yayo</span>
       </div>
       <div class="trust-item">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
-        Prix total sans surprise
+        <span data-i18n="trust_2">Prix total sans surprise</span>
       </div>
       <div class="trust-item">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12h4l2-7 4 14 3-10 2 3h5"/></svg>
-        Suivi de livraison
+        <span data-i18n="trust_3">Suivi de livraison</span>
       </div>
       <div class="trust-item">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-        Support en français 7j/7
+        <span data-i18n="trust_4">Support en français 7j/7</span>
       </div>
     </div>
   </div>
@@ -86,13 +87,13 @@
   <div class="wrap dest-in">
     <span class="dest-label">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      Livraison à :
+      <span data-i18n="dest_label">Livraison à :</span>
     </span>
     <button class="dpill on" data-city="kinshasa" onclick="setDest(this)">🇨🇩 Kinshasa</button>
     <button class="dpill" data-city="douala" onclick="setDest(this)">🇨🇲 Douala</button>
     <button class="dpill" data-city="abidjan" onclick="setDest(this)">🇨🇮 Abidjan</button>
     <button class="dpill" data-city="dakar" onclick="setDest(this)">🇸🇳 Dakar</button>
-    <button class="dpill" data-city="dubai" onclick="setDest(this)">🇦🇪 Dubai (sur place)</button>
+    <button class="dpill" data-city="dubai" onclick="setDest(this)">🇦🇪 <span data-i18n="dest_dubai">Dubai (sur place)</span></button>
   </div>
 </div>
 
@@ -117,10 +118,10 @@
   <div class="wrap">
     <div class="sec-head">
       <div>
-        <h2>Voitures vérifiées à Dubai</h2>
-        <p>Chaque annonce est contrôlée : dealer certifié, photos réelles, prix analysé.</p>
+        <h2 data-i18n="feat_h2">Voitures vérifiées à Dubai</h2>
+        <p data-i18n="feat_p">Chaque annonce est contrôlée : dealer certifié, photos réelles, prix analysé.</p>
       </div>
-      <a href="acheter.html" class="sec-link">Voir toutes les voitures
+      <a href="acheter.html" class="sec-link"><span data-i18n="feat_link">Voir toutes les voitures</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
@@ -134,30 +135,30 @@
     <div class="how">
       <div class="sec-head" style="margin-bottom:0">
         <div>
-          <h2>De Dubai à votre porte, en 4 étapes</h2>
-          <p>Recherche, discussion, expédition, suivi — tout se passe sur Yayo.</p>
+          <h2 data-i18n="how_h2">De Dubai à votre porte, en 4 étapes</h2>
+          <p data-i18n="how_p">Recherche, discussion, expédition, suivi — tout se passe sur Yayo.</p>
         </div>
       </div>
       <div class="steps">
         <div class="step">
           <div class="step-ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
-          <h3>Trouvez votre voiture</h3>
-          <p>Parcourez les voitures des dealers certifiés de Dubai, avec le prix total rendu dans votre ville affiché dès la première page.</p>
+          <h3 data-i18n="how1_h">Trouvez votre voiture</h3>
+          <p data-i18n="how1_p">Parcourez les voitures des dealers certifiés de Dubai, avec le prix total rendu dans votre ville affiché dès la première page.</p>
         </div>
         <div class="step">
           <div class="step-ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-          <h3>Discutez sur Yayo</h3>
-          <p>Chat intégré et sécurisé avec le dealer, en français. Posez vos questions, demandez des photos, négociez — tout reste sur Yayo.</p>
+          <h3 data-i18n="how2_h">Discutez sur Yayo</h3>
+          <p data-i18n="how2_p">Chat intégré et sécurisé avec le dealer, en français. Posez vos questions, demandez des photos, négociez — tout reste sur Yayo.</p>
         </div>
         <div class="step">
           <div class="step-ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h13l4 5H5zM16 12V7H8v5M6 20a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM17 20a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg></div>
-          <h3>Expédiez en confiance</h3>
-          <p>Choisissez une agence de transport certifiée. Transport, assurance et douane : le coût complet est connu avant de payer.</p>
+          <h3 data-i18n="how3_h">Expédiez en confiance</h3>
+          <p data-i18n="how3_p">Choisissez une agence de transport certifiée. Transport, assurance et douane : le coût complet est connu avant de payer.</p>
         </div>
         <div class="step">
           <div class="step-ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-          <h3>Suivez jusqu'à chez vous</h3>
-          <p>Du port de Dubai à votre ville, chaque étape est suivie sur Yayo. Vous savez toujours où est votre voiture.</p>
+          <h3 data-i18n="how4_h">Suivez jusqu'à chez vous</h3>
+          <p data-i18n="how4_p">Du port de Dubai à votre ville, chaque étape est suivie sur Yayo. Vous savez toujours où est votre voiture.</p>
         </div>
       </div>
     </div>
@@ -169,9 +170,9 @@
   <div class="wrap">
     <div class="cost-section">
       <div class="cost-left">
-        <h2>Le vrai prix, <em>rendu chez vous</em></h2>
-        <p>Les autres sites affichent le prix Dubai. Yayo calcule ce que votre voiture coûte vraiment : transport, assurance, douane, dédouanement. Aucune surprise au port.</p>
-        <a href="acheter.html" class="btn btn-bright">Calculer pour ma voiture
+        <h2 data-i18n-html="cost_h2">Le vrai prix, <em>rendu chez vous</em></h2>
+        <p data-i18n="cost_p">Les autres sites affichent le prix Dubai. Yayo calcule ce que votre voiture coûte vraiment : transport, assurance, douane, dédouanement. Aucune surprise au port.</p>
+        <a href="acheter.html" class="btn btn-bright"><span data-i18n="cost_btn">Calculer pour ma voiture</span>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
       </div>
@@ -180,13 +181,13 @@
           <span>Toyota Land Cruiser 2021</span>
           <span class="cost-tag">→ <span id="cost-city">Kinshasa</span></span>
         </div>
-        <div class="cost-line"><span>Prix voiture (Dubai)</span><b>$38 500</b></div>
-        <div class="cost-line"><span>Transport maritime</span><b id="cost-ship">$3 200</b></div>
-        <div class="cost-line"><span>Assurance</span><b>$420</b></div>
-        <div class="cost-line"><span>Douane + taxes (estimation)</span><b id="cost-duty">$17 325</b></div>
-        <div class="cost-line"><span>Dédouanement + agent</span><b>$650</b></div>
-        <div class="cost-total"><span>Total rendu chez vous</span><span class="val" id="cost-total">$60 095</span></div>
-        <div class="cost-note">Estimation basée sur les barèmes douaniers publiés. Le montant exact dépend de la valeur retenue en douane.</div>
+        <div class="cost-line"><span data-i18n="cost_line_price">Prix voiture (Dubai)</span><b>$38 500</b></div>
+        <div class="cost-line"><span data-i18n="cost_line_ship">Transport maritime</span><b id="cost-ship">$3 200</b></div>
+        <div class="cost-line"><span data-i18n="cost_line_ins">Assurance</span><b>$420</b></div>
+        <div class="cost-line"><span data-i18n="cost_line_duty">Douane + taxes (estimation)</span><b id="cost-duty">$17 325</b></div>
+        <div class="cost-line"><span data-i18n="cost_line_clear">Dédouanement + agent</span><b>$650</b></div>
+        <div class="cost-total"><span data-i18n="cost_total_lbl">Total rendu chez vous</span><span class="val" id="cost-total">$60 095</span></div>
+        <div class="cost-note" data-i18n="cost_note">Estimation basée sur les barèmes douaniers publiés. Le montant exact dépend de la valeur retenue en douane.</div>
       </div>
     </div>
   </div>
@@ -197,25 +198,25 @@
   <div class="wrap">
     <div class="sec-head">
       <div>
-        <h2>Acheter à Dubai, sans les risques</h2>
-        <p>Importer une voiture fait peur. Voici comment Yayo vous protège à chaque étape.</p>
+        <h2 data-i18n="fear_h2">Acheter à Dubai, sans les risques</h2>
+        <p data-i18n="fear_p">Importer une voiture fait peur. Voici comment Yayo vous protège à chaque étape.</p>
       </div>
     </div>
     <div class="testis">
       <div class="testi">
         <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <h3 class="fear-q">« Et si je me fais arnaquer ? »</h3>
-        <p>Vous n'achetez qu'à des dealers certifiés Yayo. Chaque voiture est analysée par notre Assistant Yayo — photos réelles, prix cohérent — avant d'apparaître sur le site.</p>
+        <h3 class="fear-q" data-i18n="fear1_q">« Et si je me fais arnaquer ? »</h3>
+        <p data-i18n="fear1_p">Vous n'achetez qu'à des dealers certifiés Yayo. Chaque voiture est analysée par notre Assistant Yayo — photos réelles, prix cohérent — avant d'apparaître sur le site.</p>
       </div>
       <div class="testi">
         <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2m3.5-9.5c0-1.4-1.6-2.5-3.5-2.5s-3.5 1.1-3.5 2.5S10.1 11 12 11s3.5 1.1 3.5 2.5S13.9 16 12 16s-3.5-1.1-3.5-2.5"/></svg></div>
-        <h3 class="fear-q">« Combien ça coûte vraiment ? »</h3>
-        <p>Le prix total rendu dans votre ville — transport, assurance, douane, dédouanement — est affiché dès la première page. Aucune surprise à l'arrivée.</p>
+        <h3 class="fear-q" data-i18n="fear2_q">« Combien ça coûte vraiment ? »</h3>
+        <p data-i18n="fear2_p">Le prix total rendu dans votre ville — transport, assurance, douane, dédouanement — est affiché dès la première page. Aucune surprise à l'arrivée.</p>
       </div>
       <div class="testi">
         <div class="step-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-        <h3 class="fear-q">« Où est ma voiture ? »</h3>
-        <p>Du port de Dubai à votre ville, chaque étape se suit sur Yayo. Vous n'êtes jamais dans le flou pendant l'expédition.</p>
+        <h3 class="fear-q" data-i18n="fear3_q">« Où est ma voiture ? »</h3>
+        <p data-i18n="fear3_p">Du port de Dubai à votre ville, chaque étape se suit sur Yayo. Vous n'êtes jamais dans le flou pendant l'expédition.</p>
       </div>
     </div>
   </div>
@@ -223,7 +224,7 @@
 
 <!-- ═══ DISCREET PRO LINE ═══ -->
 <div class="pro-line">
-  <a href="vendre.html">Vous êtes dealer ou agence de transport à Dubai ? <b>Rejoignez Yayo →</b></a>
+  <a href="vendre.html" data-i18n-html="pro_line">Vous êtes dealer ou agence de transport à Dubai ? <b>Rejoignez Yayo →</b></a>
 </div>
 
 <!-- ═══ FOOTER ═══ -->
@@ -231,28 +232,28 @@
   <div class="wrap footer-in">
     <div class="footer-brand">
       <a href="#" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
-      <p>Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
+      <p data-i18n="f_tag">Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
     </div>
     <div>
-      <h4>Acheter</h4>
-      <a href="#">Toyota Dubai vers Kinshasa</a>
-      <a href="#">SUV moins de $25 000</a>
-      <a href="#">Voitures hybrides Dubai</a>
-      <a href="#">Pick-up vers Abidjan</a>
+      <h4 data-i18n="f_buy">Acheter</h4>
+      <a href="#" data-i18n="f_l_toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="#" data-i18n="f_l_suv">SUV moins de $25 000</a>
+      <a href="#" data-i18n="f_l_hybrid">Voitures hybrides Dubai</a>
+      <a href="#" data-i18n="f_l_pickup">Pick-up vers Abidjan</a>
     </div>
     <div>
-      <h4>Expédier</h4>
-      <a href="#">Coût dédouanement RDC</a>
-      <a href="#">Importer voiture Cameroun</a>
-      <a href="#">Transport Dubai Dakar</a>
-      <a href="#">Agences certifiées</a>
+      <h4 data-i18n="f_ship">Expédier</h4>
+      <a href="#" data-i18n="f_s_rdc">Coût dédouanement RDC</a>
+      <a href="#" data-i18n="f_s_cmr">Importer voiture Cameroun</a>
+      <a href="#" data-i18n="f_s_dkr">Transport Dubai Dakar</a>
+      <a href="#" data-i18n="f_s_ag">Agences certifiées</a>
     </div>
     <div>
-      <h4>Yayo</h4>
-      <a href="vendre.html">Devenir dealer</a>
-      <a href="vendre.html#agences">Devenir agence</a>
-      <a href="vendre.html#tarifs">Tarifs</a>
-      <a href="mailto:contact@yayo.digital">Contact</a>
+      <h4 data-i18n="f_yayo">Yayo</h4>
+      <a href="vendre.html" data-i18n="f_dealer">Devenir dealer</a>
+      <a href="vendre.html#agences" data-i18n="f_agency">Devenir agence</a>
+      <a href="vendre.html#tarifs" data-i18n="f_pricing">Tarifs</a>
+      <a href="mailto:contact@yayo.digital" data-i18n="f_contact">Contact</a>
     </div>
   </div>
   <div class="wrap footer-bottom">
@@ -262,6 +263,7 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>

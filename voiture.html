@@ -19,14 +19,14 @@
   <div class="wrap topbar-in">
     <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
     <nav class="nav">
-      <a href="acheter.html" class="on">Acheter</a>
-      <a href="vendre.html">Vendre</a>
-      <a href="index.html#expedier">Expédier</a>
-      <a href="index.html#comment">Comment ça marche</a>
+      <a href="acheter.html" class="on" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="index.html#expedier" data-i18n="nav_expedier">Expédier</a>
+      <a href="index.html#comment" data-i18n="nav_comment">Comment ça marche</a>
     </nav>
     <div class="topbar-right">
       <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
-      <a href="connexion.html" class="btn btn-ghost" data-auth="login">Connexion</a>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
       <button class="burger" onclick="toggleMenu()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -34,11 +34,12 @@
   </div>
 </header>
 <div class="mobile-menu" id="mmenu">
-  <a href="acheter.html">Acheter <span>Voitures vérifiées à Dubai</span></a>
-  <a href="vendre.html">Vendre <span>Dealers &amp; agences</span></a>
-  <a href="index.html#expedier">Expédier <span>Coût rendu chez vous</span></a>
-  <a href="index.html#comment">Comment ça marche <span>4 étapes simples</span></a>
-  <a href="connexion.html" data-auth="login-mobile">Connexion <span>Mon compte Yayo</span></a>
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers &amp; agences</span></a>
+  <a href="index.html#expedier"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Coût rendu chez vous</span></a>
+  <a href="index.html#comment"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
 </div>
 
 <!-- ═══ CAR DETAIL ═══ -->
@@ -46,18 +47,18 @@
   <div class="wrap">
 
     <nav class="crumbs" id="crumbs">
-      <a href="index.html">Accueil</a> <span>›</span>
-      <a href="acheter.html">Acheter</a> <span>›</span>
+      <a href="index.html" data-i18n="crumb_home">Accueil</a> <span>›</span>
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a> <span>›</span>
       <b id="crumb-name">…</b>
     </nav>
 
-    <div id="vd-loading" class="vd-loading">Chargement de la voiture…</div>
+    <div id="vd-loading" class="vd-loading" data-i18n="vd_loading">Chargement de la voiture…</div>
 
     <div id="vd-notfound" class="mkt-empty" hidden>
       <div class="mkt-empty-ico">🚗</div>
-      <h3>Annonce introuvable</h3>
-      <p>Cette voiture a peut-être été vendue. Découvrez celles qui sont disponibles.</p>
-      <a class="btn btn-solid" href="acheter.html">Voir toutes les voitures</a>
+      <h3 data-i18n="nf_h">Annonce introuvable</h3>
+      <p data-i18n="nf_p">Cette voiture a peut-être été vendue. Découvrez celles qui sont disponibles.</p>
+      <a class="btn btn-solid" href="acheter.html" data-i18n="nf_btn">Voir toutes les voitures</a>
     </div>
 
     <div class="vd-layout" id="vd-content" hidden>
@@ -70,12 +71,12 @@
         </div>
 
         <div class="vd-card">
-          <h2 class="vd-h">Caractéristiques</h2>
+          <h2 class="vd-h" data-i18n="specs_h">Caractéristiques</h2>
           <div class="vd-specs" id="vd-specs"></div>
         </div>
 
         <div class="vd-card">
-          <h2 class="vd-h">Description</h2>
+          <h2 class="vd-h" data-i18n="desc_h">Description</h2>
           <p class="vd-desc" id="vd-desc"></p>
         </div>
       </div>
@@ -87,19 +88,19 @@
           <div class="car-meta" id="vd-meta"></div>
           <div class="car-price-row" style="margin-top:14px">
             <span class="car-price" style="font-size:28px" id="vd-price"></span>
-            <span class="car-price-lbl">à Dubai</span>
+            <span class="car-price-lbl" data-i18n="a_dubai">à Dubai</span>
           </div>
         </div>
 
         <div class="vd-card">
-          <h2 class="vd-h">🚢 Prix total rendu chez vous</h2>
+          <h2 class="vd-h" data-i18n="landed_h">🚢 Prix total rendu chez vous</h2>
           <div class="fpills vd-cities" id="vd-cities"></div>
           <div id="vd-breakdown"></div>
-          <p class="cost-note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
+          <p class="cost-note" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
         </div>
 
         <div class="vd-card">
-          <h2 class="vd-h">Vendu par</h2>
+          <h2 class="vd-h" data-i18n="sold_by">Vendu par</h2>
           <div class="vd-dealer">
             <div class="testi-av" id="vd-dealer-av"></div>
             <div>
@@ -107,19 +108,19 @@
               <span class="vd-dealer-loc" id="vd-dealer-badge"></span>
             </div>
           </div>
-          <button class="btn btn-solid btn-block" id="vd-contact" onclick="openChat()">💬 Contacter le dealer</button>
-          <p class="vd-free">Gratuit · réponse en général sous quelques heures</p>
+          <button class="btn btn-solid btn-block" id="vd-contact" onclick="openChat()" data-i18n="contact_btn">💬 Contacter le dealer</button>
+          <p class="vd-free" data-i18n="contact_free">Gratuit · réponse en général sous quelques heures</p>
         </div>
 
         <!-- Chat panel (in-app, phase 5) -->
         <div class="vd-card vd-chat" id="vd-chat" hidden>
-          <h2 class="vd-h">💬 Votre conversation</h2>
+          <h2 class="vd-h" data-i18n="chat_h">💬 Votre conversation</h2>
           <div class="chat-box" id="chat-box"></div>
           <form class="chat-form" onsubmit="return sendMsg(event)">
-            <input id="chat-input" type="text" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
-            <button type="submit" class="btn btn-solid">Envoyer</button>
+            <input id="chat-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
+            <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
           </form>
-          <p class="vd-free">La conversation reste sur Yayo — c'est votre protection.</p>
+          <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
         </div>
       </aside>
     </div>
@@ -127,8 +128,8 @@
     <!-- Similar cars -->
     <section class="section" id="vd-similar-sec" hidden>
       <div class="sec-head">
-        <div><h2>Voitures similaires</h2></div>
-        <a class="sec-link" href="acheter.html">Tout voir <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <div><h2 data-i18n="similar_h">Voitures similaires</h2></div>
+        <a class="sec-link" href="acheter.html"><span data-i18n="similar_link">Tout voir</span> <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
       </div>
       <div class="car-grid" id="vd-similar"></div>
     </section>
@@ -141,28 +142,28 @@
   <div class="wrap footer-in">
     <div class="footer-brand">
       <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
-      <p>Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
+      <p data-i18n="f_tag">Le marché automobile Dubai → Afrique. Dealers certifiés, prix total transparent, livraison suivie. Toujours gratuit pour les acheteurs.</p>
     </div>
     <div>
-      <h4>Acheter</h4>
-      <a href="acheter.html?brand=Toyota">Toyota Dubai vers Kinshasa</a>
-      <a href="acheter.html?body=SUV&max=25000">SUV moins de $25 000</a>
-      <a href="acheter.html?fuel=Hybride">Voitures hybrides Dubai</a>
-      <a href="acheter.html?body=Pick-up">Pick-up vers Abidjan</a>
+      <h4 data-i18n="f_buy">Acheter</h4>
+      <a href="acheter.html?brand=Toyota" data-i18n="f_l_toyota">Toyota Dubai vers Kinshasa</a>
+      <a href="acheter.html?body=SUV&max=25000" data-i18n="f_l_suv">SUV moins de $25 000</a>
+      <a href="acheter.html?fuel=Hybride" data-i18n="f_l_hybrid">Voitures hybrides Dubai</a>
+      <a href="acheter.html?body=Pick-up" data-i18n="f_l_pickup">Pick-up vers Abidjan</a>
     </div>
     <div>
-      <h4>Expédier</h4>
-      <a href="#">Coût dédouanement RDC</a>
-      <a href="#">Importer voiture Cameroun</a>
-      <a href="#">Transport Dubai Dakar</a>
-      <a href="#">Agences certifiées</a>
+      <h4 data-i18n="f_ship">Expédier</h4>
+      <a href="#" data-i18n="f_s_rdc">Coût dédouanement RDC</a>
+      <a href="#" data-i18n="f_s_cmr">Importer voiture Cameroun</a>
+      <a href="#" data-i18n="f_s_dkr">Transport Dubai Dakar</a>
+      <a href="#" data-i18n="f_s_ag">Agences certifiées</a>
     </div>
     <div>
-      <h4>Yayo</h4>
-      <a href="vendre.html">Devenir dealer</a>
-      <a href="vendre.html#agences">Devenir agence</a>
-      <a href="vendre.html#tarifs">Tarifs</a>
-      <a href="mailto:contact@yayo.digital">Contact</a>
+      <h4 data-i18n="f_yayo">Yayo</h4>
+      <a href="vendre.html" data-i18n="f_dealer">Devenir dealer</a>
+      <a href="vendre.html#agences" data-i18n="f_agency">Devenir agence</a>
+      <a href="vendre.html#tarifs" data-i18n="f_pricing">Tarifs</a>
+      <a href="mailto:contact@yayo.digital" data-i18n="f_contact">Contact</a>
     </div>
   </div>
   <div class="wrap footer-bottom">
@@ -172,6 +173,7 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/voiture.js"></script>

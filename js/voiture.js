@@ -66,23 +66,23 @@ function render() {
 
   const ai = document.getElementById("vd-ai");
   ai.className = "ai-badge " + (CAR.ai === "good" ? "ai-good" : "ai-nego");
-  ai.textContent = CAR.ai === "good" ? "✓ Bon prix" : "~ Négociable";
+  ai.textContent = CAR.ai === "good" ? t("badge_good") : t("badge_nego");
 
   const specs = [
-    ["Année", CAR.year], ["Kilométrage", CAR.mileage ? CAR.mileage.toLocaleString("fr-FR") + " km" : ""],
-    ["Carburant", CAR.fuel], ["Carrosserie", CAR.body],
-    ["Couleur", CAR.color], ["État", CAR.condition]
+    [t("sp_year"), CAR.year], [t("sp_km"), CAR.mileage ? CAR.mileage.toLocaleString("fr-FR") + " km" : ""],
+    [t("sp_fuel"), tFuel(CAR.fuel)], [t("sp_body"), CAR.body],
+    [t("sp_color"), CAR.color], [t("sp_cond"), CAR.condition]
   ].filter(s => s[1]);
   document.getElementById("vd-specs").innerHTML =
     specs.map(s => `<div class="vd-spec"><span>${s[0]}</span><b>${escapeHtml(String(s[1]))}</b></div>`).join("");
 
-  document.getElementById("vd-desc").textContent = CAR.description || "Contactez le dealer pour plus de détails sur ce véhicule.";
+  document.getElementById("vd-desc").textContent = CAR.description || t("desc_fallback");
 
   const d = CAR.dealer;
   document.getElementById("vd-dealer-av").textContent = d.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   document.getElementById("vd-dealer-name").textContent = d.name;
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
-    ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> Vérifié Yayo · Dubai'
+    ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ' + t("verified_dubai")
     : "Dubai";
 
   renderCities();
@@ -105,17 +105,17 @@ function renderBreakdown() {
   const box = document.getElementById("vd-breakdown");
   const d = DEST[CUR];
   if (CUR === "dubai") {
-    box.innerHTML = `<div class="cost-total"><span>Sur place à Dubai</span><span class="val">${fmt(CAR.price)}</span></div>`;
+    box.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
     return;
   }
   const duty = CAR.price * d.duty;
   const total = CAR.price + d.ship + duty + d.fees;
   box.innerHTML = `
-    <div class="cost-line"><span>Prix voiture (Dubai)</span><b>${fmt(CAR.price)}</b></div>
-    <div class="cost-line"><span>Transport maritime</span><b>${fmt(d.ship)}</b></div>
-    <div class="cost-line"><span>Douane &amp; taxes (est.)</span><b>${fmt(duty)}</b></div>
-    <div class="cost-line"><span>Frais port &amp; dossier</span><b>${fmt(d.fees)}</b></div>
-    <div class="cost-total"><span>Rendu ${d.name}</span><span class="val">${fmt(total)}</span></div>`;
+    <div class="cost-line"><span>${t("bd_price")}</span><b>${fmt(CAR.price)}</b></div>
+    <div class="cost-line"><span>${t("bd_ship")}</span><b>${fmt(d.ship)}</b></div>
+    <div class="cost-line"><span>${t("bd_duty")}</span><b>${fmt(duty)}</b></div>
+    <div class="cost-line"><span>${t("bd_fees")}</span><b>${fmt(d.fees)}</b></div>
+    <div class="cost-total"><span>${t("bd_total")} ${d.name}</span><span class="val">${fmt(total)}</span></div>`;
 }
 
 function renderSimilar() {
@@ -127,12 +127,12 @@ function renderSimilar() {
   <div class="car-card" onclick="location.href='voiture.html?id=${c.id}'">
     <div class="car-img">
       <img src="${c.photo_url}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
-      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? "✓ Bon prix" : "~ Négociable"}</span>
+      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
-      <div class="car-meta">${c.mileage.toLocaleString("fr-FR")} km · ${escapeHtml(c.fuel)}</div>
-      <div class="car-price-row"><span class="car-price">${fmt(c.price)}</span><span class="car-price-lbl">à Dubai</span></div>
+      <div class="car-meta">${c.mileage.toLocaleString("fr-FR")} km · ${escapeHtml(tFuel(c.fuel))}</div>
+      <div class="car-price-row"><span class="car-price">${fmt(c.price)}</span><span class="car-price-lbl">${t("a_dubai")}</span></div>
     </div>
   </div>`).join("");
 }
@@ -150,7 +150,7 @@ async function openChat() {
   panel.scrollIntoView({ behavior: "smooth", block: "center" });
 
   if (String(CAR.id).startsWith("demo")) {
-    addBubble("yayo", "Ceci est une annonce de démonstration — le chat sera actif avec les vrais dealers. Explorez librement !");
+    addBubble("yayo", t("chat_demo"));
     return;
   }
   try {
@@ -169,9 +169,9 @@ async function openChat() {
       .select("sender_id, content, created_at")
       .eq("conversation_id", CONVO.id).order("created_at", { ascending: true }).limit(100);
     (msgs || []).forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.content));
-    if (!msgs || !msgs.length) addBubble("yayo", "Posez votre question au dealer — il vous répond ici, sur Yayo.");
+    if (!msgs || !msgs.length) addBubble("yayo", t("chat_start"));
   } catch (e) {
-    addBubble("yayo", "Le chat s'active dès que le dealer confirme son compte. Réessayez un peu plus tard.");
+    addBubble("yayo", t("chat_soon"));
   }
 }
 
@@ -192,7 +192,7 @@ async function sendMsg(e) {
   input.value = "";
   addBubble("me", text);
   if (String(CAR.id).startsWith("demo") || !CONVO) {
-    setTimeout(() => addBubble("yayo", "Message bien reçu ! Sur une vraie annonce, le dealer vous répond directement ici."), 600);
+    setTimeout(() => addBubble("yayo", t("chat_demo_reply")), 600);
     return false;
   }
   try {
@@ -201,5 +201,8 @@ async function sendMsg(e) {
   } catch (err) { /* bubble already shown; sync will retry next load */ }
   return false;
 }
+
+// Re-render the page when the language changes (skip until the car is loaded)
+window.onLangChange = () => { if (CAR) render(); };
 
 loadCar();
