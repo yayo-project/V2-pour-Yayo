@@ -115,7 +115,7 @@ function renderBreakdown() {
     <div class="cost-line"><span>${t("bd_ship")}</span><b>${fmt(d.ship)}</b></div>
     <div class="cost-line"><span>${t("bd_duty")}</span><b>${fmt(duty)}</b></div>
     <div class="cost-line"><span>${t("bd_fees")}</span><b>${fmt(d.fees)}</b></div>
-    <div class="cost-total"><span>${t("bd_total")} ${d.name}</span><span class="val">${fmt(total)}</span></div>`;
+    <div class="cost-total"><span>${t("bd_total")} ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>`;
 }
 
 function renderSimilar() {

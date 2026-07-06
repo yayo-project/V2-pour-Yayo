@@ -45,7 +45,9 @@ async function loadCars() {
         car_name: l.car_name,
         year: l.year,
         mileage: l.mileage,
-        fuel: l.condition || l.fuel || "",
+        fuel: l.fuel || "",
+        condition: l.condition || "",
+        body: l.body || "",
         price: l.price,
         ai: "good",
         photo_url: l.photo_url,
@@ -150,7 +152,7 @@ function render() {
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
-      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(tFuel(c.fuel)) : ""}</div>
+      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(tFuel(c.fuel)) : (c.condition ? " · " + escapeHtml(c.condition) : "")}</div>
       <div class="car-price-row">
         <span class="car-price">${fmt(c.price)}</span>
         <span class="car-price-lbl">${t("a_dubai")}</span>
@@ -158,7 +160,7 @@ function render() {
       ${CUR === "dubai" ? "" : `
       <div class="landed">
         <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
-        <span class="landed-val">${fmt(landedTotal(c.price, CUR))}</span>
+        <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR))}</span>
       </div>`}
       <div class="car-dealer">
         ${c.dealer.verified ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span>' : ""}
