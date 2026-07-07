@@ -96,6 +96,13 @@
           <h2 class="vd-h" data-i18n="landed_h">🚢 Prix total rendu chez vous</h2>
           <div class="fpills vd-cities" id="vd-cities"></div>
           <div id="vd-breakdown"></div>
+          <div id="ct-zone" hidden>
+            <button class="btn btn-ghost-dark ct-toggle" id="ct-btn" onclick="toggleTransport()" data-i18n="ct_btn">🚢 Choisir le transport</button>
+            <div id="ct-panel" hidden>
+              <h3 class="ct-h" data-i18n="ct_h">Agences de transport vérifiées</h3>
+              <div id="ct-list"></div>
+            </div>
+          </div>
           <p class="cost-note" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
         </div>
 

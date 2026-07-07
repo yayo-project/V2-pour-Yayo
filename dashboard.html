@@ -47,6 +47,8 @@
 
     <div id="dash-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
 
+    <div class="dash-demo" id="dash-demo" hidden data-i18n="d_demo_banner">Mode démonstration — les données sont fictives, rien n'est enregistré.</div>
+
     <!-- Buyer: friendly redirect -->
     <div id="dash-buyer" class="mkt-empty" hidden>
       <div class="mkt-empty-ico">🔑</div>
@@ -58,11 +60,63 @@
       </div>
     </div>
 
-    <!-- Agency: coming soon -->
-    <div id="dash-agency" class="mkt-empty" hidden>
-      <div class="mkt-empty-ico">🚢</div>
-      <h3 data-i18n="d_agency_h">Votre espace agence arrive très vite</h3>
-      <p data-i18n="d_agency_p">Votre compte agence est bien enregistré et notre équipe l'active. Routes, tarifs et leads d'expédition seront gérés ici.</p>
+    <!-- Agency dashboard (Phase 1: profile + routes + one price per route) -->
+    <div id="dash-agency-app" hidden>
+      <div class="dash-head">
+        <div>
+          <h1 class="dash-title" data-i18n="d_title">Dashboard</h1>
+          <p class="dash-hello"><span data-i18n="d_hello">Bonjour</span> <b id="ag-name"></b> <span class="dash-badge" id="ag-badge"></span></p>
+        </div>
+        <button class="btn btn-ghost-dark" id="ag-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
+      </div>
+
+      <div class="dash-tabs" role="tablist">
+        <button class="on" data-tab="ag-routes" onclick="showAgTab('ag-routes')" data-i18n="ag_tab_routes">Mes routes</button>
+        <button data-tab="ag-profile" onclick="showAgTab('ag-profile')" data-i18n="ag_tab_profile">Profil</button>
+      </div>
+
+      <section id="tab-ag-routes">
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ag_routes_h">Mes routes et tarifs</h2>
+          <p class="dash-sub" data-i18n="ag_routes_p">Vos prix réels, affichés aux acheteurs. Une route = un prix par voiture.</p>
+          <div id="ag-routes"></div>
+          <p class="dash-empty" id="ag-no-routes" hidden data-i18n="ag_no_routes">Aucune route pour l'instant.</p>
+          <div class="dash-form-actions">
+            <button type="button" class="btn btn-ghost-dark" onclick="addRoute()" data-i18n="ag_add_route">+ Ajouter une route</button>
+            <button type="button" class="btn btn-solid" onclick="saveRoutes()" data-i18n="d_save">Enregistrer</button>
+            <span class="ag-saved" id="ag-routes-saved" hidden data-i18n="ag_saved">Enregistré ✓</span>
+          </div>
+          <p class="auth-error" id="ag-routes-err" hidden></p>
+          <p class="cost-note" data-i18n="ag_note">Vos tarifs apparaissent sur les annonces dès que votre agence est vérifiée par Yayo.</p>
+        </div>
+      </section>
+
+      <section id="tab-ag-profile" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ag_profile_h">Profil de l'agence</h2>
+          <form onsubmit="return saveAgProfile(event)">
+            <div class="form-grid">
+              <div class="field">
+                <label for="agf-name" data-i18n="ag_f_name">Nom de l'agence</label>
+                <input id="agf-name" type="text" required maxlength="80">
+              </div>
+              <div class="field">
+                <label for="agf-country" data-i18n="ag_f_country">Pays / base</label>
+                <input id="agf-country" type="text" maxlength="60">
+              </div>
+              <div class="field">
+                <label for="agf-wa" data-i18n="ag_f_whatsapp">WhatsApp</label>
+                <input id="agf-wa" type="text" maxlength="30">
+              </div>
+            </div>
+            <div class="dash-form-actions">
+              <button type="submit" class="btn btn-solid" data-i18n="d_save">Enregistrer</button>
+              <span class="ag-saved" id="ag-prof-saved" hidden data-i18n="ag_saved">Enregistré ✓</span>
+            </div>
+            <p class="auth-error" id="ag-prof-err" hidden></p>
+          </form>
+        </div>
+      </section>
     </div>
 
     <!-- Admin: coming soon -->
@@ -74,8 +128,6 @@
 
     <!-- Dealer dashboard -->
     <div id="dash-dealer" hidden>
-
-      <div class="dash-demo" id="dash-demo" hidden data-i18n="d_demo_banner">Mode démonstration — les données sont fictives, rien n'est enregistré.</div>
 
       <div class="dash-head">
         <div>

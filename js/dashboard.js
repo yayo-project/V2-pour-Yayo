@@ -6,9 +6,13 @@
 // ?demo=1 shows the dealer space with fake data.
 // ═══════════════════════════════════════════════
 
-const DEMO = new URLSearchParams(location.search).get("demo") === "1";
+const DEMO_PARAM = new URLSearchParams(location.search).get("demo");
+const DEMO = DEMO_PARAM === "1";          // dealer demo
+const DEMO_AG = DEMO_PARAM === "agency";  // agency demo
 let USER = null;      // Supabase auth user (null in demo)
 let DEALER = null;    // dealers row (or demo object)
+let AGENCY = null;    // shipping_agencies row (or demo object)
+let ROUTES = [];      // agency routes [{city, price, days}]
 let LISTINGS = [];
 let CONVOS = [];
 let CUR_CONVO = null;
@@ -46,6 +50,18 @@ async function init() {
     enterDealer();
     return;
   }
+  if (DEMO_AG) {
+    AGENCY = { id: "demo-agency", name: "TransAfrica Cargo", verified: true, country: "Dubai UAE", whatsapp: "+971 50 000 0000" };
+    ROUTES = [
+      { city: "kinshasa", price: 3150, days: 32 },
+      { city: "douala", price: 2750, days: 27 },
+      { city: "dakar", price: 3250, days: 30 }
+    ];
+    show("dash-demo");
+    document.getElementById("ag-logout").style.display = "none";
+    enterAgency();
+    return;
+  }
 
   USER = await yayoUser();
   if (!USER) { location.href = "connexion.html?next=" + encodeURIComponent("dashboard.html"); return; }
@@ -53,7 +69,7 @@ async function init() {
 
   hide("dash-loading");
   if (role === "admin") { show("dash-admin"); return; }
-  if (role === "agency") { show("dash-agency"); return; }
+  if (role === "agency") { await agencyInit(); return; }
 
   // Dealer row is linked by email (fallback: company name from signup)
   try {
@@ -332,10 +348,143 @@ async function dashLogout() {
   if (confirm(t("logout_confirm"))) { await yayoSB().auth.signOut(); location.href = "index.html"; }
 }
 
+// ── Agency dashboard (Phase 1: profile + routes + one price per route) ──
+function parseRoutes(raw) {
+  let r = raw;
+  if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { r = []; } }
+  return Array.isArray(r) ? r : [];
+}
+
+async function agencyInit() {
+  try {
+    const sb = yayoSB();
+    let { data } = await sb.from("shipping_agencies").select("*").eq("email", USER.email).maybeSingle();
+    if (!data && USER.user_metadata && USER.user_metadata.company) {
+      const r = await sb.from("shipping_agencies").select("*").ilike("name", USER.user_metadata.company).limit(1);
+      data = r.data && r.data[0];
+    }
+    if (!data) {
+      const ins = await sb.from("shipping_agencies").insert({
+        name: (USER.user_metadata && USER.user_metadata.company) || USER.email.split("@")[0],
+        email: USER.email,
+        whatsapp: (USER.user_metadata && USER.user_metadata.phone) || null,
+        country: "Dubai UAE", verified: false
+      }).select("*").single();
+      data = ins.data;
+    }
+    AGENCY = data || null;
+  } catch (e) { AGENCY = null; }
+  if (!AGENCY) { show("dash-buyer"); return; }
+  ROUTES = parseRoutes(AGENCY.routes);
+  enterAgency();
+}
+
+function enterAgency() {
+  hide("dash-loading");
+  show("dash-agency-app");
+  document.getElementById("ag-name").textContent = AGENCY.name;
+  const b = document.getElementById("ag-badge");
+  b.className = "dash-badge " + (AGENCY.verified ? "ok" : "wait");
+  b.textContent = AGENCY.verified ? "✓ " + t("ag_verified") : t("d_not_verified");
+  document.getElementById("agf-name").value = AGENCY.name || "";
+  document.getElementById("agf-country").value = AGENCY.country || "";
+  document.getElementById("agf-wa").value = AGENCY.whatsapp || "";
+  renderRoutes();
+}
+
+function showAgTab(name) {
+  ["ag-routes", "ag-profile"].forEach(tb => {
+    document.getElementById("tab-" + tb).hidden = tb !== name;
+  });
+  document.querySelectorAll("#dash-agency-app .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+}
+
+function cityOptions(sel) {
+  return Object.keys(YAYO_CONFIG.DESTINATIONS).filter(k => k !== "dubai")
+    .map(k => { const d = YAYO_CONFIG.DESTINATIONS[k]; return `<option value="${k}"${k === sel ? " selected" : ""}>${d.flag} ${d.name}</option>`; }).join("");
+}
+
+function renderRoutes() {
+  const el = document.getElementById("ag-routes");
+  document.getElementById("ag-no-routes").hidden = ROUTES.length > 0;
+  el.innerHTML = ROUTES.map((r, i) => `
+    <div class="ag-route" data-i="${i}">
+      <div class="field"><label data-i18n="ag_route_dest">${t("ag_route_dest")}</label><select class="agr-city">${cityOptions(r.city)}</select></div>
+      <div class="field"><label data-i18n="ag_route_price">${t("ag_route_price")}</label><input class="agr-price" type="number" min="100" max="50000" inputmode="numeric" value="${r.price || ""}"></div>
+      <div class="field"><label data-i18n="ag_route_days">${t("ag_route_days")}</label><input class="agr-days" type="number" min="1" max="120" inputmode="numeric" value="${r.days || ""}"></div>
+      <button type="button" class="ag-route-del" onclick="delRoute(${i})" aria-label="Supprimer">✕</button>
+    </div>`).join("");
+}
+
+function syncRoutesFromDOM() {
+  ROUTES = [...document.querySelectorAll(".ag-route")].map(row => ({
+    city: row.querySelector(".agr-city").value,
+    price: parseInt(row.querySelector(".agr-price").value, 10) || 0,
+    days: parseInt(row.querySelector(".agr-days").value, 10) || null
+  }));
+}
+
+function addRoute() {
+  syncRoutesFromDOM();
+  ROUTES.push({ city: "kinshasa", price: "", days: "" });
+  renderRoutes();
+}
+
+function delRoute(i) {
+  syncRoutesFromDOM();
+  ROUTES.splice(i, 1);
+  renderRoutes();
+}
+
+function flashSaved(id) {
+  const el = document.getElementById(id);
+  el.hidden = false;
+  setTimeout(() => { el.hidden = true; }, 2500);
+}
+
+async function saveRoutes() {
+  syncRoutesFromDOM();
+  ROUTES = ROUTES.filter(r => r.price > 0);
+  renderRoutes();
+  const err = document.getElementById("ag-routes-err");
+  err.hidden = true;
+  if (DEMO_AG) { flashSaved("ag-routes-saved"); return; }
+  try {
+    const { error } = await yayoSB().from("shipping_agencies")
+      .update({ routes: JSON.stringify(ROUTES) }).eq("id", AGENCY.id);
+    if (error) throw error;
+    flashSaved("ag-routes-saved");
+  } catch (e) { err.hidden = false; err.textContent = t("au_err_generic") + (e.message || e); }
+}
+
+async function saveAgProfile(e) {
+  e.preventDefault();
+  const patch = {
+    name: document.getElementById("agf-name").value.trim(),
+    country: document.getElementById("agf-country").value.trim() || null,
+    whatsapp: document.getElementById("agf-wa").value.trim() || null
+  };
+  const err = document.getElementById("ag-prof-err");
+  err.hidden = true;
+  if (DEMO_AG) { Object.assign(AGENCY, patch); document.getElementById("ag-name").textContent = AGENCY.name; flashSaved("ag-prof-saved"); return false; }
+  try {
+    const { error } = await yayoSB().from("shipping_agencies").update(patch).eq("id", AGENCY.id);
+    if (error) throw error;
+    Object.assign(AGENCY, patch);
+    document.getElementById("ag-name").textContent = AGENCY.name;
+    flashSaved("ag-prof-saved");
+  } catch (e2) { err.hidden = false; err.textContent = t("au_err_generic") + (e2.message || e2); }
+  return false;
+}
+
 // Re-render translated content when the language changes
 window.onLangChange = () => {
-  if (document.getElementById("dash-dealer").hidden) return;
-  renderBadge(); renderOverview(); renderListings(); renderConvoList(); renderChips();
+  if (!document.getElementById("dash-dealer").hidden) {
+    renderBadge(); renderOverview(); renderListings(); renderConvoList(); renderChips();
+  }
+  if (!document.getElementById("dash-agency-app").hidden) {
+    syncRoutesFromDOM(); enterAgency();
+  }
 };
 
 init();

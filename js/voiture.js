@@ -8,7 +8,17 @@ const DEST = YAYO_CONFIG.DESTINATIONS;
 let CUR = YAYO_CONFIG.DEFAULT_DEST;
 let CAR = null;
 let CONVO = null;
+let AGENCIES = [];   // verified agencies with parsed routes
+let CHOSEN = null;   // agency picked by the buyer for shipping
 const CAR_ID = new URLSearchParams(location.search).get("id") || "";
+
+// Demo agencies shown only on demo listings, clearly labeled
+const DEMO_AGENCIES = [
+  { id: "ag-demo-1", name: "TransAfrica Cargo (démo)", verified: true,
+    routes: [{ city: "kinshasa", price: 3150, days: 32 }, { city: "douala", price: 2750, days: 27 }, { city: "dakar", price: 3250, days: 30 }] },
+  { id: "ag-demo-2", name: "Gulf-Africa Shipping (démo)", verified: true,
+    routes: [{ city: "kinshasa", price: 3350, days: 25 }, { city: "abidjan", price: 3400, days: 33 }] }
+];
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -87,6 +97,7 @@ function render() {
 
   renderCities();
   renderBreakdown();
+  renderTransport();
   renderSimilar();
 }
 
@@ -97,7 +108,9 @@ function renderCities() {
   el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
     CUR = b.dataset.k;
     el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    if (CHOSEN && !routeFor(CHOSEN, CUR)) CHOSEN = null;
     renderBreakdown();
+    renderTransport();
   }));
 }
 
@@ -108,15 +121,76 @@ function renderBreakdown() {
     box.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
     return;
   }
+  const route = CHOSEN && routeFor(CHOSEN, CUR);
+  const ship = route ? route.price : d.ship;
+  const shipLbl = route
+    ? `${t("ct_price_lbl")}<span class="ct-src">${escapeHtml(CHOSEN.name)}</span>`
+    : t("bd_ship");
   const duty = CAR.price * d.duty;
-  const total = CAR.price + d.ship + duty + d.fees;
+  const total = CAR.price + ship + duty + d.fees;
   box.innerHTML = `
     <div class="cost-line"><span>${t("bd_price")}</span><b>${fmt(CAR.price)}</b></div>
-    <div class="cost-line"><span>${t("bd_ship")}</span><b>${fmt(d.ship)}</b></div>
+    <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
     <div class="cost-line"><span>${t("bd_duty")}</span><b>${fmt(duty)}</b></div>
     <div class="cost-line"><span>${t("bd_fees")}</span><b>${fmt(d.fees)}</b></div>
     <div class="cost-total"><span>${t("bd_total")} ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>`;
 }
+
+// ── Choisir le transport (phase 8) ──
+function routeFor(agency, city) {
+  return (agency.routes || []).find(r => r.city === city && r.price > 0);
+}
+
+async function loadAgencies() {
+  if (String(CAR_ID).startsWith("demo") || CAR_ID === "") { AGENCIES = DEMO_AGENCIES; renderTransport(); return; }
+  try {
+    const { data } = await yayoSB().from("shipping_agencies")
+      .select("id, name, verified, routes")
+      .eq("verified", true).limit(30);
+    AGENCIES = (data || []).map(a => {
+      let routes = a.routes;
+      if (typeof routes === "string") { try { routes = JSON.parse(routes); } catch (e) { routes = []; } }
+      return { ...a, routes: Array.isArray(routes) ? routes : [] };
+    }).filter(a => a.routes.length);
+  } catch (e) { AGENCIES = []; }
+  renderTransport();
+}
+
+function toggleTransport() {
+  const p = document.getElementById("ct-panel");
+  p.hidden = !p.hidden;
+}
+
+function renderTransport() {
+  const zone = document.getElementById("ct-zone");
+  if (!CAR || CUR === "dubai") { zone.hidden = true; return; }
+  zone.hidden = false;
+  const list = document.getElementById("ct-list");
+  const avail = AGENCIES.filter(a => routeFor(a, CUR));
+  if (!avail.length) {
+    list.innerHTML = `<p class="ct-none">${t("ct_none")}</p>`;
+    return;
+  }
+  list.innerHTML = avail.map(a => {
+    const r = routeFor(a, CUR);
+    const on = CHOSEN && CHOSEN.id === a.id;
+    return `
+    <div class="ct-agency${on ? " on" : ""}">
+      <div class="ct-agency-info">
+        <b><span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ${escapeHtml(a.name)}</b>
+        <span>${fmt(r.price)} · ${r.days ? r.days + " " + t("ct_days") : ""}</span>
+      </div>
+      <button type="button" class="btn ${on ? "btn-solid" : "btn-ghost-dark"}" onclick="chooseAgency('${a.id}')">${on ? t("ct_chosen") : t("ct_choose")}</button>
+    </div>`;
+  }).join("") + (CHOSEN ? `<button type="button" class="ct-clear" onclick="clearAgency()">${t("ct_est")}</button>` : "");
+}
+
+function chooseAgency(id) {
+  CHOSEN = AGENCIES.find(a => String(a.id) === String(id)) || null;
+  renderBreakdown();
+  renderTransport();
+}
+function clearAgency() { CHOSEN = null; renderBreakdown(); renderTransport(); }
 
 function renderSimilar() {
   const pool = window.YAYO_DEMO.filter(c => c.id !== CAR.id && (c.body === CAR.body || c.car_name.split(" ")[0] === CAR.car_name.split(" ")[0])).slice(0, 3);
@@ -205,4 +279,4 @@ async function sendMsg(e) {
 // Re-render the page when the language changes (skip until the car is loaded)
 window.onLangChange = () => { if (CAR) render(); };
 
-loadCar();
+loadCar().then(loadAgencies);

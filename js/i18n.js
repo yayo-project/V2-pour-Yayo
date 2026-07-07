@@ -161,7 +161,24 @@ fr: {
   as_avail: "Bonjour ! Oui, cette voiture est toujours disponible. Souhaitez-vous plus de photos ou d'informations ?",
   as_nego: "Le prix affiché est légèrement négociable pour un acheteur sérieux. Faites-moi votre meilleure offre.",
   as_photo: "Bien sûr ! Je vous envoie aujourd'hui des photos supplémentaires de l'intérieur et du moteur.",
-  as_ship: "Je peux organiser l'expédition avec une agence certifiée Yayo — le prix total rendu est affiché sur l'annonce."
+  as_ship: "Je peux organiser l'expédition avec une agence certifiée Yayo — le prix total rendu est affiché sur l'annonce.",
+  // Agency dashboard + transport chooser
+  ag_verified: "Partenaire transport vérifié",
+  ag_tab_profile: "Profil", ag_tab_routes: "Mes routes",
+  ag_profile_h: "Profil de l'agence",
+  ag_f_name: "Nom de l'agence", ag_f_country: "Pays / base", ag_f_whatsapp: "WhatsApp",
+  ag_routes_h: "Mes routes et tarifs",
+  ag_routes_p: "Vos prix réels, affichés aux acheteurs. Une route = un prix par voiture.",
+  ag_route_dest: "Destination", ag_route_price: "Prix (USD / voiture)", ag_route_days: "Délai (jours)",
+  ag_add_route: "+ Ajouter une route",
+  ag_no_routes: "Aucune route pour l'instant. Ajoutez votre première route — elle devient visible aux acheteurs dès que votre agence est vérifiée.",
+  ag_saved: "Enregistré ✓",
+  ag_note: "Vos tarifs apparaissent sur les annonces dès que votre agence est vérifiée par Yayo.",
+  ct_btn: "🚢 Choisir le transport", ct_h: "Agences de transport vérifiées",
+  ct_none: "Aucune agence vérifiée sur cette route pour l'instant — le transport affiché est une estimation.",
+  ct_days: "jours", ct_choose: "Choisir", ct_chosen: "✓ Sélectionnée",
+  ct_price_lbl: "Transport (prix agence)",
+  ct_est: "Revenir à l'estimation"
 },
 en: {
   nav_acheter: "Buy", nav_vendre: "Sell", nav_expedier: "Ship", nav_comment: "How it works", connexion: "Sign in",
@@ -307,7 +324,23 @@ en: {
   as_avail: "Hello! Yes, this car is still available. Would you like more photos or information?",
   as_nego: "The listed price is slightly negotiable for a serious buyer. Make me your best offer.",
   as_photo: "Of course! I'll send you extra photos of the interior and engine today.",
-  as_ship: "I can arrange shipping with a Yayo-certified agency — the full landed price is shown on the listing."
+  as_ship: "I can arrange shipping with a Yayo-certified agency — the full landed price is shown on the listing.",
+  ag_verified: "Verified Shipping Partner",
+  ag_tab_profile: "Profile", ag_tab_routes: "My routes",
+  ag_profile_h: "Agency profile",
+  ag_f_name: "Agency name", ag_f_country: "Country / base", ag_f_whatsapp: "WhatsApp",
+  ag_routes_h: "My routes and rates",
+  ag_routes_p: "Your real prices, shown to buyers. One route = one price per car.",
+  ag_route_dest: "Destination", ag_route_price: "Price (USD / car)", ag_route_days: "Transit (days)",
+  ag_add_route: "+ Add a route",
+  ag_no_routes: "No routes yet. Add your first route — buyers see it as soon as your agency is verified.",
+  ag_saved: "Saved ✓",
+  ag_note: "Your rates appear on listings as soon as Yayo verifies your agency.",
+  ct_btn: "🚢 Choose shipping", ct_h: "Verified shipping agencies",
+  ct_none: "No verified agency on this route yet — the shipping shown is an estimate.",
+  ct_days: "days", ct_choose: "Choose", ct_chosen: "✓ Selected",
+  ct_price_lbl: "Shipping (agency price)",
+  ct_est: "Back to estimate"
 },
 ar: {
   nav_acheter: "اشترِ", nav_vendre: "بِع", nav_expedier: "الشحن", nav_comment: "كيف يعمل", connexion: "تسجيل الدخول",
@@ -453,7 +486,23 @@ ar: {
   as_avail: "مرحباً! نعم، هذه السيارة ما زالت متوفرة. هل تريد المزيد من الصور أو المعلومات؟",
   as_nego: "السعر المعروض قابل للتفاوض قليلاً لمشترٍ جاد. قدّم لي أفضل عرض لديك.",
   as_photo: "بالطبع! سأرسل لك اليوم صوراً إضافية للداخلية والمحرك.",
-  as_ship: "أستطيع ترتيب الشحن مع وكالة معتمدة من يايو — السعر الإجمالي معروض على الإعلان."
+  as_ship: "أستطيع ترتيب الشحن مع وكالة معتمدة من يايو — السعر الإجمالي معروض على الإعلان.",
+  ag_verified: "شريك شحن موثّق",
+  ag_tab_profile: "الملف", ag_tab_routes: "خطوطي",
+  ag_profile_h: "ملف الوكالة",
+  ag_f_name: "اسم الوكالة", ag_f_country: "الدولة / المقر", ag_f_whatsapp: "واتساب",
+  ag_routes_h: "خطوطي وأسعاري",
+  ag_routes_p: "أسعارك الحقيقية تظهر للمشترين. كل خط = سعر واحد لكل سيارة.",
+  ag_route_dest: "الوجهة", ag_route_price: "السعر (دولار / سيارة)", ag_route_days: "المدة (أيام)",
+  ag_add_route: "+ إضافة خط",
+  ag_no_routes: "لا توجد خطوط بعد. أضف خطك الأول — يظهر للمشترين فور توثيق وكالتك.",
+  ag_saved: "تم الحفظ ✓",
+  ag_note: "تظهر أسعارك على الإعلانات فور توثيق وكالتك من يايو.",
+  ct_btn: "🚢 اختيار الشحن", ct_h: "وكالات شحن موثّقة",
+  ct_none: "لا توجد وكالة موثّقة على هذا الخط بعد — الشحن المعروض تقدير.",
+  ct_days: "يوم", ct_choose: "اختيار", ct_chosen: "✓ مختارة",
+  ct_price_lbl: "الشحن (سعر الوكالة)",
+  ct_est: "العودة إلى التقدير"
 }
 };
 
