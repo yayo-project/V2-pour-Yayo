@@ -156,11 +156,65 @@
       </section>
     </div>
 
-    <!-- Admin: coming soon -->
-    <div id="dash-admin" class="mkt-empty" hidden>
-      <div class="mkt-empty-ico">🛠️</div>
-      <h3 data-i18n="d_admin_h">Espace admin en construction</h3>
-      <p data-i18n="d_admin_p">La validation des dealers et agences se fait manuellement par l'équipe Yayo pour le moment.</p>
+    <!-- Admin: verify dealers & agencies, platform stats -->
+    <div id="dash-admin" hidden>
+      <div class="dash-head">
+        <div>
+          <h1 class="dash-title">Admin Yayo</h1>
+          <p class="dash-hello" data-i18n="ad_sub">Vérification des dealers et agences, statistiques de la plateforme.</p>
+        </div>
+        <button class="btn btn-ghost-dark" id="ad-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
+      </div>
+
+      <div class="dash-tabs" role="tablist">
+        <button class="on" data-tab="ad-dealers" onclick="showAdTab('ad-dealers')" data-i18n="ad_tab_dealers">Dealers</button>
+        <button data-tab="ad-agencies" onclick="showAdTab('ad-agencies')" data-i18n="ad_tab_agencies">Agences</button>
+        <button data-tab="ad-stats" onclick="showAdTab('ad-stats')" data-i18n="ad_tab_stats">Statistiques</button>
+      </div>
+
+      <section id="tab-ad-dealers">
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_dealers">Dealers — vérification</h2>
+          <p class="dash-sub" data-i18n="ad_p_dealers">Vérifiez la licence commerciale, puis accordez le badge Vérifié Yayo. Un dealer vérifié inspire confiance aux acheteurs.</p>
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead><tr>
+                <th data-i18n="ad_th_business">Entreprise</th>
+                <th data-i18n="ad_th_contact">Contact</th>
+                <th data-i18n="d_th_status">Statut</th>
+                <th data-i18n="d_th_actions">Actions</th>
+              </tr></thead>
+              <tbody id="ad-dealer-rows"></tbody>
+            </table>
+          </div>
+          <p class="dash-empty" id="ad-dealers-empty" hidden data-i18n="ad_no_dealers">Aucun dealer inscrit pour l'instant.</p>
+          <p class="auth-error" id="ad-dealers-err" hidden></p>
+        </div>
+      </section>
+
+      <section id="tab-ad-agencies" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_ag">Agences — vérification</h2>
+          <p class="dash-sub" data-i18n="ad_p_ag">Une agence vérifiée devient visible aux acheteurs comme Verified Shipping Partner, avec ses routes et tarifs.</p>
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead><tr>
+                <th data-i18n="ad_th_business">Entreprise</th>
+                <th data-i18n="ad_th_contact">Contact</th>
+                <th data-i18n="d_th_status">Statut</th>
+                <th data-i18n="d_th_actions">Actions</th>
+              </tr></thead>
+              <tbody id="ad-ag-rows"></tbody>
+            </table>
+          </div>
+          <p class="dash-empty" id="ad-ag-empty" hidden data-i18n="ad_no_ag">Aucune agence inscrite pour l'instant.</p>
+          <p class="auth-error" id="ad-ag-err" hidden></p>
+        </div>
+      </section>
+
+      <section id="tab-ad-stats" hidden>
+        <div class="dash-stats" id="ad-stats"></div>
+      </section>
     </div>
 
     <!-- Dealer dashboard -->

@@ -64,3 +64,9 @@ drop policy if exists "agency-photos authenticated upload" on storage.objects;
 create policy "agency-photos authenticated upload"
   on storage.objects for insert
   with check (bucket_id = 'agency-photos');
+
+-- 5) ADMIN ACCESS — makes your account the admin.
+-- Log in on the site at least once with this email first, then run this.
+update auth.users
+set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+where email = 'yayoapp20@gmail.com';

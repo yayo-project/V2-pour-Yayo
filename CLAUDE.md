@@ -61,7 +61,9 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 11. ✅ Photo upload to Supabase Storage (car photos) + AI condition report
 12. ✅ PWA — installable, service worker, icons
 13. ✅ Favorites (heart + Mes favoris) + Reviews system (honest empty state, real reviews only)
-NEXT: (a) LOGO + GALLERY uploads for dealers AND agencies (buckets car-photos & agency-photos ready; add logo_url/photos columns via SQL). (b) Admin dashboard — approve/verify dealers & agencies, manage users, set limits, see stats.
+14. ✅ LOGO + GALLERY uploads for dealers AND agencies (car-photos & agency-photos buckets; logo_url/photos columns — run supabase/setup.sql). Dealer logo on cards + detail page; agency logo + gallery on public profile.
+15. ✅ Admin dashboard — verify/unverify dealers & agencies (badge + buyer visibility), platform stats. Admin role: run section 5 of supabase/setup.sql (?demo=admin to preview).
+NEXT: Later phases below (Mode 3, full agency dashboard, Yayo Sécurisé, tracking, diaspora, SEO pages).
 Later phases: Assistant Yayo Autonomous mode (Mode 3) with dealer rule limits; full agency dashboard (methods, cargo, locations/maps, bookings, tracking, reviews, full pricing matrix); Yayo Sécurisé (deposits via Flutterwave/mobile money); shipment tracking; diaspora mode ("Acheter pour un proche"); SEO landing pages per route/country.
 DATA FIX (verify done): car make/model must display correctly — a Ferrari must NOT show as "Toyota". Read the real make from the listing everywhere.
 

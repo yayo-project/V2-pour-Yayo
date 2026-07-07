@@ -10,8 +10,9 @@
 // ═══════════════════════════════════════════════
 
 const DEMO_PARAM = new URLSearchParams(location.search).get("demo");
-const DEMO = DEMO_PARAM === "1";          // dealer demo
-const DEMO_AG = DEMO_PARAM === "agency";  // agency demo
+const DEMO = DEMO_PARAM === "1";           // dealer demo
+const DEMO_AG = DEMO_PARAM === "agency";   // agency demo
+const DEMO_ADMIN = DEMO_PARAM === "admin"; // admin demo
 let USER = null;      // Supabase auth user (null in demo)
 let DEALER = null;    // dealers row (or demo object)
 let AGENCY = null;    // shipping_agencies row (or demo object)
@@ -85,13 +86,31 @@ async function init() {
     enterAgency();
     return;
   }
+  if (DEMO_ADMIN) {
+    AD_DEALERS = [
+      { id: "adm-d1", name: "Mukoma Auto", email: "contact@mukoma-auto.ae", whatsapp: "+971 50 000 0000", city: "Dubai", verified: true },
+      { id: "adm-d2", name: "Kabeya Auto", email: "kabeya@example.com", whatsapp: "+971 55 111 1111", city: "Dubai", verified: false },
+      { id: "adm-d3", name: "Al Aweer Motors", email: "sales@alaweer.example", whatsapp: null, city: "Dubai", verified: false }
+    ];
+    AD_AGS = [
+      { id: "adm-a1", name: "TransAfrica Cargo", email: "ops@transafrica.example", whatsapp: "+971 52 222 2222", country: "Dubai UAE", verified: true },
+      { id: "adm-a2", name: "Gulf-Africa Shipping", email: "info@gulfafrica.example", whatsapp: null, country: "Dubai UAE", verified: false }
+    ];
+    AD_STATS = { dealers: 3, dealers_v: 1, ags: 2, ags_v: 1, listings: 12, sold: 3, convos: 9, reviews: 4 };
+    show("dash-demo");
+    hide("dash-loading");
+    show("dash-admin");
+    document.getElementById("ad-logout").style.display = "none";
+    renderAdmin();
+    return;
+  }
 
   USER = await yayoUser();
   if (!USER) { location.href = "connexion.html?next=" + encodeURIComponent("dashboard.html"); return; }
   const role = (USER.user_metadata && USER.user_metadata.role) || "";
 
   hide("dash-loading");
-  if (role === "admin") { show("dash-admin"); return; }
+  if (role === "admin") { show("dash-admin"); await adminInit(); return; }
   if (role === "agency") { await agencyInit(); return; }
 
   // Dealer row is linked by email (fallback: company name from signup)
@@ -799,6 +818,101 @@ async function saveAgProfile(e) {
   return false;
 }
 
+// ── Admin: verify dealers & agencies + platform stats ──
+let AD_DEALERS = [], AD_AGS = [], AD_STATS = {};
+
+function showAdTab(name) {
+  ["ad-dealers", "ad-agencies", "ad-stats"].forEach(tb => {
+    document.getElementById("tab-" + tb).hidden = tb !== name;
+  });
+  document.querySelectorAll("#dash-admin .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+}
+
+async function adminCount(table, mod) {
+  try {
+    let q = yayoSB().from(table).select("id", { count: "exact", head: true });
+    if (mod) q = mod(q);
+    const { count, error } = await q;
+    if (error) throw error;
+    return count || 0;
+  } catch (e) { return null; }
+}
+
+async function adminInit() {
+  try {
+    const sb = yayoSB();
+    const [d, a] = await Promise.all([
+      sb.from("dealers").select("*").order("created_at", { ascending: false }).limit(300),
+      sb.from("shipping_agencies").select("*").order("created_at", { ascending: false }).limit(300)
+    ]);
+    AD_DEALERS = d.data || [];
+    AD_AGS = a.data || [];
+  } catch (e) { AD_DEALERS = []; AD_AGS = []; }
+  AD_STATS = {
+    dealers: AD_DEALERS.length,
+    dealers_v: AD_DEALERS.filter(x => x.verified).length,
+    ags: AD_AGS.length,
+    ags_v: AD_AGS.filter(x => x.verified).length,
+    listings: await adminCount("listings", q => q.eq("active", true).eq("sold", false)),
+    sold: await adminCount("listings", q => q.eq("sold", true)),
+    convos: await adminCount("conversations"),
+    reviews: await adminCount("reviews")
+  };
+  renderAdmin();
+}
+
+function adminRow(x, type) {
+  const contact = [x.email, x.whatsapp].filter(Boolean).map(escapeHtml).join("<br>") || "—";
+  const place = escapeHtml(x.city || x.country || "");
+  return `
+  <tr>
+    <td class="dash-td-car">${yayoAvatarHtml(x.name, x.logo_url)} <b>${escapeHtml(x.name)}</b>${place ? `<span class="ad-place">${place}</span>` : ""}</td>
+    <td class="ad-contact">${contact}</td>
+    <td><span class="dash-st ${x.verified ? "active" : "off"}">${x.verified ? "✓ " + t("ad_st_verified") : t("ad_st_pending")}</span></td>
+    <td class="dash-td-actions">
+      <button onclick="adminVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
+    </td>
+  </tr>`;
+}
+
+function renderAdmin() {
+  document.getElementById("ad-dealer-rows").innerHTML = AD_DEALERS.map(x => adminRow(x, "dealer")).join("");
+  document.getElementById("ad-dealers-empty").hidden = AD_DEALERS.length > 0;
+  document.getElementById("ad-ag-rows").innerHTML = AD_AGS.map(x => adminRow(x, "agency")).join("");
+  document.getElementById("ad-ag-empty").hidden = AD_AGS.length > 0;
+  const s = AD_STATS;
+  const fmtN = v => (v === null || v === undefined) ? "—" : v;
+  document.getElementById("ad-stats").innerHTML = [
+    ["ad_stat_dealers", s.dealers], ["ad_stat_dealers_v", s.dealers_v],
+    ["ad_stat_ags", s.ags], ["ad_stat_ags_v", s.ags_v],
+    ["ad_stat_listings", s.listings], ["ad_stat_sold", s.sold],
+    ["ad_stat_convos", s.convos], ["ad_stat_reviews", s.reviews]
+  ].map(([k, v]) => `<div class="dash-stat"><span class="num">${fmtN(v)}</span><span class="lbl">${t(k)}</span></div>`).join("");
+}
+
+async function adminVerify(type, id, val) {
+  const list = type === "dealer" ? AD_DEALERS : AD_AGS;
+  const errEl = document.getElementById(type === "dealer" ? "ad-dealers-err" : "ad-ag-err");
+  errEl.hidden = true;
+  const x = list.find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (!DEMO_ADMIN) {
+    try {
+      const table = type === "dealer" ? "dealers" : "shipping_agencies";
+      const { error } = await yayoSB().from(table).update({ verified: val }).eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      errEl.hidden = false;
+      errEl.textContent = t("au_err_generic") + (e.message || e);
+      return;
+    }
+  }
+  x.verified = val;
+  if (type === "dealer") { AD_STATS.dealers_v = AD_DEALERS.filter(r => r.verified).length; }
+  else { AD_STATS.ags_v = AD_AGS.filter(r => r.verified).length; }
+  renderAdmin();
+}
+
 // Re-render translated content when the language changes
 window.onLangChange = () => {
   if (!document.getElementById("dash-dealer").hidden) {
@@ -807,6 +921,7 @@ window.onLangChange = () => {
   if (!document.getElementById("dash-agency-app").hidden) {
     syncRoutesFromDOM(); syncOfficesFromDOM(); enterAgency();
   }
+  if (!document.getElementById("dash-admin").hidden) renderAdmin();
 };
 
 init();
