@@ -48,17 +48,18 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 
 ## Build roadmap (in order — current position marked)
 1. ✅ Landing page (index.html) — done (navy design, honest trust section, real logo)
-2. → NEXT BATCH (build 2+3+4+5 together if the window allows): acheter.html (browse + filters + WORKING search button and Enter key + WORKING apply/reset filter buttons, Supabase-connected) + make landing search/chips/"Voir tout" link to it
-3. voiture.html (car detail + landed cost + contact button)
-4. Auth (Google/email via Supabase Auth) + connexion.html
-5. In-app chat (buyer↔dealer, conversations/messages tables)
-6. Separate pages: vendre (dealers + dealer pricing w/ monthly-yearly toggle), expedier (agencies + agency pricing w/ monthly-yearly toggle), comment (buyer journey). Strict separation — no mixed pricing. + dealer & agency registration (trust ladder).
-7. Dealer dashboard, then Agency dashboard Phase 1 (profile + routes + one price per route), then Admin.
-8. Buyer "Choisir le transport" — compare multiple agencies (price/transit/rating/badge); landed cost from chosen agency's real price + labeled duty estimate.
-9. i18n — full FR/EN/AR coverage, language switcher.
-10. Netlify Functions for Groq (hide API key) + AI features: price verdict badges, price estimate tool, Assistant Yayo Suggested mode (Mode 2) with dealer on/off + style controls.
-11. Photo upload to Supabase Storage + AI condition report.
-12. PWA (manifest, service worker, installable).
+2. ✅ acheter.html — browse, filters, working search + apply/reset, budget search, Supabase-connected
+3. ✅ voiture.html (car detail + landed cost + contact button)
+4. ✅ Auth (Google/email via Supabase Auth) + connexion.html
+5. ✅ In-app chat (buyer↔dealer, conversations/messages tables)
+6. ✅ Separate pages: vendre (dealers + pricing toggle), expedier (agencies + pricing toggle), comment. Strict separation + registrations (trust ladder).
+7. ✅ Dealer dashboard + Agency dashboard Phase 1 (profile + routes + one price per route). Admin still to build.
+8. ✅ Buyer "Choisir le transport" — compare agencies; landed cost from chosen agency's real price + labeled duty estimate.
+9. ✅ i18n — full FR/EN/AR coverage, language switcher.
+10. ✅ Netlify Functions for Groq (translate, car-ai, assistant, condition — key in GROQ_API_KEY env var, set it in Netlify) + AI features: real price verdict badges (good/fair/high, no fake verdicts), price estimate tool in listing form, Assistant Yayo Suggested mode (Mode 2) with dealer on/off + style controls.
+11. ✅ Photo upload to Supabase Storage + AI condition report (vision, dealer reviews text before saving).
+12. ✅ PWA (manifest.webmanifest, sw.js, icons, installable).
+→ NEXT: admin dashboard (verify/activate dealers & agencies); then Later phases below.
 Later phases: Assistant Yayo Autonomous mode (Mode 3) with dealer rule limits; full agency dashboard (methods, cargo, locations/maps, bookings, tracking, reviews, full pricing matrix); Yayo Sécurisé (deposits via Flutterwave/mobile money); shipment tracking; diaspora mode ("Acheter pour un proche"); SEO landing pages per route/country.
 DATA FIX (do early): car make/model must display correctly — a Ferrari must not show as "Toyota". The car_name/make field is mislabeled somewhere; read the real value from the listing and render it correctly on cards and detail pages.
 

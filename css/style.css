@@ -116,6 +116,18 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .ai-badge{position:absolute;top:11px;left:11px;display:flex;align-items:center;gap:5px;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;letter-spacing:.2px}
 .ai-good{background:var(--teal);color:#fff}
 .ai-nego{background:var(--gold-tint);color:var(--gold)}
+.ai-fair{background:#E8EEF5;color:var(--ink-2)}
+/* Assistant Yayo (Mode 2) + dealer AI tools */
+.dash-suggest-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.as-toggle{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-2);cursor:pointer;font-weight:600}
+.as-toggle input{accent-color:var(--teal)}
+.as-style{border:1px solid var(--line);border-radius:8px;padding:4px 8px;font:inherit;font-size:12.5px;color:var(--ink-2);background:#fff}
+.as-write{font-size:13px;padding:8px 14px}
+.as-note{font-size:11.5px;color:var(--ink-3);margin:6px 0 8px}
+.ai-mini-btn{margin-top:7px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:.15s}
+.ai-mini-btn:hover{border-color:var(--teal);color:var(--ink)}
+.ai-mini-btn:disabled{opacity:.55;cursor:wait}
+.ai-mini-out{font-size:12.5px;color:var(--ink-2);background:var(--bg);border-radius:9px;padding:8px 11px;margin-top:7px}
 .fav{position:absolute;top:9px;right:9px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;color:var(--ink-3);transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .fav:hover{color:#E23E57;transform:scale(1.12)}
 .car-body{padding:14px 16px 16px}

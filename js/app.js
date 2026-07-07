@@ -41,7 +41,6 @@ async function loadCars() {
         fuel: l.fuel || "",
         condition: l.condition || "",
         price: l.price,
-        ai: "good", // AI verdict wired in the next stage
         photo_url: l.photo_url,
         dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified) }
       }));
@@ -54,6 +53,7 @@ async function loadCars() {
     CARS = DEMO_CARS;
   }
   renderCars();
+  yayoLoadVerdicts(CARS, renderCars); // real AI price verdicts, badge appears when ready
 }
 
 function renderCars() {
@@ -64,7 +64,7 @@ function renderCars() {
   <div class="car-card" onclick="openCar('${c.id || ""}')">
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
-      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
+      ${carBadge(c)}
       ${favBtn(c.id, c.car_name)}
     </div>
     <div class="car-body">

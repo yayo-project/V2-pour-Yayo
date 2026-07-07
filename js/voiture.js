@@ -42,7 +42,6 @@ async function loadCar() {
           color: data.color || "",
           body: data.body || "",
           price: data.price,
-          ai: "good",
           photo_url: data.photo_url,
           description: data.description || "",
           dealer: { name: (data.dealers && data.dealers.name) || "Dealer Yayo", verified: !!(data.dealers && data.dealers.verified) }
@@ -70,9 +69,7 @@ function render() {
   img.onerror = function () { this.parentNode.classList.add("noimg"); this.remove(); };
   img.src = CAR.photo_url || "";
 
-  const ai = document.getElementById("vd-ai");
-  ai.className = "ai-badge " + (CAR.ai === "good" ? "ai-good" : "ai-nego");
-  ai.textContent = CAR.ai === "good" ? t("badge_good") : t("badge_nego");
+  updateAiBadge();
 
   const specs = [
     [t("sp_year"), CAR.year], [t("sp_km"), CAR.mileage ? CAR.mileage.toLocaleString("fr-FR") + " km" : ""],
@@ -96,6 +93,24 @@ function render() {
   renderBreakdown();
   renderTransport();
   renderSimilar();
+}
+
+// Demo cars keep their preset demo badge; a real car only shows a badge
+// once a REAL verdict arrives from the AI (no fake verdicts — honesty rule).
+function updateAiBadge() {
+  const ai = document.getElementById("vd-ai");
+  if (String(CAR.id).startsWith("demo")) {
+    ai.hidden = false;
+    ai.className = "ai-badge " + (CAR.ai === "good" ? "ai-good" : "ai-nego");
+    ai.textContent = CAR.ai === "good" ? t("badge_good") : t("badge_nego");
+    return;
+  }
+  const v = window.__YAYO_VD && window.__YAYO_VD[CAR.id];
+  ai.hidden = !v;
+  if (!v) return;
+  ai.className = "ai-badge " + (v.v === "good" ? "ai-good" : v.v === "fair" ? "ai-fair" : "ai-nego");
+  ai.textContent = v.v === "good" ? t("badge_good") : v.v === "fair" ? t("badge_fair") : t("badge_nego");
+  ai.title = v.why || "";
 }
 
 function renderCities() {
@@ -324,4 +339,7 @@ async function sendMsg(e) {
 // Re-render the page when the language changes (skip until the car is loaded)
 window.onLangChange = () => { if (CAR) render(); };
 
-loadCar().then(loadAgencies);
+loadCar().then(() => {
+  loadAgencies();
+  if (CAR) yayoLoadVerdicts([CAR], updateAiBadge);
+});

@@ -9,6 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -188,6 +190,8 @@
               <div class="field">
                 <label for="lf-price" data-i18n="d_f_price">Prix (USD, à Dubai)</label>
                 <input id="lf-price" type="number" required min="500" max="2000000" inputmode="numeric">
+                <button type="button" class="ai-mini-btn" id="est-btn" onclick="estimatePrice()" data-i18n="d_est_btn">💡 Prix conseillé</button>
+                <p class="ai-mini-out" id="est-out" hidden></p>
               </div>
               <div class="field">
                 <label for="lf-year" data-i18n="d_f_year">Année</label>
@@ -218,6 +222,8 @@
                   <input id="lf-files" type="file" accept="image/*" multiple hidden onchange="addPhotos(this.files)">
                   <p class="up-hint" data-i18n="up_hint">Prenez-les avec votre téléphone — au moins une photo.</p>
                 </div>
+                <button type="button" class="ai-mini-btn" id="cr-btn" onclick="conditionReport()" data-i18n="d_cr_btn">📋 Rapport d'état Assistant Yayo</button>
+                <p class="ai-mini-out" id="cr-out" hidden></p>
               </div>
               <div class="field field-wide">
                 <label for="lf-desc" data-i18n="d_f_desc">Description</label>
@@ -261,8 +267,21 @@
               <h2 class="vd-h" id="msg-title"></h2>
               <div class="chat-box" id="msg-box"></div>
               <div class="dash-suggest" id="msg-suggest">
-                <span class="dash-suggest-lbl" data-i18n="d_assist">Suggestions Assistant Yayo</span>
-                <div class="dash-suggest-chips" id="msg-chips"></div>
+                <div class="dash-suggest-head">
+                  <span class="dash-suggest-lbl" data-i18n="d_assist">Suggestions Assistant Yayo</span>
+                  <label class="as-toggle"><input type="checkbox" id="as-on" checked onchange="assistToggle()"> <span data-i18n="d_as_on">Activé</span></label>
+                  <select id="as-style" class="as-style" onchange="assistToggle()" aria-label="Style">
+                    <option value="pro" data-i18n="d_as_pro">Professionnel</option>
+                    <option value="friendly" data-i18n="d_as_friendly">Chaleureux</option>
+                    <option value="luxury" data-i18n="d_as_luxury">Prestige</option>
+                    <option value="fast" data-i18n="d_as_fast">Rapide</option>
+                  </select>
+                </div>
+                <div id="as-zone">
+                  <button type="button" class="btn btn-ghost-dark as-write" id="as-write" onclick="assistSuggest()" data-i18n="d_as_write">✨ Rédiger une réponse</button>
+                  <p class="as-note" data-i18n="d_as_note">L'Assistant prépare un brouillon — vous relisez, modifiez et envoyez vous-même.</p>
+                  <div class="dash-suggest-chips" id="msg-chips"></div>
+                </div>
               </div>
               <form class="chat-form" onsubmit="return dashSend(event)">
                 <input id="msg-input" type="text" data-i18n-ph="d_reply_ph" placeholder="Votre réponse…" autocomplete="off" maxlength="1000">
@@ -290,6 +309,7 @@
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
+<script src="js/ai.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>

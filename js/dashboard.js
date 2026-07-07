@@ -354,8 +354,25 @@ function renderConvoList() {
     </button>`).join("");
 }
 
-// Suggested replies — Assistant Yayo Mode 2: dealer reviews, then sends
+// Suggested replies — Assistant Yayo Mode 2: dealer reviews, then sends.
+// Dealer controls: on/off + style, saved locally per dealer.
+function assistSettings() {
+  try { return JSON.parse(localStorage.getItem("yayo_assist_" + (DEALER ? DEALER.id : "")) || "{}"); }
+  catch (e) { return {}; }
+}
+function assistToggle() {
+  const on = document.getElementById("as-on").checked;
+  const style = document.getElementById("as-style").value;
+  try { localStorage.setItem("yayo_assist_" + (DEALER ? DEALER.id : ""), JSON.stringify({ on, style })); } catch (e) {}
+  document.getElementById("as-zone").hidden = !on;
+  document.getElementById("as-style").disabled = !on;
+}
 function renderChips() {
+  const s = assistSettings();
+  document.getElementById("as-on").checked = s.on !== false; // default: on
+  document.getElementById("as-style").value = s.style || "pro";
+  document.getElementById("as-zone").hidden = s.on === false;
+  document.getElementById("as-style").disabled = s.on === false;
   document.getElementById("msg-chips").innerHTML = ["as_avail", "as_nego", "as_photo", "as_ship"]
     .map(k => `<button type="button" onclick="useChip('${k}')">${t(k)}</button>`).join("");
 }
@@ -363,6 +380,79 @@ function useChip(key) {
   const input = document.getElementById("msg-input");
   input.value = t(key);
   input.focus();
+}
+
+// ✨ Draft a full reply from the real conversation (never sent automatically)
+async function assistSuggest() {
+  if (!CUR_CONVO || !CUR_CONVO.msgs || !CUR_CONVO.msgs.length) return;
+  const btn = document.getElementById("as-write");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = t("d_as_wait");
+  const listing = LISTINGS.find(l => l.car_name === CUR_CONVO.car_name);
+  const reply = await yayoAssist(
+    CUR_CONVO.msgs.slice(-12).map(m => ({ me: m.me, text: m.text })),
+    { name: CUR_CONVO.car_name, price: listing ? listing.price : null },
+    document.getElementById("as-style").value
+  );
+  btn.disabled = false;
+  btn.textContent = label;
+  if (reply) {
+    const input = document.getElementById("msg-input");
+    input.value = reply;
+    input.focus();
+  } else {
+    alert(t("d_as_unavail")); // key not configured yet or offline — chips still work
+  }
+}
+
+// 💡 Suggested price range for the listing form (dealer tool)
+async function estimatePrice() {
+  const name = document.getElementById("lf-name").value.trim();
+  const out = document.getElementById("est-out");
+  if (!name) { out.hidden = false; out.textContent = t("d_est_need_name"); return; }
+  const btn = document.getElementById("est-btn");
+  btn.disabled = true;
+  out.hidden = false;
+  out.textContent = t("d_as_wait");
+  const est = await yayoEstimate({
+    name,
+    year: document.getElementById("lf-year").value,
+    mileage: document.getElementById("lf-km").value,
+    condition: document.getElementById("lf-cond").value
+  });
+  btn.disabled = false;
+  out.textContent = est
+    ? `${t("d_est_range")} ${fmt(est.low)} – ${fmt(est.high)}. ${est.why || ""}`
+    : t("d_as_unavail");
+}
+
+// 📋 Visible-condition note from the first photo → description (dealer edits it)
+async function conditionReport() {
+  const out = document.getElementById("cr-out");
+  const p = PHOTOS[0];
+  if (!p) { out.hidden = false; out.textContent = t("up_min_err"); return; }
+  const btn = document.getElementById("cr-btn");
+  btn.disabled = true;
+  out.hidden = false;
+  out.textContent = t("d_cr_wait");
+  let dataUrl = null;
+  if (p.file) dataUrl = await yayoShrinkPhoto(p.file);
+  else if (p.url) {
+    try {
+      const blob = await (await fetch(p.url)).blob();
+      dataUrl = await yayoShrinkPhoto(blob);
+    } catch (e) { dataUrl = null; }
+  }
+  const report = dataUrl ? await yayoCondition(dataUrl) : null;
+  btn.disabled = false;
+  if (report) {
+    const desc = document.getElementById("lf-desc");
+    desc.value = (desc.value ? desc.value.trim() + "\n\n" : "") + report;
+    out.textContent = t("d_cr_done");
+  } else {
+    out.textContent = t("d_as_unavail");
+  }
 }
 
 async function openConvo(id) {
