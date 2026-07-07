@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Yayo</title>
+<meta name="description" content="Espace dealer Yayo : vos annonces, vos statistiques et vos conversations avec les acheteurs africains.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html?next=dashboard.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html?next=dashboard.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<main class="dash-page">
+  <div class="wrap">
+
+    <div id="dash-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+
+    <!-- Buyer: friendly redirect -->
+    <div id="dash-buyer" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🔑</div>
+      <h3 data-i18n="d_buyer_h">Cet espace est réservé aux dealers et agences</h3>
+      <p data-i18n="d_buyer_p">Votre compte acheteur est 100% gratuit — et le restera. Vous êtes dealer ou agence de transport à Dubai ?</p>
+      <div class="dash-empty-actions">
+        <a class="btn btn-solid" href="vendre.html" data-i18n="d_buyer_dealer">Devenir dealer</a>
+        <a class="btn btn-ghost-dark" href="expedier.html" data-i18n="d_buyer_agency">Inscrire mon agence</a>
+      </div>
+    </div>
+
+    <!-- Agency: coming soon -->
+    <div id="dash-agency" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🚢</div>
+      <h3 data-i18n="d_agency_h">Votre espace agence arrive très vite</h3>
+      <p data-i18n="d_agency_p">Votre compte agence est bien enregistré et notre équipe l'active. Routes, tarifs et leads d'expédition seront gérés ici.</p>
+    </div>
+
+    <!-- Admin: coming soon -->
+    <div id="dash-admin" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🛠️</div>
+      <h3 data-i18n="d_admin_h">Espace admin en construction</h3>
+      <p data-i18n="d_admin_p">La validation des dealers et agences se fait manuellement par l'équipe Yayo pour le moment.</p>
+    </div>
+
+    <!-- Dealer dashboard -->
+    <div id="dash-dealer" hidden>
+
+      <div class="dash-demo" id="dash-demo" hidden data-i18n="d_demo_banner">Mode démonstration — les données sont fictives, rien n'est enregistré.</div>
+
+      <div class="dash-head">
+        <div>
+          <h1 class="dash-title" data-i18n="d_title">Dashboard</h1>
+          <p class="dash-hello"><span data-i18n="d_hello">Bonjour</span> <b id="dash-name"></b> <span class="dash-badge" id="dash-badge"></span></p>
+        </div>
+        <button class="btn btn-ghost-dark" id="dash-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
+      </div>
+
+      <div class="dash-tabs" role="tablist">
+        <button class="on" data-tab="overview" onclick="showTab('overview')" data-i18n="d_tab_overview">Aperçu</button>
+        <button data-tab="listings" onclick="showTab('listings')" data-i18n="d_tab_listings">Mes annonces</button>
+        <button data-tab="messages" onclick="showTab('messages')" data-i18n="d_tab_messages">Messages</button>
+      </div>
+
+      <!-- Overview -->
+      <section id="tab-overview">
+        <div class="dash-stats">
+          <div class="dash-stat"><span class="num" id="stat-active">0</span><span class="lbl" data-i18n="d_stat_active">Annonces en ligne</span></div>
+          <div class="dash-stat"><span class="num" id="stat-sold">0</span><span class="lbl" data-i18n="d_stat_sold">Vendues</span></div>
+          <div class="dash-stat"><span class="num" id="stat-convos">0</span><span class="lbl" data-i18n="d_stat_convos">Conversations</span></div>
+        </div>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="d_recent">Dernières conversations</h2>
+          <div id="ov-convos"></div>
+        </div>
+      </section>
+
+      <!-- Listings -->
+      <section id="tab-listings" hidden>
+        <div class="dash-bar">
+          <button class="btn btn-solid" onclick="openForm()" data-i18n="d_add">+ Ajouter une voiture</button>
+        </div>
+
+        <div class="vd-card dash-form" id="lst-form" hidden>
+          <h2 class="vd-h" id="lst-form-title" data-i18n="d_form_add">Ajouter une voiture</h2>
+          <form onsubmit="return saveListing(event)">
+            <div class="form-grid">
+              <div class="field field-wide">
+                <label for="lf-name" data-i18n="d_f_name">Nom de la voiture</label>
+                <input id="lf-name" type="text" required maxlength="80" data-i18n-ph="d_f_name_ph" placeholder="Ex : Toyota Land Cruiser GXR 2021">
+              </div>
+              <div class="field">
+                <label for="lf-price" data-i18n="d_f_price">Prix (USD, à Dubai)</label>
+                <input id="lf-price" type="number" required min="500" max="2000000" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="lf-year" data-i18n="d_f_year">Année</label>
+                <input id="lf-year" type="number" required min="1990" max="2027" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="lf-km" data-i18n="d_f_km">Kilométrage (km)</label>
+                <input id="lf-km" type="number" min="0" max="1000000" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="lf-cond" data-i18n="d_f_cond">État</label>
+                <select id="lf-cond">
+                  <option>Comme neuf</option>
+                  <option>Excellent état</option>
+                  <option selected>Très bon état</option>
+                  <option>Bon état</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="lf-color" data-i18n="d_f_color">Couleur</label>
+                <input id="lf-color" type="text" maxlength="40" data-i18n-ph="d_f_color_ph" placeholder="Ex : Blanc">
+              </div>
+              <div class="field">
+                <label for="lf-photo" data-i18n="d_f_photo">Lien de la photo (URL)</label>
+                <input id="lf-photo" type="url" maxlength="500" placeholder="https://…">
+              </div>
+              <div class="field field-wide">
+                <label for="lf-desc" data-i18n="d_f_desc">Description</label>
+                <textarea id="lf-desc" rows="3" maxlength="1000"></textarea>
+              </div>
+            </div>
+            <div class="dash-form-actions">
+              <button type="submit" class="btn btn-solid" data-i18n="d_save">Enregistrer</button>
+              <button type="button" class="btn btn-ghost-dark" onclick="closeForm()" data-i18n="d_cancel">Annuler</button>
+            </div>
+            <p class="auth-error" id="lst-err" hidden></p>
+          </form>
+        </div>
+
+        <div class="vd-card">
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead>
+                <tr>
+                  <th data-i18n="d_th_car">Voiture</th>
+                  <th data-i18n="d_th_price">Prix</th>
+                  <th data-i18n="d_th_year">Année</th>
+                  <th data-i18n="d_th_status">Statut</th>
+                  <th data-i18n="d_th_actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="lst-rows"></tbody>
+            </table>
+          </div>
+          <p class="dash-empty" id="lst-empty" hidden data-i18n="d_no_listings">Aucune annonce pour l'instant.</p>
+        </div>
+      </section>
+
+      <!-- Messages -->
+      <section id="tab-messages" hidden>
+        <div class="dash-msg-layout">
+          <div class="vd-card dash-convos" id="msg-list"></div>
+          <div class="vd-card dash-thread">
+            <div id="msg-empty" class="dash-empty" data-i18n="d_pick_convo">Choisissez une conversation à gauche pour lire et répondre.</div>
+            <div id="msg-thread" hidden>
+              <h2 class="vd-h" id="msg-title"></h2>
+              <div class="chat-box" id="msg-box"></div>
+              <div class="dash-suggest" id="msg-suggest">
+                <span class="dash-suggest-lbl" data-i18n="d_assist">Suggestions Assistant Yayo</span>
+                <div class="dash-suggest-chips" id="msg-chips"></div>
+              </div>
+              <form class="chat-form" onsubmit="return dashSend(event)">
+                <input id="msg-input" type="text" data-i18n-ph="d_reply_ph" placeholder="Votre réponse…" autocomplete="off" maxlength="1000">
+                <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-bottom" style="border-top:none">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

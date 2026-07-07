@@ -234,7 +234,7 @@ async function doRegister(e) {
   }
   // Best-effort profile row; admin activates the account afterwards
   try {
-    await yayoSB().from("shipping_agencies").insert({ name: company, city: "Dubai", verified: false });
+    await yayoSB().from("shipping_agencies").insert({ name: company, email, whatsapp: phone, city: "Dubai", verified: false });
   } catch (ignored) {}
   ok.hidden = false;
   ok.textContent = t("v_ok");

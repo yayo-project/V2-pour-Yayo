@@ -33,20 +33,19 @@ async function yayoSignOut() {
   location.reload();
 }
 
-// Swap "Connexion" links for the account chip when logged in
+// Swap "Connexion" links for the account chip when logged in.
+// The chip opens the dashboard; sign-out lives inside the dashboard.
 async function initAuthNav() {
   const user = await yayoUser();
   if (!user) return;
   const name = (user.user_metadata && (user.user_metadata.company || user.user_metadata.full_name)) || user.email.split("@")[0];
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
-    el.href = "#";
-    el.onclick = e => { e.preventDefault(); if (confirm(t("logout_confirm"))) yayoSignOut(); };
+    el.href = "dashboard.html";
   });
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
-    el.innerHTML = "<b>" + t("logout") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
-    el.href = "#";
-    el.onclick = e => { e.preventDefault(); yayoSignOut(); };
+    el.innerHTML = "<b>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
+    el.href = "dashboard.html";
   });
 }
 document.addEventListener("DOMContentLoaded", initAuthNav);
