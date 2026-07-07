@@ -19,6 +19,23 @@ const YAYO_CONFIG = {
   FEATURED_LIMIT: 6
 };
 
+// Business avatar: logo image if uploaded, otherwise clean initials circle.
+// Used for dealers (car cards, detail page) and agencies (profile).
+function yayoAvatarHtml(name, logoUrl, lg) {
+  const esc = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const cls = "b-logo" + (lg ? " b-logo-lg" : "");
+  if (logoUrl) return `<img class="${cls}" src="${esc(logoUrl)}" alt="" loading="lazy" onerror="this.remove()">`;
+  const init = (name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  return `<span class="${cls} b-logo-txt">${esc(init)}</span>`;
+}
+
+// photos column arrives as jsonb array, or as a JSON string — normalize
+function yayoPhotoList(x) {
+  if (Array.isArray(x)) return x.filter(u => typeof u === "string");
+  if (typeof x === "string") { try { const a = JSON.parse(x); return Array.isArray(a) ? a.filter(u => typeof u === "string") : []; } catch (e) { return []; } }
+  return [];
+}
+
 // PWA: register the service worker (config.js is loaded on every page)
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
   window.addEventListener("load", () => {

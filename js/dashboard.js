@@ -21,6 +21,9 @@ let LISTINGS = [];
 let CONVOS = [];
 let CUR_CONVO = null;
 let PHOTOS = [];      // listing form photos: {url} saved | {file, preview} new
+// Profile media — same item shape as PHOTOS
+let D_LOGO = null, D_GAL = [];   // dealer logo + showroom photos
+let A_LOGO = null, A_GAL = [];   // agency logo + operation photos
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -122,6 +125,10 @@ function enterDealer() {
   hide("dash-loading");
   show("dash-dealer");
   document.getElementById("dash-name").textContent = DEALER.name;
+  D_LOGO = DEALER.logo_url ? { url: DEALER.logo_url } : null;
+  D_GAL = yayoPhotoList(DEALER.photos).map(u => ({ url: u }));
+  logoView(D_LOGO, "pf-logo-view", DEALER.name);
+  galThumbs(D_GAL, "pf-thumbs", "rmDealerPic");
   renderBadge();
   renderStats();
   renderOverview();
@@ -161,11 +168,88 @@ async function loadConvos() {
 
 // ── Tabs ──
 function showTab(name) {
-  ["overview", "listings", "messages"].forEach(tb => {
+  ["overview", "listings", "messages", "profile"].forEach(tb => {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
   document.querySelectorAll("#dash-dealer .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
 }
+
+// ── Profile media (dealer + agency): pick from device → Supabase Storage ──
+function pickImages(files, max) {
+  return [...files].filter(f => f.type.startsWith("image/")).slice(0, max)
+    .map(f => ({ file: f, preview: URL.createObjectURL(f) }));
+}
+function galThumbs(list, elId, removeFn) {
+  document.getElementById(elId).innerHTML = list.map((p, i) => `
+    <div class="up-thumb"><img src="${p.url || p.preview}" alt=""><button type="button" onclick="${removeFn}(${i})" aria-label="Retirer">✕</button></div>`).join("");
+}
+function logoView(item, elId, name) {
+  const el = document.getElementById(elId);
+  if (item) { el.innerHTML = `<img class="pf-logo" src="${item.url || item.preview}" alt="">`; return; }
+  const init = (name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  el.innerHTML = `<span class="pf-logo-empty">${escapeHtml(init)}</span>`;
+}
+// Upload one media item to Storage (demo mode: keep the local preview)
+async function uploadMedia(bucket, folder, item, prefix) {
+  if (!item) return null;
+  if (item.url) return item.url;
+  if (DEMO || DEMO_AG) return item.preview;
+  const ext = (item.file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = folder + "/" + prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
+  const { error } = await yayoSB().storage.from(bucket).upload(path, item.file, { contentType: item.file.type });
+  if (error) throw error;
+  return yayoSB().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+
+// Dealer profile tab
+function setDealerLogo(files) {
+  const picked = pickImages(files, 1);
+  if (picked.length) { D_LOGO = picked[0]; logoView(D_LOGO, "pf-logo-view", DEALER.name); }
+  document.getElementById("pf-logo-file").value = "";
+}
+function addDealerPics(files) {
+  D_GAL = D_GAL.concat(pickImages(files, 8 - D_GAL.length));
+  galThumbs(D_GAL, "pf-thumbs", "rmDealerPic");
+  document.getElementById("pf-files").value = "";
+}
+function rmDealerPic(i) { D_GAL.splice(i, 1); galThumbs(D_GAL, "pf-thumbs", "rmDealerPic"); }
+
+async function saveDealerProfile() {
+  const err = document.getElementById("pf-err");
+  err.hidden = true;
+  try {
+    const logoUrl = await uploadMedia("car-photos", DEALER.id, D_LOGO, "logo");
+    const photoUrls = [];
+    for (const p of D_GAL) photoUrls.push(await uploadMedia("car-photos", DEALER.id, p, "gallery"));
+    if (!DEMO) {
+      const { error } = await yayoSB().from("dealers")
+        .update({ logo_url: logoUrl, photos: photoUrls }).eq("id", DEALER.id);
+      if (error) throw error;
+    }
+    DEALER.logo_url = logoUrl; DEALER.photos = photoUrls;
+    D_LOGO = logoUrl ? { url: logoUrl } : null;
+    D_GAL = photoUrls.map(u => ({ url: u }));
+    logoView(D_LOGO, "pf-logo-view", DEALER.name);
+    galThumbs(D_GAL, "pf-thumbs", "rmDealerPic");
+    flashSaved("pf-saved");
+  } catch (e) {
+    err.hidden = false;
+    err.textContent = /column|schema/i.test(e.message || "") ? t("pf_sql_hint") : t("au_err_generic") + (e.message || e);
+  }
+}
+
+// Agency profile media (saved with the agency profile form)
+function setAgencyLogo(files) {
+  const picked = pickImages(files, 1);
+  if (picked.length) { A_LOGO = picked[0]; logoView(A_LOGO, "agl-view", AGENCY.name); }
+  document.getElementById("agl-file").value = "";
+}
+function addAgencyPics(files) {
+  A_GAL = A_GAL.concat(pickImages(files, 8 - A_GAL.length));
+  galThumbs(A_GAL, "agg-thumbs", "rmAgencyPic");
+  document.getElementById("agg-files").value = "";
+}
+function rmAgencyPic(i) { A_GAL.splice(i, 1); galThumbs(A_GAL, "agg-thumbs", "rmAgencyPic"); }
 
 // ── Overview ──
 function renderStats() {
@@ -565,6 +649,10 @@ function enterAgency() {
   const b = document.getElementById("ag-badge");
   b.className = "dash-badge " + (AGENCY.verified ? "ok" : "wait");
   b.textContent = AGENCY.verified ? "✓ " + t("ag_verified") : t("d_not_verified");
+  A_LOGO = AGENCY.logo_url ? { url: AGENCY.logo_url } : null;
+  A_GAL = yayoPhotoList(AGENCY.photos).map(u => ({ url: u }));
+  logoView(A_LOGO, "agl-view", AGENCY.name);
+  galThumbs(A_GAL, "agg-thumbs", "rmAgencyPic");
   document.getElementById("agf-name").value = AGENCY.name || "";
   document.getElementById("agf-country").value = AGENCY.country || "";
   document.getElementById("agf-years").value = AG_META.years || "";
@@ -675,21 +763,39 @@ async function saveAgProfile(e) {
   AG_META.years = parseInt(document.getElementById("agf-years").value, 10) || null;
   AG_META.languages = document.getElementById("agf-langs").value.trim() || null;
   AG_META.pickup = document.getElementById("agf-pickup").value.trim() || null;
+  const err = document.getElementById("ag-prof-err");
+  err.hidden = true;
+  let logoUrl = null, photoUrls = [];
+  try {
+    logoUrl = await uploadMedia("agency-photos", AGENCY.id, A_LOGO, "logo");
+    for (const p of A_GAL) photoUrls.push(await uploadMedia("agency-photos", AGENCY.id, p, "gallery"));
+  } catch (upErr) {
+    err.hidden = false; err.textContent = t("up_fail") + " (" + (upErr.message || upErr) + ")";
+    return false;
+  }
   const patch = {
     name: document.getElementById("agf-name").value.trim(),
     country: document.getElementById("agf-country").value.trim() || null,
-    routes: buildAgencyPayload()
+    routes: buildAgencyPayload(),
+    logo_url: logoUrl,
+    photos: photoUrls
   };
-  const err = document.getElementById("ag-prof-err");
-  err.hidden = true;
   if (DEMO_AG) { AGENCY.name = patch.name; document.getElementById("ag-name").textContent = AGENCY.name; flashSaved("ag-prof-saved"); return false; }
   try {
     const { error } = await yayoSB().from("shipping_agencies").update(patch).eq("id", AGENCY.id);
     if (error) throw error;
     AGENCY.name = patch.name; AGENCY.country = patch.country;
+    AGENCY.logo_url = logoUrl; AGENCY.photos = photoUrls;
+    A_LOGO = logoUrl ? { url: logoUrl } : null;
+    A_GAL = photoUrls.map(u => ({ url: u }));
+    logoView(A_LOGO, "agl-view", AGENCY.name);
+    galThumbs(A_GAL, "agg-thumbs", "rmAgencyPic");
     document.getElementById("ag-name").textContent = AGENCY.name;
     flashSaved("ag-prof-saved");
-  } catch (e2) { err.hidden = false; err.textContent = t("au_err_generic") + (e2.message || e2); }
+  } catch (e2) {
+    err.hidden = false;
+    err.textContent = /column|schema/i.test(e2.message || "") ? t("pf_sql_hint") : t("au_err_generic") + (e2.message || e2);
+  }
   return false;
 }
 

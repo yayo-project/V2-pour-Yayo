@@ -14,6 +14,7 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 - Page separation is strict: dealer subscription pricing lives ONLY on vendre page; agency subscription pricing lives ONLY on expedier page. Never mix the two. Each page shows only its own audience's information.
 - Language: French first. Full FR/EN/AR support. All UI strings go in js/i18n.js — never hardcode user-facing text.
 - Car photos: dealers UPLOAD images from their device to Supabase Storage. NEVER ask for a "photo URL / photo link" — dealers photograph cars on a phone and have no URL. Require at least one uploaded photo per listing.
+- Profile images (dealers AND agencies): both must upload a LOGO (profile picture) and a GALLERY of photos (dealer = showroom/lot; agency = trucks, warehouse, loading, office). These build buyer trust. Upload to Supabase Storage. Storage buckets that already exist: "car-photos" and "agency-photos" (both public read, authenticated upload). Dealer logo shows next to the dealer name + Vérifié badge on car cards and the car detail page (clean placeholder if none). Agency logo + gallery show on the agence.html public profile. Columns logo_url and photos may need adding to the dealers and shipping_agencies tables — add via SQL when building.
 - Two-way translation (core feature, must actually work): each person reads in THEIR chosen language. Buyer writes French → dealer/agency reads it in THEIR language (e.g. English) → they reply in their language → buyer receives it in French. Applies to dealer chat AND agency chat. Translate via Groq through a Netlify Function (key hidden). The buyer must never see any "Assistant"/AI label — from the buyer's side it is simply the dealer/agency replying.
 - NO phone/WhatsApp numbers visible anywhere to buyers (dealers OR agencies). All contact happens through in-app chat only. Numbers may exist in the backend for admin, never shown to buyers.
 - Favorites: logged-in buyers can save cars (heart icon) and return to a "Mes favoris" page to find them again. Saved to the favorites table in Supabase.
@@ -31,7 +32,7 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 - Backend: Supabase (URL + publishable key in js/config.js). Tables: users, dealers, shipping_agencies, listings, leads, conversations, messages, favorites, price_alerts, price_history, usage, price_usage.
 - listings schema: dealer_id, car_name, price, year, mileage, condition, color, description, photo_url, city, export_africa, active, sold, created_at.
 - AI: Groq (LLaMA) — key must move to Netlify Functions (serverless), NEVER in client code.
-- Images: dealer-uploaded photos → Supabase Storage. Unsplash only as fallback/demo.
+- Images: dealer-uploaded photos → Supabase Storage. Unsplash only as fallback/demo. Buckets already created: car-photos, agency-photos (public read, authenticated upload). Reviews table created (subject_type dealer/agency, subject_id, user_id, author, rating 1-5, comment, created_at) with RLS: public read, authenticated insert. conversations.agency_id column added (dealer_id now optional) for buyer↔agency chat.
 - Deploy: GitHub repo V2-pour-Yayo → Netlify auto-deploy. PRs get deploy previews. Merge to main = production.
 
 ## Site structure (target)
@@ -46,22 +47,23 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 - connexion page — login (Google + email via Supabase Auth).
 - css/style.css, js/config.js, js/app.js, js/i18n.js, js/auth.js, js/marketplace.js, js/chat.js, js/dashboard.js — split logic as pages are built.
 
-## Build roadmap (in order — current position marked)
-1. ✅ Landing page (index.html) — done (navy design, honest trust section, real logo)
-2. ✅ acheter.html — browse, filters, working search + apply/reset, budget search, Supabase-connected
-3. ✅ voiture.html (car detail + landed cost + contact button)
+## Build roadmap (✅ = done as of this session)
+1. ✅ Landing page — navy design, honest trust section, real logo
+2. ✅ acheter.html — browse + filters + working search (button + Enter) + budget search (landed-cost match)
+3. ✅ voiture.html — car detail + landed cost + contact button
 4. ✅ Auth (Google/email via Supabase Auth) + connexion.html
-5. ✅ In-app chat (buyer↔dealer, conversations/messages tables)
-6. ✅ Separate pages: vendre (dealers + pricing toggle), expedier (agencies + pricing toggle), comment. Strict separation + registrations (trust ladder).
-7. ✅ Dealer dashboard + Agency dashboard Phase 1 (profile + routes + one price per route). Admin still to build.
-8. ✅ Buyer "Choisir le transport" — compare agencies; landed cost from chosen agency's real price + labeled duty estimate.
-9. ✅ i18n — full FR/EN/AR coverage, language switcher.
-10. ✅ Netlify Functions for Groq (translate, car-ai, assistant, condition — key in GROQ_API_KEY env var, set it in Netlify) + AI features: real price verdict badges (good/fair/high, no fake verdicts), price estimate tool in listing form, Assistant Yayo Suggested mode (Mode 2) with dealer on/off + style controls.
-11. ✅ Photo upload to Supabase Storage + AI condition report (vision, dealer reviews text before saving).
-12. ✅ PWA (manifest.webmanifest, sw.js, icons, installable).
-→ NEXT: admin dashboard (verify/activate dealers & agencies); then Later phases below.
+5. ✅ In-app chat (buyer↔dealer) — rewritten to real DB schema
+6. ✅ Separate pages: vendre / expedier / comment, strict pricing separation, dealer & agency registration
+7. ✅ Dashboards: dealer + agency (profile, addresses, coverage, routes, transit promises). Admin dashboard = NEXT.
+8. ✅ Buyer "Choisir le transport" — Fiverr-style agency compare, only agencies serving buyer's city, profile + in-app contact
+9. ✅ i18n FR/EN/AR + language switcher + Arabic RTL
+10. ✅ Netlify Function for Groq + AI: real price verdict badges, price estimate tool, Assistant Yayo Suggested mode (on/off, style, draft reply), photo condition report. (Needs GROQ_API_KEY in Netlify to activate.)
+11. ✅ Photo upload to Supabase Storage (car photos) + AI condition report
+12. ✅ PWA — installable, service worker, icons
+13. ✅ Favorites (heart + Mes favoris) + Reviews system (honest empty state, real reviews only)
+NEXT: (a) LOGO + GALLERY uploads for dealers AND agencies (buckets car-photos & agency-photos ready; add logo_url/photos columns via SQL). (b) Admin dashboard — approve/verify dealers & agencies, manage users, set limits, see stats.
 Later phases: Assistant Yayo Autonomous mode (Mode 3) with dealer rule limits; full agency dashboard (methods, cargo, locations/maps, bookings, tracking, reviews, full pricing matrix); Yayo Sécurisé (deposits via Flutterwave/mobile money); shipment tracking; diaspora mode ("Acheter pour un proche"); SEO landing pages per route/country.
-DATA FIX (do early): car make/model must display correctly — a Ferrari must not show as "Toyota". The car_name/make field is mislabeled somewhere; read the real value from the listing and render it correctly on cards and detail pages.
+DATA FIX (verify done): car make/model must display correctly — a Ferrari must NOT show as "Toyota". Read the real make from the listing everywhere.
 
 ## Shipping agencies — how it works (spec)
 Agencies are first-class businesses on Yayo, like dealers — each has a PUBLIC PROFILE buyers can visit and CONTACT (think Fiverr seller page), not just a dropdown to select. They compete on price, speed, service, and trust. Yayo connects them to buyers; Yayo never sets their prices.

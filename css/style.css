@@ -128,6 +128,22 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .ai-mini-btn:hover{border-color:var(--teal);color:var(--ink)}
 .ai-mini-btn:disabled{opacity:.55;cursor:wait}
 .ai-mini-out{font-size:12.5px;color:var(--ink-2);background:var(--bg);border-radius:9px;padding:8px 11px;margin-top:7px}
+/* Business logos (dealer/agency) + profile galleries */
+.b-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:none;border:1px solid var(--line);background:#fff}
+.b-logo-txt{display:inline-flex;align-items:center;justify-content:center;background:var(--teal-tint);color:var(--teal-dark);font-size:9px;font-weight:800;border:none}
+.b-logo-lg{width:56px;height:56px;font-size:17px}
+.testi-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.pf-logo-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.pf-logo{width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--line);background:var(--bg-soft)}
+.pf-logo-empty{width:76px;height:76px;border-radius:50%;background:var(--teal-tint);color:var(--teal-dark);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}
+.gal-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.gal-row img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.gal-empty{border:1.5px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--ink-3);font-size:13px;background:var(--bg)}
+.ap-head-in{display:flex;align-items:center;gap:16px}
+.ap-head .b-logo-lg{border:2px solid rgba(255,255,255,.25)}
+.ap-head .b-logo-txt{background:rgba(31,216,201,.16);color:var(--teal-bright)}
+.vd-mini-gal{display:flex;gap:8px;margin-top:12px}
+.vd-mini-gal img{width:33%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .fav{position:absolute;top:9px;right:9px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;color:var(--ink-3);transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.12)}
 .fav:hover{color:#E23E57;transform:scale(1.12)}
 .car-body{padding:14px 16px 16px}

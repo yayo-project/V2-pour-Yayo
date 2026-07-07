@@ -28,7 +28,7 @@ async function loadCar() {
     try {
       const { data, error } = await yayoSB()
         .from("listings")
-        .select("*, dealers(id, name, verified, city)")
+        .select("*, dealers(*)")
         .eq("id", CAR_ID).maybeSingle();
       if (!error && data) {
         CAR = {
@@ -44,7 +44,12 @@ async function loadCar() {
           price: data.price,
           photo_url: data.photo_url,
           description: data.description || "",
-          dealer: { name: (data.dealers && data.dealers.name) || "Dealer Yayo", verified: !!(data.dealers && data.dealers.verified) }
+          dealer: {
+            name: (data.dealers && data.dealers.name) || "Dealer Yayo",
+            verified: !!(data.dealers && data.dealers.verified),
+            logo_url: (data.dealers && data.dealers.logo_url) || null,
+            photos: yayoPhotoList(data.dealers && data.dealers.photos)
+          }
         };
       }
     } catch (e) { CAR = null; }
@@ -82,8 +87,15 @@ function render() {
   document.getElementById("vd-desc").textContent = CAR.description || t("desc_fallback");
 
   const d = CAR.dealer;
-  document.getElementById("vd-dealer-av").textContent = d.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const av = document.getElementById("vd-dealer-av");
+  if (d.logo_url) av.innerHTML = `<img src="${escapeHtml(d.logo_url)}" alt="" onerror="this.remove()">`;
+  else av.textContent = d.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   document.getElementById("vd-dealer-name").textContent = d.name;
+  // Showroom photos build trust — shown only if the dealer uploaded some
+  const gal = document.getElementById("vd-dealer-gal");
+  const pics = (d.photos || []).slice(0, 3);
+  gal.hidden = !pics.length;
+  gal.innerHTML = pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("");
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
     ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ' + t("verified_dubai")
     : "Dubai";

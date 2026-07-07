@@ -5,6 +5,11 @@
 // Demo shipping agencies (only shown on demo listings, clearly labeled)
 window.YAYO_DEMO_AGENCIES = [
   { id: "ag-demo-1", name: "TransAfrica Cargo (démo)", verified: true,
+    photos: [
+      "https://images.unsplash.com/photo-1591768793355-74d04bb6608f?w=640&q=70",
+      "https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=640&q=70",
+      "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=640&q=70"
+    ],
     meta: { years: 8, languages: "Français, English",
       description: "Spécialiste du transport de véhicules Dubai → Afrique centrale et de l'Ouest. RoRo et conteneur, dédouanement assisté. (Agence de démonstration)",
       pickup: "Warehouse 12, Ras Al Khor Industrial 2, Dubai",

@@ -22,12 +22,14 @@ async function loadAgency() {
   } else {
     try {
       const { data } = await yayoSB().from("shipping_agencies")
-        .select("id, name, verified, country, routes").eq("id", AG_ID).maybeSingle();
+        .select("*").eq("id", AG_ID).maybeSingle();
       if (data) {
         let d = data.routes;
         if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
         AG = {
           id: data.id, name: data.name, verified: data.verified, country: data.country,
+          logo_url: data.logo_url || null,
+          photos: yayoPhotoList(data.photos),
           routes: Array.isArray(d) ? d : (d && Array.isArray(d.routes) ? d.routes : []),
           meta: (d && !Array.isArray(d) && typeof d === "object") ? d : {}
         };
@@ -45,6 +47,12 @@ async function render() {
   const m = AG.meta || {};
 
   document.getElementById("ap-name").textContent = AG.name;
+  document.getElementById("ap-logo").innerHTML = yayoAvatarHtml(AG.name, AG.logo_url, true);
+  // Operation photos (trucks, warehouse, loading…) — honest placeholder if none yet
+  const pics = AG.photos || [];
+  document.getElementById("ap-gallery").innerHTML = pics.length
+    ? `<div class="gal-row">${pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("")}</div>`
+    : `<div class="gal-empty" data-i18n="ap_gallery_empty">${t("ap_gallery_empty")}</div>`;
   const b = document.getElementById("ap-badge");
   b.className = "dash-badge " + (AG.verified ? "ok" : "wait");
   b.textContent = AG.verified ? "✓ " + t("ag_verified") : t("d_not_verified");

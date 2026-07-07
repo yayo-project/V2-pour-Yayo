@@ -39,3 +39,28 @@ alter table public.conversations
   add column if not exists agency_id uuid references public.shipping_agencies(id);
 alter table public.conversations
   alter column dealer_id drop not null;
+
+-- 4) LOGOS + GALLERIES — profile images for dealers and agencies
+alter table public.dealers
+  add column if not exists logo_url text;
+alter table public.dealers
+  add column if not exists photos jsonb not null default '[]'::jsonb;
+alter table public.shipping_agencies
+  add column if not exists logo_url text;
+alter table public.shipping_agencies
+  add column if not exists photos jsonb not null default '[]'::jsonb;
+
+-- agency-photos bucket (safe to re-run even if it already exists)
+insert into storage.buckets (id, name, public)
+values ('agency-photos', 'agency-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "agency-photos public read" on storage.objects;
+create policy "agency-photos public read"
+  on storage.objects for select
+  using (bucket_id = 'agency-photos');
+
+drop policy if exists "agency-photos authenticated upload" on storage.objects;
+create policy "agency-photos authenticated upload"
+  on storage.objects for insert
+  with check (bucket_id = 'agency-photos');

@@ -97,6 +97,17 @@
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="ag_profile_h">Profil de l'agence</h2>
           <form onsubmit="return saveAgProfile(event)">
+            <div class="field field-wide">
+              <label data-i18n="pf_logo_h">Logo / photo de profil</label>
+              <div class="pf-logo-row">
+                <span id="agl-view"></span>
+                <div>
+                  <button type="button" class="btn btn-ghost-dark" onclick="document.getElementById('agl-file').click()" data-i18n="pf_logo_btn">Changer le logo</button>
+                  <input id="agl-file" type="file" accept="image/*" hidden onchange="setAgencyLogo(this.files)">
+                  <p class="up-hint" data-i18n="pf_logo_hint">Image carrée conseillée (JPG/PNG).</p>
+                </div>
+              </div>
+            </div>
             <div class="form-grid">
               <div class="field">
                 <label for="agf-name" data-i18n="ag_f_name">Nom de l'agence</label>
@@ -121,6 +132,15 @@
               <div class="field field-wide">
                 <label for="agf-desc" data-i18n="ag_f_desc">Description (à propos)</label>
                 <textarea id="agf-desc" rows="3" maxlength="600"></textarea>
+              </div>
+            </div>
+            <div class="field field-wide">
+              <label data-i18n="ag_gal_h">Photos des opérations (camions, entrepôt, chargement, bureau)</label>
+              <div class="up-zone">
+                <div class="up-thumbs" id="agg-thumbs"></div>
+                <button type="button" class="up-add" onclick="document.getElementById('agg-files').click()" data-i18n="up_add">+ Ajouter des photos</button>
+                <input id="agg-files" type="file" accept="image/*" multiple hidden onchange="addAgencyPics(this.files)">
+                <p class="up-hint" data-i18n="ag_gal_hint">Ces photos apparaissent sur votre profil public — elles prouvent que votre agence existe vraiment.</p>
               </div>
             </div>
             <h2 class="vd-h" data-i18n="ag_offices_h">Bureaux de destination</h2>
@@ -158,7 +178,41 @@
         <button class="on" data-tab="overview" onclick="showTab('overview')" data-i18n="d_tab_overview">Aperçu</button>
         <button data-tab="listings" onclick="showTab('listings')" data-i18n="d_tab_listings">Mes annonces</button>
         <button data-tab="messages" onclick="showTab('messages')" data-i18n="d_tab_messages">Messages</button>
+        <button data-tab="profile" onclick="showTab('profile')" data-i18n="d_tab_profile">Profil</button>
       </div>
+
+      <!-- Dealer public profile: logo + showroom photos -->
+      <section id="tab-profile" hidden>
+        <div class="vd-card dash-form">
+          <h2 class="vd-h" data-i18n="pf_h">Profil public</h2>
+          <p class="dash-sub" data-i18n="pf_p">Votre logo et vos photos apparaissent sur vos annonces — c'est ce qui rassure les acheteurs.</p>
+          <div class="field field-wide">
+            <label data-i18n="pf_logo_h">Logo / photo de profil</label>
+            <div class="pf-logo-row">
+              <span id="pf-logo-view"></span>
+              <div>
+                <button type="button" class="btn btn-ghost-dark" onclick="document.getElementById('pf-logo-file').click()" data-i18n="pf_logo_btn">Changer le logo</button>
+                <input id="pf-logo-file" type="file" accept="image/*" hidden onchange="setDealerLogo(this.files)">
+                <p class="up-hint" data-i18n="pf_logo_hint">Image carrée conseillée (JPG/PNG).</p>
+              </div>
+            </div>
+          </div>
+          <div class="field field-wide">
+            <label data-i18n="pf_gal_h">Photos du showroom</label>
+            <div class="up-zone">
+              <div class="up-thumbs" id="pf-thumbs"></div>
+              <button type="button" class="up-add" onclick="document.getElementById('pf-files').click()" data-i18n="up_add">+ Ajouter des photos</button>
+              <input id="pf-files" type="file" accept="image/*" multiple hidden onchange="addDealerPics(this.files)">
+              <p class="up-hint" data-i18n="pf_gal_hint">Votre showroom, votre parc, votre équipe — depuis votre téléphone.</p>
+            </div>
+          </div>
+          <div class="dash-form-actions">
+            <button type="button" class="btn btn-solid" onclick="saveDealerProfile()" data-i18n="d_save">Enregistrer</button>
+            <span class="ag-saved" id="pf-saved" hidden data-i18n="ag_saved">Enregistré ✓</span>
+          </div>
+          <p class="auth-error" id="pf-err" hidden></p>
+        </div>
+      </section>
 
       <!-- Overview -->
       <section id="tab-overview">

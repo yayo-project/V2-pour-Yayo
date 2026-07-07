@@ -27,7 +27,7 @@ async function loadCars() {
   try {
     const { data, error } = await sb
       .from("listings")
-      .select("*, dealers(name, verified, city)")
+      .select("*, dealers(*)")
       .eq("active", true)
       .eq("sold", false)
       .order("created_at", { ascending: false })
@@ -42,7 +42,7 @@ async function loadCars() {
         condition: l.condition || "",
         price: l.price,
         photo_url: l.photo_url,
-        dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified) }
+        dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified), logo_url: (l.dealers && l.dealers.logo_url) || null }
       }));
       // If fewer than 3 real cars, pad with demo so the grid never looks empty
       if (CARS.length < 3) CARS = CARS.concat(DEMO_CARS.slice(0, 6 - CARS.length));
@@ -80,6 +80,7 @@ function renderCars() {
         <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR))}</span>
       </div>`}
       <div class="car-dealer">
+        ${yayoAvatarHtml(c.dealer.name, c.dealer.logo_url)}
         ${c.dealer.verified ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span>' : ""}
         ${escapeHtml(c.dealer.name)} · Dubai
       </div>
