@@ -2,6 +2,27 @@
 // YAYO — Demo listings (shared by all pages)
 // Shown until real dealer inventory exists.
 // ═══════════════════════════════════════════════
+// Demo shipping agencies (only shown on demo listings, clearly labeled)
+window.YAYO_DEMO_AGENCIES = [
+  { id: "ag-demo-1", name: "TransAfrica Cargo (démo)", verified: true,
+    meta: { years: 8, languages: "Français, English",
+      description: "Spécialiste du transport de véhicules Dubai → Afrique centrale et de l'Ouest. RoRo et conteneur, dédouanement assisté. (Agence de démonstration)",
+      pickup: "Warehouse 12, Ras Al Khor Industrial 2, Dubai",
+      offices: { kinshasa: "12 Av. du Commerce, Gombe, Kinshasa", douala: "Rue Joffre, Akwa, Douala", dakar: "Km 4, Route de Rufisque, Dakar" } },
+    routes: [
+      { city: "kinshasa", price: 3150, days: 32, promise: "Je livre votre voiture à Kinshasa en 32 jours" },
+      { city: "douala", price: 2750, days: 27, promise: "Douala en 27 jours, port-à-port" },
+      { city: "dakar", price: 3250, days: 30, promise: "Dakar en 30 jours, assurance incluse" }] },
+  { id: "ag-demo-2", name: "Gulf-Africa Shipping (démo)", verified: true,
+    meta: { years: 5, languages: "English, العربية",
+      description: "Liaisons rapides Dubai → Kinshasa et Abidjan, départs chaque semaine. (Agence de démonstration)",
+      pickup: "Al Quoz Industrial 3, Dubai",
+      offices: { kinshasa: "Blvd du 30 Juin, Kinshasa", abidjan: "Zone portuaire, Treichville, Abidjan" } },
+    routes: [
+      { city: "kinshasa", price: 3350, days: 25, promise: "Kinshasa en 25 jours, le plus rapide" },
+      { city: "abidjan", price: 3400, days: 33, promise: "Abidjan en 33 jours, dédouanement assisté" }] }
+];
+
 window.YAYO_DEMO = [
   { id: "demo-1",  car_name: "Toyota Land Cruiser GXR 2021", year: 2021, mileage: 78000,  fuel: "Essence",    body: "SUV",     color: "Blanc perle",  condition: "Excellent état", price: 38500, ai: "good", photo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Toyota_Land_Cruiser_300_4x4_ZX_2025_%281%29.jpg/960px-Toyota_Land_Cruiser_300_4x4_ZX_2025_%281%29.jpg", description: "Land Cruiser GXR V6, entretien complet chez Toyota Dubai, jamais accidenté. Parfait pour les routes africaines : fiable, spacieux, pièces disponibles partout.", dealer: { name: "Mukoma Auto", verified: true } },
   { id: "demo-2",  car_name: "Toyota RAV4 Hybrid 2022",      year: 2022, mileage: 41000,  fuel: "Hybride",    body: "SUV",     color: "Gris anthracite", condition: "Comme neuf", price: 27900, ai: "nego", photo_url: "https://images.unsplash.com/photo-1706509234538-9831b1b33d66?w=640&q=70", description: "RAV4 Hybrid, consommation très basse (5L/100km), idéal ville + route. Batterie sous garantie constructeur.", dealer: { name: "Kabeya Auto", verified: true } },

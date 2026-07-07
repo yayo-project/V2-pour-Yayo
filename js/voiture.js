@@ -12,13 +12,9 @@ let AGENCIES = [];   // verified agencies with parsed routes
 let CHOSEN = null;   // agency picked by the buyer for shipping
 const CAR_ID = new URLSearchParams(location.search).get("id") || "";
 
-// Demo agencies shown only on demo listings, clearly labeled
-const DEMO_AGENCIES = [
-  { id: "ag-demo-1", name: "TransAfrica Cargo (démo)", verified: true,
-    routes: [{ city: "kinshasa", price: 3150, days: 32 }, { city: "douala", price: 2750, days: 27 }, { city: "dakar", price: 3250, days: 30 }] },
-  { id: "ag-demo-2", name: "Gulf-Africa Shipping (démo)", verified: true,
-    routes: [{ city: "kinshasa", price: 3350, days: 25 }, { city: "abidjan", price: 3400, days: 33 }] }
-];
+// Demo agencies (shared in js/demo.js) — only shown on demo listings
+const DEMO_AGENCIES = window.YAYO_DEMO_AGENCIES;
+let AG_RV = {}; // agency id → {avg, count} from real reviews
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -94,6 +90,7 @@ function render() {
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
     ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ' + t("verified_dubai")
     : "Dubai";
+  renderDealerReviews();
 
   renderCities();
   renderBreakdown();
@@ -148,10 +145,25 @@ async function loadAgencies() {
       .select("id, name, verified, routes")
       .eq("verified", true).limit(30);
     AGENCIES = (data || []).map(a => {
-      let routes = a.routes;
-      if (typeof routes === "string") { try { routes = JSON.parse(routes); } catch (e) { routes = []; } }
-      return { ...a, routes: Array.isArray(routes) ? routes : [] };
+      let d = a.routes;
+      if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
+      const routes = Array.isArray(d) ? d : (d && Array.isArray(d.routes) ? d.routes : []);
+      const meta = (d && !Array.isArray(d) && typeof d === "object") ? d : {};
+      return { id: a.id, name: a.name, verified: a.verified, routes, meta };
     }).filter(a => a.routes.length);
+    // real average ratings for these agencies, one query
+    if (AGENCIES.length) {
+      const { data: rv } = await yayoSB().from("reviews")
+        .select("subject_id, rating").eq("subject_type", "agency")
+        .in("subject_id", AGENCIES.map(a => a.id));
+      AG_RV = {};
+      (rv || []).forEach(r => {
+        const s = AG_RV[r.subject_id] || { sum: 0, count: 0 };
+        s.sum += r.rating; s.count++;
+        AG_RV[r.subject_id] = s;
+      });
+      Object.keys(AG_RV).forEach(k => { AG_RV[k] = { avg: AG_RV[k].sum / AG_RV[k].count, count: AG_RV[k].count }; });
+    }
   } catch (e) { AGENCIES = []; }
   renderTransport();
 }
@@ -174,13 +186,22 @@ function renderTransport() {
   list.innerHTML = avail.map(a => {
     const r = routeFor(a, CUR);
     const on = CHOSEN && CHOSEN.id === a.id;
+    const rv = AG_RV[a.id];
+    const office = a.meta && a.meta.offices && a.meta.offices[CUR];
     return `
     <div class="ct-agency${on ? " on" : ""}">
-      <div class="ct-agency-info">
-        <b><span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ${escapeHtml(a.name)}</b>
-        <span>${fmt(r.price)} · ${r.days ? r.days + " " + t("ct_days") : ""}</span>
+      <div class="ct-agency-top">
+        <div class="ct-agency-info">
+          <b><span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ${escapeHtml(a.name)}</b>
+        </div>
+        ${rv ? `<span class="rv-mini">${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> (${rv.count})</span>` : `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`}
       </div>
-      <button type="button" class="btn ${on ? "btn-solid" : "btn-ghost-dark"}" onclick="chooseAgency('${a.id}')">${on ? t("ct_chosen") : t("ct_choose")}</button>
+      ${r.promise ? `<p class="ct-promise">« ${escapeHtml(r.promise)} »</p>` : ""}
+      <p class="ct-meta"><b>${fmt(r.price)}</b>${r.days ? " · " + r.days + " " + t("ct_days") : ""}${office ? " · 📍 " + escapeHtml(office) : ""}</p>
+      <div class="ct-actions">
+        <a class="btn btn-ghost-dark" href="agence.html?id=${encodeURIComponent(a.id)}&car=${encodeURIComponent(CAR_ID)}&city=${CUR}">${t("ct_profile")}</a>
+        <button type="button" class="btn ${on ? "btn-solid" : "btn-ghost-dark"}" onclick="chooseAgency('${a.id}')">${on ? t("ct_chosen") : t("ct_choose")}</button>
+      </div>
     </div>`;
   }).join("") + (CHOSEN ? `<button type="button" class="ct-clear" onclick="clearAgency()">${t("ct_est")}</button>` : "");
 }
@@ -191,6 +212,20 @@ function chooseAgency(id) {
   renderTransport();
 }
 function clearAgency() { CHOSEN = null; renderBreakdown(); renderTransport(); }
+
+// ── Dealer rating + reviews (real reviews only) ──
+async function renderDealerReviews() {
+  const mini = document.getElementById("vd-dealer-rv");
+  if (mini) {
+    if (CAR.dealer_id) {
+      const rv = await yayoReviews("dealer", CAR.dealer_id);
+      mini.innerHTML = reviewSummaryHtml(rv);
+    } else {
+      mini.innerHTML = `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`;
+    }
+  }
+  renderReviewsWidget("vd-reviews", "dealer", CAR.dealer_id || CAR.id);
+}
 
 function renderSimilar() {
   const pool = window.YAYO_DEMO.filter(c => c.id !== CAR.id && (c.body === CAR.body || c.car_name.split(" ")[0] === CAR.car_name.split(" ")[0])).slice(0, 3);
@@ -229,11 +264,13 @@ async function openChat() {
   }
   try {
     const sb = yayoSB();
+    await yayoEnsureUserRow(user);
     let { data: convo } = await sb.from("conversations")
-      .select("id").eq("listing_id", CAR.id).eq("buyer_id", user.id).maybeSingle();
+      .select("id").eq("dealer_id", CAR.dealer_id).eq("user_id", user.id)
+      .eq("car_name", CAR.car_name).maybeSingle();
     if (!convo) {
       const ins = await sb.from("conversations")
-        .insert({ listing_id: CAR.id, buyer_id: user.id, dealer_id: CAR.dealer_id })
+        .insert({ dealer_id: CAR.dealer_id, user_id: user.id, car_name: CAR.car_name, status: "open" })
         .select("id").single();
       convo = ins.data;
     }
@@ -242,8 +279,16 @@ async function openChat() {
     const { data: msgs } = await sb.from("messages")
       .select("sender_id, content, created_at")
       .eq("conversation_id", CONVO.id).order("created_at", { ascending: true }).limit(100);
-    (msgs || []).forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.content));
-    if (!msgs || !msgs.length) addBubble("yayo", t("chat_start"));
+    // Two-way translation: the dealer's replies arrive in the buyer's language.
+    // From the buyer's side it is simply the dealer replying.
+    const list = msgs || [];
+    const theirs = list.filter(m => m.sender_id !== user.id);
+    if (theirs.length) {
+      const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
+      theirs.forEach((m, i) => { m.display = tr[i]; });
+    }
+    list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content));
+    if (!list.length) addBubble("yayo", t("chat_start"));
   } catch (e) {
     addBubble("yayo", t("chat_soon"));
   }

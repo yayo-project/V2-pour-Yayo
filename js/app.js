@@ -65,7 +65,7 @@ function renderCars() {
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
       <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
-      <button class="fav" onclick="event.stopPropagation()" aria-label="Sauvegarder">♥</button>
+      ${favBtn(c.id, c.car_name)}
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
@@ -85,6 +85,7 @@ function renderCars() {
       </div>
     </div>
   </div>`).join("");
+  markFavHearts(g);
 }
 
 function setDest(el) {

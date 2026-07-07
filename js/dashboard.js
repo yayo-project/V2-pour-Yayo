@@ -1,9 +1,12 @@
 // ═══════════════════════════════════════════════
 // YAYO — Dashboard (dashboard.html)
-// Dealer first: stats, inventory CRUD, messages
-// with Assistant Yayo suggested replies (Mode 2:
-// the dealer always reviews before sending).
-// ?demo=1 shows the dealer space with fake data.
+// Dealer: stats, inventory CRUD (photo upload to
+// Supabase Storage), messages with two-way
+// translation + Assistant Yayo suggested replies
+// (Mode 2: dealer reviews before sending).
+// Agency Phase 1: profile, offices, routes with
+// price + transit promise per served city.
+// ?demo=1 dealer demo · ?demo=agency agency demo
 // ═══════════════════════════════════════════════
 
 const DEMO_PARAM = new URLSearchParams(location.search).get("demo");
@@ -12,10 +15,12 @@ const DEMO_AG = DEMO_PARAM === "agency";  // agency demo
 let USER = null;      // Supabase auth user (null in demo)
 let DEALER = null;    // dealers row (or demo object)
 let AGENCY = null;    // shipping_agencies row (or demo object)
-let ROUTES = [];      // agency routes [{city, price, days}]
+let AG_META = {};     // agency profile v2 (description, offices…)
+let ROUTES = [];      // agency routes [{city, price, days, promise}]
 let LISTINGS = [];
 let CONVOS = [];
 let CUR_CONVO = null;
+let PHOTOS = [];      // listing form photos: {url} saved | {file, preview} new
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -37,6 +42,24 @@ function demoConvos() {
     ]}
   ];
 }
+const DEMO_AGENCY = {
+  id: "demo-agency", name: "TransAfrica Cargo", verified: true, country: "Dubai UAE"
+};
+const DEMO_AG_META = {
+  description: "Spécialiste du transport de véhicules Dubai → Afrique centrale et de l'Ouest depuis 2017. RoRo et conteneur, dédouanement assisté.",
+  years: 8, languages: "Français, English, العربية",
+  pickup: "Warehouse 12, Ras Al Khor Industrial 2, Dubai",
+  offices: {
+    kinshasa: "12 Av. du Commerce, Gombe, Kinshasa",
+    douala: "Rue Joffre, Akwa, Douala",
+    dakar: "Km 4, Route de Rufisque, Dakar"
+  }
+};
+const DEMO_AG_ROUTES = [
+  { city: "kinshasa", price: 3150, days: 32, promise: "Je livre votre voiture à Kinshasa en 32 jours" },
+  { city: "douala", price: 2750, days: 27, promise: "Douala en 27 jours, port-à-port" },
+  { city: "dakar", price: 3250, days: 30, promise: "Dakar en 30 jours, assurance incluse" }
+];
 
 // ── Init: who is this? ──
 async function init() {
@@ -51,12 +74,9 @@ async function init() {
     return;
   }
   if (DEMO_AG) {
-    AGENCY = { id: "demo-agency", name: "TransAfrica Cargo", verified: true, country: "Dubai UAE", whatsapp: "+971 50 000 0000" };
-    ROUTES = [
-      { city: "kinshasa", price: 3150, days: 32 },
-      { city: "douala", price: 2750, days: 27 },
-      { city: "dakar", price: 3250, days: 30 }
-    ];
+    AGENCY = { ...DEMO_AGENCY };
+    AG_META = JSON.parse(JSON.stringify(DEMO_AG_META));
+    ROUTES = JSON.parse(JSON.stringify(DEMO_AG_ROUTES));
     show("dash-demo");
     document.getElementById("ag-logout").style.display = "none";
     enterAgency();
@@ -128,11 +148,11 @@ async function loadListings() {
 async function loadConvos() {
   try {
     const { data } = await yayoSB().from("conversations")
-      .select("id, listing_id, buyer_id, created_at, listings(car_name)")
+      .select("id, car_name, user_id, created_at")
       .eq("dealer_id", DEALER.id).order("created_at", { ascending: false }).limit(50);
     CONVOS = (data || []).map(c => ({
       id: c.id,
-      car_name: (c.listings && c.listings.car_name) || "—",
+      car_name: c.car_name || "—",
       buyer: t("d_buyer"),
       msgs: null // loaded on open
     }));
@@ -144,7 +164,7 @@ function showTab(name) {
   ["overview", "listings", "messages"].forEach(tb => {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
-  document.querySelectorAll(".dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  document.querySelectorAll("#dash-dealer .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
 }
 
 // ── Overview ──
@@ -196,6 +216,37 @@ function renderListings() {
   }).join("");
 }
 
+// ── Listing photos (upload from device — never a URL field) ──
+function addPhotos(files) {
+  [...files].forEach(f => {
+    if (!f.type.startsWith("image/") || PHOTOS.length >= 8) return;
+    PHOTOS.push({ file: f, preview: URL.createObjectURL(f) });
+  });
+  renderThumbs();
+  document.getElementById("lf-files").value = "";
+}
+function removePhoto(i) { PHOTOS.splice(i, 1); renderThumbs(); }
+function renderThumbs() {
+  document.getElementById("up-thumbs").innerHTML = PHOTOS.map((p, i) => `
+    <div class="up-thumb"><img src="${p.url || p.preview}" alt=""><button type="button" onclick="removePhoto(${i})" aria-label="Retirer">✕</button></div>`).join("");
+}
+
+async function uploadPhotos() {
+  // Returns the main photo URL (first photo). Uploads any new files to Storage.
+  const out = [];
+  for (const p of PHOTOS) {
+    if (p.url) { out.push(p.url); continue; }
+    if (DEMO) { out.push(p.preview); continue; } // demo: local preview only
+    const ext = (p.file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = DEALER.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
+    const { error } = await yayoSB().storage.from("car-photos").upload(path, p.file, { contentType: p.file.type });
+    if (error) throw error;
+    const { data } = yayoSB().storage.from("car-photos").getPublicUrl(path);
+    out.push(data.publicUrl);
+  }
+  return out;
+}
+
 let EDIT_ID = null;
 function openForm(l) {
   EDIT_ID = l ? l.id : null;
@@ -206,8 +257,9 @@ function openForm(l) {
   document.getElementById("lf-km").value = l ? (l.mileage || "") : "";
   document.getElementById("lf-cond").value = (l && l.condition) || "Très bon état";
   document.getElementById("lf-color").value = l ? (l.color || "") : "";
-  document.getElementById("lf-photo").value = l ? (l.photo_url || "") : "";
   document.getElementById("lf-desc").value = l ? (l.description || "") : "";
+  PHOTOS = (l && l.photo_url) ? [{ url: l.photo_url }] : [];
+  renderThumbs();
   hide("lst-err");
   show("lst-form");
   document.getElementById("lf-name").focus();
@@ -218,6 +270,21 @@ function editListing(id) { const l = findListing(id); if (l) openForm(l); }
 
 async function saveListing(e) {
   e.preventDefault();
+  const err = document.getElementById("lst-err");
+  err.hidden = true;
+  if (!PHOTOS.length) { err.hidden = false; err.textContent = t("up_min_err"); return false; }
+
+  const btn = e.target && e.target.querySelector ? e.target.querySelector("button[type=submit]") : null;
+  if (btn) { btn.disabled = true; btn.textContent = t("up_uploading"); }
+  let photoUrls;
+  try { photoUrls = await uploadPhotos(); }
+  catch (upErr) {
+    if (btn) { btn.disabled = false; btn.textContent = t("d_save"); }
+    err.hidden = false; err.textContent = t("up_fail") + " (" + (upErr.message || upErr) + ")";
+    return false;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = t("d_save"); }
+
   const payload = {
     car_name: document.getElementById("lf-name").value.trim(),
     price: parseInt(document.getElementById("lf-price").value, 10),
@@ -225,7 +292,7 @@ async function saveListing(e) {
     mileage: parseInt(document.getElementById("lf-km").value, 10) || null,
     condition: document.getElementById("lf-cond").value,
     color: document.getElementById("lf-color").value.trim() || null,
-    photo_url: document.getElementById("lf-photo").value.trim() || null,
+    photo_url: photoUrls[0],
     description: document.getElementById("lf-desc").value.trim() || null
   };
   if (DEMO) {
@@ -247,9 +314,8 @@ async function saveListing(e) {
     }
     await loadListings();
     closeForm(); renderListings(); renderStats();
-  } catch (err) {
-    const el = document.getElementById("lst-err");
-    el.hidden = false; el.textContent = t("au_err_generic") + (err.message || err);
+  } catch (err2) {
+    err.hidden = false; err.textContent = t("au_err_generic") + (err2.message || err2);
   }
   return false;
 }
@@ -278,7 +344,7 @@ async function delListing(id) {
   } catch (e) { alert(t("au_err_generic") + (e.message || e)); }
 }
 
-// ── Messages ──
+// ── Messages (dealer reads the buyer in HIS language) ──
 function renderConvoList() {
   const el = document.getElementById("msg-list");
   if (!CONVOS.length) { el.innerHTML = `<p class="dash-empty">${t("d_no_convos")}</p>`; return; }
@@ -316,7 +382,13 @@ async function openConvo(id) {
       CUR_CONVO.msgs = (data || []).map(m => ({ me: USER && m.sender_id === USER.id, text: m.content }));
     } catch (e) { CUR_CONVO.msgs = []; }
   }
-  CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.text));
+  // Two-way translation: incoming buyer messages shown in the dealer's language
+  const incoming = CUR_CONVO.msgs.filter(m => !m.me);
+  if (incoming.length) {
+    const translated = await yayoTranslate(incoming.map(m => m.text), YAYO_LANG);
+    incoming.forEach((m, i) => { m.display = translated[i]; });
+  }
+  CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.me ? m.text : (m.display || m.text)));
 }
 
 function addMsg(me, text) {
@@ -348,11 +420,26 @@ async function dashLogout() {
   if (confirm(t("logout_confirm"))) { await yayoSB().auth.signOut(); location.href = "index.html"; }
 }
 
-// ── Agency dashboard (Phase 1: profile + routes + one price per route) ──
-function parseRoutes(raw) {
-  let r = raw;
-  if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { r = []; } }
-  return Array.isArray(r) ? r : [];
+// ── Agency dashboard (Phase 1: profile + offices + routes with promise) ──
+// Everything beyond the base columns is stored as JSON in the routes column:
+// { v:2, description, years, languages, pickup, offices:{city:addr}, routes:[…] }
+function parseAgencyData(raw) {
+  let d = raw;
+  if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
+  if (Array.isArray(d)) return { meta: {}, routes: d };          // legacy: plain array
+  if (d && typeof d === "object") return { meta: d, routes: Array.isArray(d.routes) ? d.routes : [] };
+  return { meta: {}, routes: [] };
+}
+function buildAgencyPayload() {
+  return JSON.stringify({
+    v: 2,
+    description: AG_META.description || null,
+    years: AG_META.years || null,
+    languages: AG_META.languages || null,
+    pickup: AG_META.pickup || null,
+    offices: AG_META.offices || {},
+    routes: ROUTES
+  });
 }
 
 async function agencyInit() {
@@ -375,7 +462,9 @@ async function agencyInit() {
     AGENCY = data || null;
   } catch (e) { AGENCY = null; }
   if (!AGENCY) { show("dash-buyer"); return; }
-  ROUTES = parseRoutes(AGENCY.routes);
+  const parsed = parseAgencyData(AGENCY.routes);
+  AG_META = parsed.meta;
+  ROUTES = parsed.routes;
   enterAgency();
 }
 
@@ -388,8 +477,12 @@ function enterAgency() {
   b.textContent = AGENCY.verified ? "✓ " + t("ag_verified") : t("d_not_verified");
   document.getElementById("agf-name").value = AGENCY.name || "";
   document.getElementById("agf-country").value = AGENCY.country || "";
-  document.getElementById("agf-wa").value = AGENCY.whatsapp || "";
+  document.getElementById("agf-years").value = AG_META.years || "";
+  document.getElementById("agf-langs").value = AG_META.languages || "";
+  document.getElementById("agf-pickup").value = AG_META.pickup || "";
+  document.getElementById("agf-desc").value = AG_META.description || "";
   renderRoutes();
+  renderOffices();
 }
 
 function showAgTab(name) {
@@ -409,31 +502,57 @@ function renderRoutes() {
   document.getElementById("ag-no-routes").hidden = ROUTES.length > 0;
   el.innerHTML = ROUTES.map((r, i) => `
     <div class="ag-route" data-i="${i}">
-      <div class="field"><label data-i18n="ag_route_dest">${t("ag_route_dest")}</label><select class="agr-city">${cityOptions(r.city)}</select></div>
-      <div class="field"><label data-i18n="ag_route_price">${t("ag_route_price")}</label><input class="agr-price" type="number" min="100" max="50000" inputmode="numeric" value="${r.price || ""}"></div>
-      <div class="field"><label data-i18n="ag_route_days">${t("ag_route_days")}</label><input class="agr-days" type="number" min="1" max="120" inputmode="numeric" value="${r.days || ""}"></div>
+      <div class="field"><label>${t("ag_route_dest")}</label><select class="agr-city" onchange="renderOffices(true)">${cityOptions(r.city)}</select></div>
+      <div class="field"><label>${t("ag_route_price")}</label><input class="agr-price" type="number" min="100" max="50000" inputmode="numeric" value="${r.price || ""}"></div>
+      <div class="field"><label>${t("ag_route_days")}</label><input class="agr-days" type="number" min="1" max="120" inputmode="numeric" value="${r.days || ""}"></div>
       <button type="button" class="ag-route-del" onclick="delRoute(${i})" aria-label="Supprimer">✕</button>
+      <div class="field field-wide"><label>${t("ag_route_promise")}</label><input class="agr-promise" type="text" maxlength="120" placeholder="${t("ag_route_promise_ph")}" value="${escapeHtml(r.promise || "")}"></div>
     </div>`).join("");
+}
+
+function renderOffices(syncFirst) {
+  if (syncFirst) syncRoutesFromDOM();
+  const cities = [...new Set(ROUTES.map(r => r.city))];
+  const el = document.getElementById("ag-offices");
+  AG_META.offices = AG_META.offices || {};
+  el.innerHTML = cities.map(c => {
+    const d = YAYO_CONFIG.DESTINATIONS[c];
+    return `
+    <div class="field field-wide">
+      <label>${t("ag_office_lbl")} ${d ? d.flag + " " + d.name : c}</label>
+      <input class="ag-office" data-city="${c}" type="text" maxlength="160" value="${escapeHtml(AG_META.offices[c] || "")}">
+    </div>`;
+  }).join("");
 }
 
 function syncRoutesFromDOM() {
   ROUTES = [...document.querySelectorAll(".ag-route")].map(row => ({
     city: row.querySelector(".agr-city").value,
     price: parseInt(row.querySelector(".agr-price").value, 10) || 0,
-    days: parseInt(row.querySelector(".agr-days").value, 10) || null
+    days: parseInt(row.querySelector(".agr-days").value, 10) || null,
+    promise: row.querySelector(".agr-promise").value.trim() || null
   }));
+}
+function syncOfficesFromDOM() {
+  const offices = {};
+  document.querySelectorAll(".ag-office").forEach(inp => {
+    if (inp.value.trim()) offices[inp.dataset.city] = inp.value.trim();
+  });
+  AG_META.offices = offices;
 }
 
 function addRoute() {
   syncRoutesFromDOM();
-  ROUTES.push({ city: "kinshasa", price: "", days: "" });
+  ROUTES.push({ city: "kinshasa", price: "", days: "", promise: "" });
   renderRoutes();
+  renderOffices();
 }
 
 function delRoute(i) {
   syncRoutesFromDOM();
   ROUTES.splice(i, 1);
   renderRoutes();
+  renderOffices();
 }
 
 function flashSaved(id) {
@@ -444,14 +563,16 @@ function flashSaved(id) {
 
 async function saveRoutes() {
   syncRoutesFromDOM();
+  syncOfficesFromDOM();
   ROUTES = ROUTES.filter(r => r.price > 0);
   renderRoutes();
+  renderOffices();
   const err = document.getElementById("ag-routes-err");
   err.hidden = true;
   if (DEMO_AG) { flashSaved("ag-routes-saved"); return; }
   try {
     const { error } = await yayoSB().from("shipping_agencies")
-      .update({ routes: JSON.stringify(ROUTES) }).eq("id", AGENCY.id);
+      .update({ routes: buildAgencyPayload() }).eq("id", AGENCY.id);
     if (error) throw error;
     flashSaved("ag-routes-saved");
   } catch (e) { err.hidden = false; err.textContent = t("au_err_generic") + (e.message || e); }
@@ -459,18 +580,23 @@ async function saveRoutes() {
 
 async function saveAgProfile(e) {
   e.preventDefault();
+  syncOfficesFromDOM();
+  AG_META.description = document.getElementById("agf-desc").value.trim() || null;
+  AG_META.years = parseInt(document.getElementById("agf-years").value, 10) || null;
+  AG_META.languages = document.getElementById("agf-langs").value.trim() || null;
+  AG_META.pickup = document.getElementById("agf-pickup").value.trim() || null;
   const patch = {
     name: document.getElementById("agf-name").value.trim(),
     country: document.getElementById("agf-country").value.trim() || null,
-    whatsapp: document.getElementById("agf-wa").value.trim() || null
+    routes: buildAgencyPayload()
   };
   const err = document.getElementById("ag-prof-err");
   err.hidden = true;
-  if (DEMO_AG) { Object.assign(AGENCY, patch); document.getElementById("ag-name").textContent = AGENCY.name; flashSaved("ag-prof-saved"); return false; }
+  if (DEMO_AG) { AGENCY.name = patch.name; document.getElementById("ag-name").textContent = AGENCY.name; flashSaved("ag-prof-saved"); return false; }
   try {
     const { error } = await yayoSB().from("shipping_agencies").update(patch).eq("id", AGENCY.id);
     if (error) throw error;
-    Object.assign(AGENCY, patch);
+    AGENCY.name = patch.name; AGENCY.country = patch.country;
     document.getElementById("ag-name").textContent = AGENCY.name;
     flashSaved("ag-prof-saved");
   } catch (e2) { err.hidden = false; err.textContent = t("au_err_generic") + (e2.message || e2); }
@@ -483,7 +609,7 @@ window.onLangChange = () => {
     renderBadge(); renderOverview(); renderListings(); renderConvoList(); renderChips();
   }
   if (!document.getElementById("dash-agency-app").hidden) {
-    syncRoutesFromDOM(); enterAgency();
+    syncRoutesFromDOM(); syncOfficesFromDOM(); enterAgency();
   }
 };
 

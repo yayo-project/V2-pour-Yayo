@@ -33,6 +33,17 @@ async function yayoSignOut() {
   location.reload();
 }
 
+// Make sure the logged-in auth user has a row in the legacy users table
+// (conversations/favorites point there via foreign keys).
+async function yayoEnsureUserRow(user) {
+  try {
+    await yayoSB().from("users").upsert(
+      { id: user.id, identifier: user.email, login_type: "supabase", role: "user" },
+      { onConflict: "id", ignoreDuplicates: true }
+    );
+  } catch (e) { /* row may already exist */ }
+}
+
 // Swap "Connexion" links for the account chip when logged in.
 // The chip opens the dashboard; sign-out lives inside the dashboard.
 async function initAuthNav() {
@@ -42,10 +53,26 @@ async function initAuthNav() {
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
     el.href = "dashboard.html";
+    // "Mes favoris" heart next to the account chip
+    if (!el.parentNode.querySelector(".fav-link")) {
+      const a = document.createElement("a");
+      a.href = "favoris.html";
+      a.className = "fav-link";
+      a.textContent = "♥";
+      a.title = t("nav_fav");
+      el.parentNode.insertBefore(a, el);
+    }
   });
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
     el.innerHTML = "<b>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
     el.href = "dashboard.html";
+    if (!el.parentNode.querySelector("[data-fav-nav]")) {
+      const a = document.createElement("a");
+      a.href = "favoris.html";
+      a.setAttribute("data-fav-nav", "1");
+      a.innerHTML = "<b>♥ " + t("nav_fav") + "</b> <span>" + t("fav_p") + "</span>";
+      el.parentNode.insertBefore(a, el);
+    }
   });
 }
 document.addEventListener("DOMContentLoaded", initAuthNav);

@@ -100,9 +100,31 @@ function writeParams() {
   history.replaceState(null, "", s ? "?" + s : location.pathname);
 }
 
+// Budget search: "$18 000, Kinshasa" → cars whose LANDED cost fits
+let BUDGET = null;
+function parseBudget(q) {
+  const m = q.match(/\$?\s*(\d{1,3}(?:[ .,  ]\d{3})+|\d{4,7})\s*\$?/);
+  if (!m) return null;
+  const amount = parseInt(m[1].replace(/[^\d]/g, ""), 10);
+  if (!(amount >= 3000 && amount <= 2000000)) return null;
+  // words left besides the amount must be a known city (or nothing) — else it's a model search like "RAV4 2022"
+  const rest = q.replace(m[0], " ").toLowerCase();
+  let city = null;
+  for (const k of Object.keys(DEST)) if (rest.includes(k)) city = k;
+  const leftover = rest.replace(/kinshasa|douala|abidjan|dakar|dubai/g, "").replace(/[^a-zÀ-ɏ]/g, "");
+  if (leftover.length > 2 && !city) return null;
+  return { amount, city };
+}
+
+function setDestKey(k) {
+  CUR = k;
+  document.querySelectorAll(".dpill").forEach(p => p.classList.toggle("on", p.dataset.city === k));
+}
+
 function applyFilters() {
   writeParams();
-  const q = document.getElementById("mkt-q").value.trim().toLowerCase();
+  const qRaw = document.getElementById("mkt-q").value.trim();
+  const q = qRaw.toLowerCase();
   const min = parseInt(document.getElementById("f-min").value, 10);
   const max = parseInt(document.getElementById("f-max").value, 10);
   const year = parseInt(document.getElementById("f-year").value, 10);
@@ -111,8 +133,16 @@ function applyFilters() {
   const bodies = [...document.querySelectorAll("#f-body button.on")].map(b => b.dataset.v);
   const sort = document.getElementById("mkt-sort").value;
 
+  BUDGET = qRaw ? parseBudget(qRaw) : null;
+  if (BUDGET && BUDGET.city && BUDGET.city !== CUR) setDestKey(BUDGET.city);
+
   FILTERED = ALL.filter(c => {
-    if (q && !(c.car_name || "").toLowerCase().includes(q)) return false;
+    if (BUDGET) {
+      if (landedTotal(c.price, CUR) > BUDGET.amount) return false;
+    } else if (q) {
+      const name = (c.car_name || "").toLowerCase();
+      if (!q.split(/\s+/).every(w => name.includes(w))) return false;
+    }
     if (!isNaN(min) && c.price < min) return false;
     if (!isNaN(max) && c.price > max) return false;
     if (!isNaN(year) && (c.year || 0) < year) return false;
@@ -121,6 +151,7 @@ function applyFilters() {
     if (bodies.length && !bodies.includes(bodyOf(c))) return false;
     return true;
   });
+  if (BUDGET) FILTERED.sort((a, b) => landedTotal(b.price, CUR) - landedTotal(a.price, CUR));
 
   if (sort === "price-asc") FILTERED.sort((a, b) => a.price - b.price);
   else if (sort === "price-desc") FILTERED.sort((a, b) => b.price - a.price);
@@ -136,9 +167,10 @@ function render() {
   const count = document.getElementById("mkt-count");
   const dst = DEST[CUR];
 
-  count.textContent = FILTERED.length === 0
+  const base = FILTERED.length === 0
     ? t("count_none")
     : `${FILTERED.length} ${FILTERED.length > 1 ? t("count_cars") : t("count_car")} · ${CUR === "dubai" ? t("a_dubai") : t("count_rendu") + " " + dst.name}`;
+  count.textContent = BUDGET ? `${base} · ${t("bud_lbl")} ≤ ${fmt(BUDGET.amount)}` : base;
 
   if (FILTERED.length === 0) { g.innerHTML = ""; empty.hidden = false; return; }
   empty.hidden = true;
@@ -148,7 +180,7 @@ function render() {
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
       <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
-      <button class="fav" onclick="event.stopPropagation()" aria-label="Sauvegarder">♥</button>
+      ${favBtn(c.id, c.car_name)}
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
@@ -168,6 +200,7 @@ function render() {
       </div>
     </div>
   </div>`).join("");
+  markFavHearts(g);
 }
 
 function setDest(el) {

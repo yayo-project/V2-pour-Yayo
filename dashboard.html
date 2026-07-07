@@ -105,10 +105,25 @@
                 <input id="agf-country" type="text" maxlength="60">
               </div>
               <div class="field">
-                <label for="agf-wa" data-i18n="ag_f_whatsapp">WhatsApp</label>
-                <input id="agf-wa" type="text" maxlength="30">
+                <label for="agf-years" data-i18n="ag_f_years">Années d'expérience</label>
+                <input id="agf-years" type="number" min="0" max="60" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label for="agf-langs" data-i18n="ag_f_langs">Langues parlées</label>
+                <input id="agf-langs" type="text" maxlength="80" placeholder="Français, English">
+              </div>
+              <div class="field field-wide">
+                <label for="agf-pickup" data-i18n="ag_f_pickup">Adresse de collecte à Dubai</label>
+                <input id="agf-pickup" type="text" maxlength="160" placeholder="Warehouse 4, Ras Al Khor, Dubai">
+              </div>
+              <div class="field field-wide">
+                <label for="agf-desc" data-i18n="ag_f_desc">Description (à propos)</label>
+                <textarea id="agf-desc" rows="3" maxlength="600"></textarea>
               </div>
             </div>
+            <h2 class="vd-h" data-i18n="ag_offices_h">Bureaux de destination</h2>
+            <p class="dash-sub" data-i18n="ag_offices_p">Une vraie adresse par ville servie — c'est ce qui rassure les acheteurs.</p>
+            <div id="ag-offices" class="form-grid"></div>
             <div class="dash-form-actions">
               <button type="submit" class="btn btn-solid" data-i18n="d_save">Enregistrer</button>
               <span class="ag-saved" id="ag-prof-saved" hidden data-i18n="ag_saved">Enregistré ✓</span>
@@ -195,9 +210,14 @@
                 <label for="lf-color" data-i18n="d_f_color">Couleur</label>
                 <input id="lf-color" type="text" maxlength="40" data-i18n-ph="d_f_color_ph" placeholder="Ex : Blanc">
               </div>
-              <div class="field">
-                <label for="lf-photo" data-i18n="d_f_photo">Lien de la photo (URL)</label>
-                <input id="lf-photo" type="url" maxlength="500" placeholder="https://…">
+              <div class="field field-wide">
+                <label data-i18n="up_label">Photos de la voiture</label>
+                <div class="up-zone">
+                  <div class="up-thumbs" id="up-thumbs"></div>
+                  <button type="button" class="up-add" onclick="document.getElementById('lf-files').click()" data-i18n="up_add">+ Ajouter des photos</button>
+                  <input id="lf-files" type="file" accept="image/*" multiple hidden onchange="addPhotos(this.files)">
+                  <p class="up-hint" data-i18n="up_hint">Prenez-les avec votre téléphone — au moins une photo.</p>
+                </div>
               </div>
               <div class="field field-wide">
                 <label for="lf-desc" data-i18n="d_f_desc">Description</label>
@@ -269,6 +289,7 @@
 <script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/translate.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>

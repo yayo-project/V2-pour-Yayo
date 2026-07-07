@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes favoris — Yayo</title>
+<meta name="description" content="Retrouvez les voitures que vous avez sauvegardées sur Yayo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html?next=favoris.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html?next=favoris.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<main class="fav-grid-page">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom:18px">
+      <div>
+        <h2 data-i18n="fav_h">Mes favoris</h2>
+        <p style="font-size:13px;color:var(--ink-3)" data-i18n="fav_p">Les voitures que vous avez sauvegardées.</p>
+      </div>
+    </div>
+
+    <div id="fav-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+
+    <div id="fav-login" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🔑</div>
+      <h3 data-i18n="rv_login">Connectez-vous</h3>
+      <a class="btn btn-solid" href="connexion.html?next=favoris.html" data-i18n="connexion">Connexion</a>
+    </div>
+
+    <div id="fav-empty" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">♥</div>
+      <h3 data-i18n="fav_empty_h">Aucun favori pour l'instant</h3>
+      <p data-i18n="fav_empty_p">Touchez le ♥ sur une voiture pour la retrouver ici.</p>
+      <a class="btn btn-solid" href="acheter.html" data-i18n="fav_btn">Voir les voitures</a>
+    </div>
+
+    <div class="car-grid" id="fav-grid"></div>
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-bottom" style="border-top:none">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/fav.js"></script>
+<script>
+function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
+function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+const DEST = YAYO_CONFIG.DESTINATIONS;
+let FAV_CARS = [];
+
+async function loadFavPage() {
+  const user = await yayoUser();
+  document.getElementById("fav-loading").hidden = true;
+  if (!user) { document.getElementById("fav-login").hidden = false; return; }
+  let rows = [];
+  try {
+    const { data } = await yayoSB().from("favorites")
+      .select("id, market, car_name").eq("user_id", user.id).eq("type", "car")
+      .order("created_at", { ascending: false }).limit(200);
+    rows = data || [];
+  } catch (e) { rows = []; }
+
+  const ids = rows.map(r => r.market).filter(Boolean);
+  const demoIds = ids.filter(i => String(i).startsWith("demo"));
+  const realIds = ids.filter(i => !String(i).startsWith("demo"));
+  const cars = [];
+  demoIds.forEach(i => { const c = window.YAYO_DEMO.find(d => d.id === i); if (c) cars.push(c); });
+  if (realIds.length) {
+    try {
+      const { data } = await yayoSB().from("listings")
+        .select("*, dealers(name, verified)").in("id", realIds);
+      (data || []).forEach(l => cars.push({
+        id: l.id, car_name: l.car_name, mileage: l.mileage, fuel: l.fuel || "",
+        condition: l.condition || "", price: l.price, ai: "good", photo_url: l.photo_url,
+        dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified) }
+      }));
+    } catch (e) { /* ignore */ }
+  }
+  FAV_CARS = ids.map(i => cars.find(c => String(c.id) === String(i))).filter(Boolean);
+  renderFavs();
+}
+
+function renderFavs() {
+  const g = document.getElementById("fav-grid");
+  document.getElementById("fav-empty").hidden = FAV_CARS.length > 0;
+  const dst = DEST[YAYO_CONFIG.DEFAULT_DEST];
+  g.innerHTML = FAV_CARS.map(c => `
+  <div class="car-card" onclick="location.href='voiture.html?id=${encodeURIComponent(c.id)}'">
+    <div class="car-img">
+      <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
+      ${favBtn(c.id, c.car_name)}
+    </div>
+    <div class="car-body">
+      <div class="car-title">${escapeHtml(c.car_name)}</div>
+      <div class="car-meta">${c.mileage ? c.mileage.toLocaleString("fr-FR") + " km" : ""}${c.fuel ? " · " + escapeHtml(tFuel(c.fuel)) : (c.condition ? " · " + escapeHtml(c.condition) : "")}</div>
+      <div class="car-price-row">
+        <span class="car-price">${fmt(c.price)}</span>
+        <span class="car-price-lbl">${t("a_dubai")}</span>
+      </div>
+      <div class="landed">
+        <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
+        <span class="landed-val">≈ ${fmt(c.price + dst.ship + c.price * dst.duty + dst.fees)}</span>
+      </div>
+      <div class="car-dealer">
+        ${c.dealer && c.dealer.verified ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span>' : ""}
+        ${c.dealer ? escapeHtml(c.dealer.name) + " · Dubai" : ""}
+      </div>
+    </div>
+  </div>`).join("");
+  markFavHearts(document);
+}
+
+window.onLangChange = () => renderFavs();
+loadFavPage();
+</script>
+</body>
+</html>
