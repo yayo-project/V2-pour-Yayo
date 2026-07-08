@@ -314,7 +314,70 @@ begin
 end $$;
 
 -- ═══════════════════════════════════════════════════════════
--- 12) PLATFORM STATISTICS — one call returns everything
+-- 12) UNREAD MESSAGES — badge for buyers, dealers AND agencies
+-- A message is unread until the OTHER side opens the conversation.
+-- ═══════════════════════════════════════════════════════════
+alter table public.messages add column if not exists seen boolean not null default false;
+
+-- Unread count per conversation, for whoever is calling:
+-- buyer (conversations.user_id) or business (dealers/agencies matched by email)
+create or replace function public.yayo_unread_counts()
+returns table (conversation_id uuid, unread bigint)
+language sql stable security definer set search_path = public as $$
+  select m.conversation_id, count(*)::bigint
+  from messages m
+  join conversations c on c.id = m.conversation_id
+  where m.seen = false
+    and m.sender_id is distinct from auth.uid()
+    and (
+      c.user_id = auth.uid()
+      or c.dealer_id in (select d.id from dealers d
+                         where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+      or c.agency_id in (select a.id from shipping_agencies a
+                         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))
+    )
+  group by m.conversation_id
+$$;
+
+-- Mark a conversation read for the caller (only if they are a participant)
+create or replace function public.yayo_mark_read(cid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (
+    select 1 from conversations c where c.id = cid and (
+      c.user_id = auth.uid()
+      or c.dealer_id in (select d.id from dealers d
+                         where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+      or c.agency_id in (select a.id from shipping_agencies a
+                         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))
+    )
+  ) then return; end if;
+  update messages set seen = true
+  where conversation_id = cid and sender_id is distinct from auth.uid();
+end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 13) PHONE ACCOUNTS — old WhatsApp/phone users + SMS login.
+-- Phone-only accounts live in auth.users with email = null and
+-- the number in the "phone" column. The admin list now shows them.
+-- ═══════════════════════════════════════════════════════════
+drop function if exists public.admin_list_users(text);
+create or replace function public.admin_list_users(q text default null)
+returns table (id uuid, email text, phone text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  return query
+    select u.id, u.email::text, u.phone::text, u.created_at, u.last_sign_in_at,
+           (u.banned_until is not null and u.banned_until > now()) as banned
+    from auth.users u
+    where q is null or q = '' or u.email ilike '%' || q || '%' or u.phone ilike '%' || q || '%'
+    order by u.created_at desc
+    limit 500;
+end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 14) PLATFORM STATISTICS — one call returns everything
 -- ═══════════════════════════════════════════════════════════
 create or replace function public.admin_stats()
 returns json language plpgsql stable security definer set search_path = public as $$

@@ -294,7 +294,25 @@ fr: {
   fav_empty_h: "Aucun favori pour l'instant", fav_empty_p: "Touchez le ♥ sur une voiture pour la retrouver ici.",
   fav_btn: "Voir les voitures",
   // Budget search
-  bud_lbl: "budget"
+  bud_lbl: "budget",
+  // Phone login (SMS code)
+  au_tab_phone: "📱 Téléphone", au_tab_email: "✉️ Email",
+  au_phone_lbl: "Numéro de téléphone", au_phone_ph: "812 345 678",
+  au_phone_note: "Pas de mot de passe — vous recevez un code par SMS et c'est tout.",
+  au_send_code: "Recevoir mon code", au_verify_btn: "Se connecter",
+  au_code_lbl: "Code reçu par SMS", au_code_ph: "123456",
+  au_code_sent: "Code envoyé au {phone}. Entrez-le ci-dessous.",
+  au_resend: "Renvoyer le code",
+  au_sms_unavail: "La connexion par SMS arrive très bientôt. En attendant, utilisez Google ou votre email.",
+  au_phone_bad: "Vérifiez le numéro — sans le premier 0 (ex : 812 345 678).",
+  au_code_bad: "Code incorrect ou expiré. Réessayez ou renvoyez un code.",
+  au_show_pw: "Afficher le mot de passe", au_hide_pw: "Masquer le mot de passe",
+  // Messages (buyer inbox + unread)
+  msgs_h: "Mes messages", msgs_p: "Vos conversations avec les dealers et les agences.",
+  msgs_login: "Connectez-vous pour voir vos messages.",
+  msgs_empty_h: "Aucune conversation pour l'instant",
+  msgs_empty_p: "Contactez un dealer depuis une annonce — sa réponse arrivera ici.",
+  d_stat_unread: "Messages non lus", d_stat_views: "Vues totales"
 },
 en: {
   nav_acheter: "Buy", nav_vendre: "Sell", nav_expedier: "Ship", nav_comment: "How it works", connexion: "Sign in",
@@ -566,7 +584,23 @@ en: {
   nav_fav: "My favorites", fav_h: "My favorites", fav_p: "The cars you saved.",
   fav_empty_h: "No favorites yet", fav_empty_p: "Tap the ♥ on a car to find it here.",
   fav_btn: "Browse cars",
-  bud_lbl: "budget"
+  bud_lbl: "budget",
+  au_tab_phone: "📱 Phone", au_tab_email: "✉️ Email",
+  au_phone_lbl: "Phone number", au_phone_ph: "812 345 678",
+  au_phone_note: "No password — you get a code by SMS and that's it.",
+  au_send_code: "Send my code", au_verify_btn: "Log in",
+  au_code_lbl: "SMS code", au_code_ph: "123456",
+  au_code_sent: "Code sent to {phone}. Enter it below.",
+  au_resend: "Resend the code",
+  au_sms_unavail: "SMS login is coming very soon. Meanwhile, use Google or your email.",
+  au_phone_bad: "Check the number — without the leading 0 (e.g. 812 345 678).",
+  au_code_bad: "Wrong or expired code. Try again or resend a code.",
+  au_show_pw: "Show password", au_hide_pw: "Hide password",
+  msgs_h: "My messages", msgs_p: "Your conversations with dealers and agencies.",
+  msgs_login: "Log in to see your messages.",
+  msgs_empty_h: "No conversations yet",
+  msgs_empty_p: "Contact a dealer from a listing — their reply will arrive here.",
+  d_stat_unread: "Unread messages", d_stat_views: "Total views"
 },
 ar: {
   nav_acheter: "اشترِ", nav_vendre: "بِع", nav_expedier: "الشحن", nav_comment: "كيف يعمل", connexion: "تسجيل الدخول",
@@ -838,7 +872,23 @@ ar: {
   nav_fav: "مفضلتي", fav_h: "مفضلتي", fav_p: "السيارات التي حفظتها.",
   fav_empty_h: "لا مفضلات بعد", fav_empty_p: "اضغط ♥ على سيارة لتجدها هنا.",
   fav_btn: "تصفح السيارات",
-  bud_lbl: "الميزانية"
+  bud_lbl: "الميزانية",
+  au_tab_phone: "📱 الهاتف", au_tab_email: "✉️ البريد الإلكتروني",
+  au_phone_lbl: "رقم الهاتف", au_phone_ph: "812 345 678",
+  au_phone_note: "بدون كلمة مرور — يصلك رمز عبر SMS وهذا كل شيء.",
+  au_send_code: "أرسل الرمز", au_verify_btn: "تسجيل الدخول",
+  au_code_lbl: "الرمز المستلم عبر SMS", au_code_ph: "123456",
+  au_code_sent: "أُرسل الرمز إلى {phone}. أدخله أدناه.",
+  au_resend: "إعادة إرسال الرمز",
+  au_sms_unavail: "تسجيل الدخول عبر SMS قادم قريباً جداً. استخدم Google أو بريدك الإلكتروني حالياً.",
+  au_phone_bad: "تحقق من الرقم — بدون الصفر الأول (مثال: 812 345 678).",
+  au_code_bad: "رمز خاطئ أو منتهي الصلاحية. حاول مجدداً أو أعد الإرسال.",
+  au_show_pw: "إظهار كلمة المرور", au_hide_pw: "إخفاء كلمة المرور",
+  msgs_h: "رسائلي", msgs_p: "محادثاتك مع التجار ووكالات الشحن.",
+  msgs_login: "سجّل الدخول لرؤية رسائلك.",
+  msgs_empty_h: "لا محادثات بعد",
+  msgs_empty_p: "تواصل مع تاجر من أي إعلان — سيصلك رده هنا.",
+  d_stat_unread: "رسائل غير مقروءة", d_stat_views: "إجمالي المشاهدات"
 }
 };
 

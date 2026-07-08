@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes messages — Yayo</title>
+<meta name="description" content="Vos conversations avec les dealers et agences de transport sur Yayo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NR2LTEVKET"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-NR2LTEVKET');
+</script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html?next=messages.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html?next=messages.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<main class="dash-page">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom:18px">
+      <div>
+        <h2 data-i18n="msgs_h">Mes messages</h2>
+        <p style="font-size:13px;color:var(--ink-3)" data-i18n="msgs_p">Vos conversations avec les dealers et les agences.</p>
+      </div>
+    </div>
+
+    <div id="mx-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+
+    <div id="mx-login" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">🔑</div>
+      <h3 data-i18n="msgs_login">Connectez-vous pour voir vos messages.</h3>
+      <a class="btn btn-solid" href="connexion.html?next=messages.html" data-i18n="connexion">Connexion</a>
+    </div>
+
+    <div id="mx-empty" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico">💬</div>
+      <h3 data-i18n="msgs_empty_h">Aucune conversation pour l'instant</h3>
+      <p data-i18n="msgs_empty_p">Contactez un dealer depuis une annonce — sa réponse arrivera ici.</p>
+      <a class="btn btn-solid" href="acheter.html" data-i18n="fav_btn">Voir les voitures</a>
+    </div>
+
+    <div id="mx-app" hidden>
+      <div class="dash-msg-layout">
+        <div class="vd-card dash-convos" id="mx-list"></div>
+        <div class="vd-card dash-thread">
+          <div id="mx-pick" class="dash-empty" data-i18n="d_pick_convo">Choisissez une conversation à gauche pour lire et répondre.</div>
+          <div id="mx-thread" hidden>
+            <h2 class="vd-h" id="mx-title"></h2>
+            <div class="chat-box" id="mx-box"></div>
+            <form class="chat-form" onsubmit="return mxSend(event)">
+              <input id="mx-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
+              <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
+            </form>
+            <p class="cost-note" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-bottom" style="border-top:none">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/translate.js"></script>
+<script src="js/messages.js"></script>
+</body>
+</html>

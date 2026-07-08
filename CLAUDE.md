@@ -19,6 +19,10 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 - NO phone/WhatsApp numbers visible anywhere to buyers (dealers OR agencies). All contact happens through in-app chat only. Numbers may exist in the backend for admin, never shown to buyers.
 - Favorites: logged-in buyers can save cars (heart icon) and return to a "Mes favoris" page to find them again. Saved to the favorites table in Supabase.
 - Budget search: buyers can type a budget (e.g. "$18 000, Kinshasa") and get matching cars whose LANDED cost fits, not just Dubai price. This is a core buyer entry point.
+- LOGIN must be low-friction for the African market: offer phone-number login with an SMS one-time code (no password) as a primary option, plus Google and email. True WhatsApp-code delivery is a later upgrade (needs WhatsApp Business API); phone+SMS OTP is the practical now-version that feels the same. Always include a show/hide password toggle on password fields.
+- Auth emails (reset, confirm, magic link) MUST look like they come from Yayo — customize Supabase email templates + sender name to "Yayo", not "Supabase". Connect proper SMTP so emails actually deliver (Supabase's built-in email is rate-limited and often fails). This is required before launch — Mukoma's reset email never arrived.
+- Notifications: when a buyer messages a dealer/agency (or vice versa), an unread message indicator/badge must show for BOTH sides — buyer sees dealer replies, dealer/agency sees new buyer messages. Message icon in the header with unread count.
+- Old Yayo users who registered via WhatsApp/phone number must still be findable and able to log in — verify where phone-only accounts live in Supabase and that admin can see them.
 - Reviews build trust: dealers AND agencies have ratings/reviews on their profiles, left by buyers after an interaction/transaction. Show average rating + count. (Real reviews only — no fake ones per the Honesty rule. Build the review system now; it fills with real reviews as buyers use it.)
 
 ## Design system (locked — do not change without founder approval)

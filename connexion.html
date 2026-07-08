@@ -44,9 +44,39 @@ gtag('config', 'G-NR2LTEVKET');
       <span data-i18n="au_google">Continuer avec Google</span>
     </button>
 
-    <div class="auth-or"><span data-i18n="au_or">ou par email</span></div>
+    <div class="auth-methods" id="auth-methods">
+      <button type="button" class="on" id="m-phone" onclick="setMethod('phone')" data-i18n="au_tab_phone">📱 Téléphone</button>
+      <button type="button" id="m-email" onclick="setMethod('email')" data-i18n="au_tab_email">✉️ Email</button>
+    </div>
 
-    <form onsubmit="return doEmail(event)">
+    <!-- Phone login: number → SMS code → logged in. No password. -->
+    <form id="phone-form" onsubmit="return doPhone(event)">
+      <div class="field">
+        <label for="a-cc" data-i18n="au_phone_lbl">Numéro de téléphone</label>
+        <div class="phone-row">
+          <select id="a-cc" aria-label="Indicatif">
+            <option value="+243">🇨🇩 +243</option>
+            <option value="+237">🇨🇲 +237</option>
+            <option value="+225">🇨🇮 +225</option>
+            <option value="+221">🇸🇳 +221</option>
+            <option value="+971">🇦🇪 +971</option>
+            <option value="+33">🇫🇷 +33</option>
+            <option value="+1">🇺🇸 +1</option>
+          </select>
+          <input id="a-phone" type="tel" inputmode="tel" autocomplete="tel" required data-i18n-ph="au_phone_ph" placeholder="812 345 678">
+        </div>
+      </div>
+      <div class="field" id="code-field" hidden>
+        <label for="a-code" data-i18n="au_code_lbl">Code reçu par SMS</label>
+        <input id="a-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" data-i18n-ph="au_code_ph" placeholder="123456">
+        <p class="auth-switch" style="margin-top:8px"><a href="#" onclick="return resendCode(event)" data-i18n="au_resend">Renvoyer le code</a></p>
+      </div>
+      <div class="auth-error" id="phone-error" hidden></div>
+      <button type="submit" class="btn btn-solid btn-block" id="phone-btn" data-i18n="au_send_code">Recevoir mon code</button>
+      <p class="auth-note" data-i18n="au_phone_note">Pas de mot de passe — vous recevez un code par SMS et c'est tout.</p>
+    </form>
+
+    <form id="email-form" hidden onsubmit="return doEmail(event)">
       <div class="field">
         <label for="a-email" data-i18n="au_email">Email</label>
         <input id="a-email" type="email" autocomplete="email" required data-i18n-ph="au_email_ph" placeholder="vous@exemple.com">
@@ -74,7 +104,78 @@ gtag('config', 'G-NR2LTEVKET');
 <script>
 let signupMode = false;
 let confirmShown = false;
-const nextUrl = new URLSearchParams(location.search).get("next") || "index.html";
+// Explicit ?next= wins; otherwise dealers/agencies/admins land on their dashboard
+const nextParam = new URLSearchParams(location.search).get("next");
+const nextUrl = nextParam || "index.html";
+async function goHome() {
+  if (nextParam) { location.href = nextParam; return; }
+  const u = await yayoUser();
+  location.href = yayoHomeFor(u);
+}
+
+// ── Login method: phone (primary) or email ──
+let METHOD = "phone";
+function setMethod(m) {
+  METHOD = m;
+  document.getElementById("m-phone").classList.toggle("on", m === "phone");
+  document.getElementById("m-email").classList.toggle("on", m === "email");
+  document.getElementById("phone-form").hidden = m !== "phone";
+  document.getElementById("email-form").hidden = m !== "email";
+  document.getElementById("auth-switch").hidden = m !== "email";
+}
+
+// ── Phone + SMS code (no password) ──
+let CODE_SENT = false;
+let FULL_PHONE = "";
+function phoneErr(msg) {
+  const el = document.getElementById("phone-error");
+  el.hidden = !msg;
+  el.textContent = msg || "";
+}
+function friendlyPhone(error) {
+  const m = (error && error.message) || "";
+  if (/provider|not enabled|disabled|unsupported/i.test(m)) return t("au_sms_unavail");
+  if (/rate limit|too many/i.test(m)) return t("au_err_rate");
+  if (/invalid|expired/i.test(m) && CODE_SENT) return t("au_code_bad");
+  if (/invalid/i.test(m)) return t("au_phone_bad");
+  return t("au_err_generic") + m;
+}
+async function doPhone(e) {
+  e.preventDefault();
+  phoneErr("");
+  const btn = document.getElementById("phone-btn");
+  const raw = document.getElementById("a-phone").value.replace(/[^\d]/g, "").replace(/^0+/, "");
+  if (!raw || raw.length < 6) { phoneErr(t("au_phone_bad")); return false; }
+  FULL_PHONE = document.getElementById("a-cc").value + raw;
+  btn.disabled = true;
+  if (!CODE_SENT) {
+    const error = await yayoSendSmsCode(FULL_PHONE);
+    btn.disabled = false;
+    if (error) { phoneErr(friendlyPhone(error)); return false; }
+    CODE_SENT = true;
+    document.getElementById("code-field").hidden = false;
+    document.getElementById("phone-btn").textContent = t("au_verify_btn");
+    document.getElementById("auth-sub").textContent = t("au_code_sent").replace("{phone}", FULL_PHONE);
+    document.getElementById("a-code").focus();
+    return false;
+  }
+  const code = document.getElementById("a-code").value.trim();
+  if (!code) { phoneErr(t("au_code_bad")); btn.disabled = false; return false; }
+  const { error } = await yayoVerifySmsCode(FULL_PHONE, code);
+  btn.disabled = false;
+  if (error) { phoneErr(friendlyPhone(error)); return false; }
+  if (typeof yayoTrack === "function") yayoTrack("login", { method: "phone" });
+  await goHome();
+  return false;
+}
+async function resendCode(e) {
+  e.preventDefault();
+  phoneErr("");
+  if (!FULL_PHONE) return false;
+  const error = await yayoSendSmsCode(FULL_PHONE);
+  if (error) phoneErr(friendlyPhone(error));
+  return false;
+}
 
 // Mode-dependent strings live here (not data-i18n) so signup/signin state survives language switches
 function updateModeText() {
@@ -116,6 +217,7 @@ yayoSB().auth.onAuthStateChange((event) => {
   if (event !== "PASSWORD_RECOVERY" || recoveryMode) return;
   recoveryMode = true;
   confirmShown = true;
+  setMethod("email");
   document.getElementById("auth-title").textContent = t("au_reset_t");
   document.getElementById("auth-sub").textContent = t("au_reset_p");
   document.getElementById("auth-btn").textContent = t("au_reset_btn");
@@ -160,7 +262,7 @@ async function doEmail(e) {
     btn.disabled = false;
     if (error) return showError(friendly(error)), false;
     alert(t("au_reset_done"));
-    location.href = nextUrl;
+    await goHome();
     return false;
   }
   if (signupMode) {
@@ -168,7 +270,7 @@ async function doEmail(e) {
     btn.disabled = false;
     if (error) return showError(friendly(error)), false;
     if (typeof yayoTrack === "function") yayoTrack("sign_up", { method: "email" });
-    if (data && data.session) { location.href = nextUrl; return false; }
+    if (data && data.session) { await goHome(); return false; }
     confirmShown = true;
     document.getElementById("auth-title").textContent = t("au_confirm_t");
     document.getElementById("auth-sub").textContent = t("au_confirm_p").replace("{email}", email);
@@ -177,10 +279,11 @@ async function doEmail(e) {
   const error = await yayoSignInEmail(email, pass);
   btn.disabled = false;
   if (error) return showError(friendly(error)), false;
-  location.href = nextUrl;
+  await goHome();
   return false;
 }
 
+setMethod("phone");
 updateModeText();
 </script>
 </body>

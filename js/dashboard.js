@@ -21,6 +21,7 @@ let ROUTES = [];      // agency routes [{city, price, days, promise}]
 let LISTINGS = [];
 let CONVOS = [];
 let CUR_CONVO = null;
+let UNREAD = {};      // conversation_id → unread count (for the badge)
 let PHOTOS = [];      // listing form photos: {url} saved | {file, preview} new
 // Profile media — same item shape as PHOTOS
 let D_LOGO = null, D_GAL = [];   // dealer logo + showroom photos
@@ -49,6 +50,17 @@ function demoConvos() {
 const DEMO_AGENCY = {
   id: "demo-agency", name: "TransAfrica Cargo", verified: true, country: "Dubai UAE"
 };
+function demoAgConvos() {
+  return [
+    { id: "ac-1", car_name: "transport · Toyota Prado 2021", buyer: "Acheteur · Kinshasa", msgs: [
+      { me: false, text: "Bonjour, vous pouvez livrer un Prado à Kinshasa ? Quel délai ?" }
+    ]},
+    { id: "ac-2", car_name: "transport", buyer: "Acheteur · Dakar", msgs: [
+      { me: false, text: "Est-ce que l'assurance est incluse dans votre prix vers Dakar ?" },
+      { me: true,  text: "Bonjour ! Oui, l'assurance de base est incluse. Comptez 30 jours port à port." }
+    ]}
+  ];
+}
 const DEMO_AG_META = {
   description: "Spécialiste du transport de véhicules Dubai → Afrique centrale et de l'Ouest depuis 2017. RoRo et conteneur, dédouanement assisté.",
   years: 8, languages: "Français, English, العربية",
@@ -72,6 +84,7 @@ async function init() {
     LISTINGS = window.YAYO_DEMO.slice(0, 6).map(c => ({ ...c, active: true, sold: false }));
     LISTINGS[4].sold = true; LISTINGS[5].active = false;
     CONVOS = demoConvos();
+    UNREAD = { "dc-1": 2 };
     show("dash-demo");
     document.getElementById("dash-logout").style.display = "none"; // .btn display overrides [hidden]
     enterDealer();
@@ -81,6 +94,8 @@ async function init() {
     AGENCY = { ...DEMO_AGENCY };
     AG_META = JSON.parse(JSON.stringify(DEMO_AG_META));
     ROUTES = JSON.parse(JSON.stringify(DEMO_AG_ROUTES));
+    CONVOS = demoAgConvos();
+    UNREAD = { "ac-1": 1 };
     show("dash-demo");
     document.getElementById("ag-logout").style.display = "none";
     enterAgency();
@@ -151,6 +166,8 @@ function enterDealer() {
   renderListings();
   renderConvoList();
   renderChips();
+  document.getElementById("msg-suggest").hidden = false; // Assistant Yayo = dealer tool
+  openRequestedTab(false);
 }
 
 function renderBadge() {
@@ -168,11 +185,14 @@ async function loadListings() {
   } catch (e) { LISTINGS = []; }
 }
 
+// Works for BOTH dashboards: dealer convos or agency convos
 async function loadConvos() {
   try {
+    const field = DEALER ? "dealer_id" : "agency_id";
+    const bizId = DEALER ? DEALER.id : AGENCY.id;
     const { data } = await yayoSB().from("conversations")
       .select("id, car_name, user_id, created_at")
-      .eq("dealer_id", DEALER.id).order("created_at", { ascending: false }).limit(50);
+      .eq(field, bizId).order("created_at", { ascending: false }).limit(50);
     CONVOS = (data || []).map(c => ({
       id: c.id,
       car_name: c.car_name || "—",
@@ -180,6 +200,17 @@ async function loadConvos() {
       msgs: null // loaded on open
     }));
   } catch (e) { CONVOS = []; }
+  await loadUnread();
+}
+
+// Unread counts per conversation (SQL §12) — badge in the list + stat card
+async function loadUnread() {
+  UNREAD = {};
+  if (DEMO || DEMO_AG) { if (CONVOS[0]) UNREAD[CONVOS[0].id] = 2; return; }
+  try {
+    const { data } = await yayoSB().rpc("yayo_unread_counts");
+    (data || []).forEach(r => { UNREAD[r.conversation_id] = Number(r.unread || 0); });
+  } catch (e) { /* setup.sql §12 not run yet — badges just stay hidden */ }
 }
 
 // ── Tabs ──
@@ -188,6 +219,12 @@ function showTab(name) {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
   document.querySelectorAll("#dash-dealer .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+}
+
+// Deep link from the header ✉ icon: dashboard.html?tab=messages
+function openRequestedTab(isAgency) {
+  if (new URLSearchParams(location.search).get("tab") !== "messages") return;
+  if (isAgency) showAgTab("ag-messages"); else showTab("messages");
 }
 
 // ── Profile media (dealer + agency): pick from device → Supabase Storage ──
@@ -272,6 +309,8 @@ function renderStats() {
   document.getElementById("stat-active").textContent = LISTINGS.filter(l => l.active && !l.sold).length;
   document.getElementById("stat-sold").textContent = LISTINGS.filter(l => l.sold).length;
   document.getElementById("stat-convos").textContent = CONVOS.length;
+  document.getElementById("stat-unread").textContent = Object.values(UNREAD).reduce((s, n) => s + n, 0);
+  document.getElementById("stat-views").textContent = LISTINGS.reduce((s, l) => s + (l.views || 0), 0);
 }
 
 function renderOverview() {
@@ -305,6 +344,7 @@ function renderListings() {
       </td>
       <td>${fmt(l.price)}</td>
       <td>${l.year || "—"}</td>
+      <td>${l.views || 0}</td>
       <td><span class="dash-st ${cls}">${lbl}</span></td>
       <td class="dash-td-actions">
         <button onclick="editListing('${l.id}')">${t("d_edit")}</button>
@@ -448,10 +488,14 @@ async function delListing(id) {
 function renderConvoList() {
   const el = document.getElementById("msg-list");
   if (!CONVOS.length) { el.innerHTML = `<p class="dash-empty">${t("d_no_convos")}</p>`; return; }
-  el.innerHTML = CONVOS.map(c => `
-    <button class="dash-convo${CUR_CONVO && CUR_CONVO.id === c.id ? " on" : ""}" onclick="openConvo('${c.id}')">
+  el.innerHTML = CONVOS.map(c => {
+    const n = UNREAD[c.id] || 0;
+    return `
+    <button class="dash-convo${CUR_CONVO && CUR_CONVO.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="openConvo('${c.id}')">
       <b>${escapeHtml(c.car_name)}</b><span>${escapeHtml(c.buyer)}</span>
-    </button>`).join("");
+      ${n ? `<i class="unread-dot">${n}</i>` : ""}
+    </button>`;
+  }).join("");
 }
 
 // Suggested replies — Assistant Yayo Mode 2: dealer reviews, then sends.
@@ -558,6 +602,14 @@ async function conditionReport() {
 async function openConvo(id) {
   CUR_CONVO = CONVOS.find(c => String(c.id) === String(id));
   if (!CUR_CONVO) return;
+  // Opening = reading: clear the unread badge on both the list and the header
+  if (UNREAD[id]) {
+    UNREAD[id] = 0;
+    if (!DEMO && !DEMO_AG) {
+      try { yayoSB().rpc("yayo_mark_read", { cid: id }).then(() => { if (window.yayoRefreshUnread) window.yayoRefreshUnread(); }, () => {}); } catch (e) {}
+    }
+    renderStats();
+  }
   renderConvoList();
   hide("msg-empty"); show("msg-thread");
   document.getElementById("msg-title").textContent = CUR_CONVO.car_name;
@@ -598,7 +650,7 @@ async function dashSend(e) {
   input.value = "";
   addMsg(true, text);
   CUR_CONVO.msgs.push({ me: true, text });
-  if (!DEMO) {
+  if (!DEMO && !DEMO_AG) {
     try {
       await yayoSB().from("messages").insert({ conversation_id: CUR_CONVO.id, sender_id: USER.id, content: text });
     } catch (err) { /* shown locally; will sync on next load */ }
@@ -655,6 +707,7 @@ async function agencyInit() {
   const parsed = parseAgencyData(AGENCY.routes);
   AG_META = parsed.meta;
   ROUTES = parsed.routes;
+  await loadConvos();
   enterAgency();
 }
 
@@ -678,12 +731,17 @@ function enterAgency() {
   document.getElementById("agf-desc").value = AG_META.description || "";
   renderRoutes();
   renderOffices();
+  renderConvoList();
+  document.getElementById("msg-suggest").hidden = true; // Assistant Yayo for agencies comes later
+  openRequestedTab(true);
 }
 
 function showAgTab(name) {
   ["ag-routes", "ag-profile"].forEach(tb => {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
+  // The messages panel is shared with the dealer dashboard
+  document.getElementById("tab-messages").hidden = name !== "ag-messages";
   document.querySelectorAll("#dash-agency-app .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
 }
 
@@ -1145,7 +1203,7 @@ async function adLoadUsers() {
 function adRenderUsers() {
   document.getElementById("ad-user-rows").innerHTML = AD_USERS.map(u => `
     <tr>
-      <td class="ad-contact">${escapeHtml(u.email || "—")}</td>
+      <td class="ad-contact">${escapeHtml(u.email || u.phone || "—")}${u.email && u.phone ? `<br>📱 ${escapeHtml(u.phone)}` : ""}${!u.email && u.phone ? ` <span class="dash-st sold">📱 SMS</span>` : ""}</td>
       <td>${adDate(u.created_at)}</td>
       <td>${adDate(u.last_sign_in_at)}</td>
       <td><span class="dash-st ${u.banned ? "off" : "active"}">${u.banned ? t("ad_st_banned") : t("ad_st_ok")}</span></td>

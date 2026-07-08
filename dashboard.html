@@ -82,6 +82,7 @@ gtag('config', 'G-NR2LTEVKET');
 
       <div class="dash-tabs" role="tablist">
         <button class="on" data-tab="ag-routes" onclick="showAgTab('ag-routes')" data-i18n="ag_tab_routes">Mes routes</button>
+        <button data-tab="ag-messages" onclick="showAgTab('ag-messages')" data-i18n="d_tab_messages">Messages</button>
         <button data-tab="ag-profile" onclick="showAgTab('ag-profile')" data-i18n="ag_tab_profile">Profil</button>
       </div>
 
@@ -429,6 +430,8 @@ gtag('config', 'G-NR2LTEVKET');
           <div class="dash-stat"><span class="num" id="stat-active">0</span><span class="lbl" data-i18n="d_stat_active">Annonces en ligne</span></div>
           <div class="dash-stat"><span class="num" id="stat-sold">0</span><span class="lbl" data-i18n="d_stat_sold">Vendues</span></div>
           <div class="dash-stat"><span class="num" id="stat-convos">0</span><span class="lbl" data-i18n="d_stat_convos">Conversations</span></div>
+          <div class="dash-stat"><span class="num" id="stat-unread">0</span><span class="lbl" data-i18n="d_stat_unread">Messages non lus</span></div>
+          <div class="dash-stat"><span class="num" id="stat-views">0</span><span class="lbl" data-i18n="d_stat_views">Vues totales</span></div>
         </div>
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="d_recent">Dernières conversations</h2>
@@ -509,6 +512,7 @@ gtag('config', 'G-NR2LTEVKET');
                   <th data-i18n="d_th_car">Voiture</th>
                   <th data-i18n="d_th_price">Prix</th>
                   <th data-i18n="d_th_year">Année</th>
+                  <th data-i18n="ad_th_views">Vues</th>
                   <th data-i18n="d_th_status">Statut</th>
                   <th data-i18n="d_th_actions">Actions</th>
                 </tr>
@@ -520,7 +524,9 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
       </section>
 
-      <!-- Messages -->
+    </div>
+
+    <!-- Messages — SHARED by dealer and agency dashboards -->
       <section id="tab-messages" hidden>
         <div class="dash-msg-layout">
           <div class="vd-card dash-convos" id="msg-list"></div>
@@ -555,7 +561,6 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
       </section>
 
-    </div>
   </div>
 </main>
 

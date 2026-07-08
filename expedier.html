@@ -247,6 +247,8 @@ async function doRegister(e) {
   try {
     await yayoSB().from("shipping_agencies").insert({ name: company, email, whatsapp: phone, country: "Dubai UAE", verified: false });
   } catch (ignored) {}
+  // Account active right away (no email confirmation)? Straight to the dashboard.
+  if (data && data.session) { location.href = "dashboard.html"; return false; }
   ok.hidden = false;
   ok.textContent = t("v_ok");
   e.target.reset();

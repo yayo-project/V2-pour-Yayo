@@ -581,3 +581,28 @@ body.no-scroll{overflow:hidden}
   .ad-two-col{grid-template-columns:1fr}
   .ad-stats-grid{grid-template-columns:1fr 1fr}
 }
+
+/* ── Phone login + password eye + unread badges (auth & UX update) ── */
+.auth-methods{display:flex;gap:8px;margin:16px 0 14px}
+.auth-methods button{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:10px 8px;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--ink-2);background:#fff;transition:.15s;cursor:pointer}
+.auth-methods button.on{border-color:var(--teal-bright);background:var(--teal-tint);color:var(--teal-dark)}
+.phone-row{display:flex;gap:8px}
+.phone-row select{border:1.5px solid var(--line);border-radius:10px;padding:11px 8px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);outline:none}
+.phone-row select:focus{border-color:var(--teal-bright)}
+.phone-row input{flex:1}
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:44px}
+[dir="rtl"] .pw-wrap input{padding-right:13px;padding-left:44px}
+.pw-eye{position:absolute;top:0;right:0;height:100%;width:42px;background:none;border:none;font-size:16px;cursor:pointer;opacity:.55;transition:.15s}
+[dir="rtl"] .pw-eye{right:auto;left:0}
+.pw-eye:hover{opacity:1}
+.pw-eye.off{opacity:1}
+.msg-link{position:relative;color:#fff;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
+.msg-link:hover{color:var(--teal-bright)}
+.msg-count{position:absolute;top:2px;right:2px;background:#E5484D;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:16px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
+.dash-convo{position:relative}
+.dash-convo.unread b{font-weight:800;color:var(--ink)}
+.unread-dot{position:absolute;top:10px;right:10px;background:#E5484D;color:#fff;font-size:10.5px;font-weight:800;min-width:18px;height:18px;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:0 5px;font-style:normal}
+[dir="rtl"] .unread-dot{right:auto;left:10px}
+.phone-row select{flex:0 0 auto;max-width:118px}
+.phone-row input{min-width:0}
