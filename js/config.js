@@ -18,9 +18,8 @@ const YAYO_CONFIG = {
   DEFAULT_DEST: "kinshasa",
   FEATURED_LIMIT: 6,
 
-  // Google Analytics 4 — paste your Measurement ID here (looks like "G-XXXXXXXXXX").
-  // Leave empty to disable tracking. Get one free at https://analytics.google.com
-  GA4_ID: ""
+  // Google Analytics 4 — the gtag snippet in each page's <head> uses this same ID.
+  GA4_ID: "G-NR2LTEVKET"
 };
 
 // Business avatar: logo image if uploaded, otherwise clean initials circle.

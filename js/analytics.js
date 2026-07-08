@@ -6,6 +6,7 @@
 (function () {
   var id = window.YAYO_CONFIG && YAYO_CONFIG.GA4_ID;
   if (!id) return;
+  if (window.gtag) return; // already initialized by the <head> snippet — never double-count
   var s = document.createElement("script");
   s.async = true;
   s.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(id);
