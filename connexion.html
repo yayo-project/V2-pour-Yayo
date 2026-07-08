@@ -49,6 +49,7 @@
       </div>
       <div class="auth-error" id="auth-error" hidden></div>
       <button type="submit" class="btn btn-solid btn-block" id="auth-btn">Se connecter</button>
+      <p class="auth-switch" id="forgot-row" style="margin-top:10px"><a href="#" id="forgot-link" onclick="return doForgot(event)" data-i18n="au_forgot">Mot de passe oublié ?</a></p>
     </form>
 
     <p class="auth-switch" id="auth-switch">
@@ -79,10 +80,43 @@ window.onLangChange = updateModeText;
 function switchMode(e) {
   e.preventDefault();
   signupMode = !signupMode;
+  document.getElementById("forgot-row").hidden = signupMode;
   updateModeText();
   showError("");
   return false;
 }
+
+// "Mot de passe oublié" — sends the Supabase reset email (returns to THIS site)
+async function doForgot(e) {
+  e.preventDefault();
+  showError("");
+  const email = document.getElementById("a-email").value.trim();
+  if (!email) return showError(t("au_forgot_email")), false;
+  const error = await yayoResetPassword(email);
+  if (error) return showError(friendly(error)), false;
+  confirmShown = true;
+  document.getElementById("auth-title").textContent = t("au_reset_sent_t");
+  document.getElementById("auth-sub").textContent = t("au_reset_sent_p").replace("{email}", email);
+  return false;
+}
+
+// When the user comes back from the reset-password email, Supabase fires
+// PASSWORD_RECOVERY — switch the form into "choose a new password" mode.
+let recoveryMode = false;
+yayoSB().auth.onAuthStateChange((event) => {
+  if (event !== "PASSWORD_RECOVERY" || recoveryMode) return;
+  recoveryMode = true;
+  confirmShown = true;
+  document.getElementById("auth-title").textContent = t("au_reset_t");
+  document.getElementById("auth-sub").textContent = t("au_reset_p");
+  document.getElementById("auth-btn").textContent = t("au_reset_btn");
+  document.getElementById("a-email").closest(".field").hidden = true;
+  document.getElementById("a-email").required = false;
+  document.getElementById("a-pass").value = "";
+  document.getElementById("a-pass").autocomplete = "new-password";
+  document.getElementById("forgot-row").hidden = true;
+  document.getElementById("auth-switch").hidden = true;
+});
 
 function showError(msg) {
   const el = document.getElementById("auth-error");
@@ -112,6 +146,14 @@ async function doEmail(e) {
   const pass = document.getElementById("a-pass").value;
   const btn = document.getElementById("auth-btn");
   btn.disabled = true;
+  if (recoveryMode) {
+    const { error } = await yayoSB().auth.updateUser({ password: pass });
+    btn.disabled = false;
+    if (error) return showError(friendly(error)), false;
+    alert(t("au_reset_done"));
+    location.href = nextUrl;
+    return false;
+  }
   if (signupMode) {
     const { data, error } = await yayoSignUpEmail(email, pass, { role: "buyer" });
     btn.disabled = false;

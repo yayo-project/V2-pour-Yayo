@@ -12,9 +12,14 @@ async function yayoUser() {
   catch (e) { return null; }
 }
 
+// Always send auth emails/OAuth back to the site the user is on right now
+// (deploy preview, yayo.digital, localhost) — never a hardcoded domain.
+function yayoRedirectUrl(page) {
+  return location.origin + location.pathname.replace(/[^/]*$/, "") + (page || "index.html");
+}
+
 async function yayoSignInGoogle(next) {
-  const redirectTo = location.origin + location.pathname.replace(/[^/]*$/, "") + (next || "index.html");
-  const { error } = await yayoSB().auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+  const { error } = await yayoSB().auth.signInWithOAuth({ provider: "google", options: { redirectTo: yayoRedirectUrl(next) } });
   return error;
 }
 
@@ -24,8 +29,16 @@ async function yayoSignInEmail(email, password) {
 }
 
 async function yayoSignUpEmail(email, password, meta) {
-  const { data, error } = await yayoSB().auth.signUp({ email, password, options: { data: meta || {} } });
+  const { data, error } = await yayoSB().auth.signUp({
+    email, password,
+    options: { data: meta || {}, emailRedirectTo: yayoRedirectUrl("connexion.html") }
+  });
   return { data, error };
+}
+
+async function yayoResetPassword(email) {
+  const { error } = await yayoSB().auth.resetPasswordForEmail(email, { redirectTo: yayoRedirectUrl("connexion.html") });
+  return error;
 }
 
 async function yayoSignOut() {
