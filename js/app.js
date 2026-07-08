@@ -25,7 +25,7 @@ function landedTotal(price, destKey) {
 // ── Load real listings from Supabase ──
 async function loadCars() {
   try {
-    const { data, error } = await sb
+    let { data, error } = await sb
       .from("listings")
       .select("*, dealers(*)")
       .eq("active", true)
@@ -34,6 +34,8 @@ async function loadCars() {
       .limit(YAYO_CONFIG.FEATURED_LIMIT);
 
     if (!error && data && data.length > 0) {
+      // never show admin-hidden listings or suspended dealers to buyers
+      data = data.filter(l => !l.hidden && !(l.dealers && l.dealers.suspended));
       CARS = data.map(l => ({
         id: l.id,
         car_name: l.car_name,
@@ -93,6 +95,9 @@ function setDest(el) {
   document.querySelectorAll(".dpill").forEach(p => p.classList.remove("on"));
   el.classList.add("on");
   CUR = el.dataset.city;
+  // top-destinations counter (admin stats) + traffic event — best effort
+  try { sb.rpc("yayo_dest", { c: CUR }).then(() => {}, () => {}); } catch (e) {}
+  if (typeof yayoTrack === "function") yayoTrack("choose_destination", { city: CUR });
   renderCars();
   updateCostCard();
 }

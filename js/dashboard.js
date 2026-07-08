@@ -87,21 +87,12 @@ async function init() {
     return;
   }
   if (DEMO_ADMIN) {
-    AD_DEALERS = [
-      { id: "adm-d1", name: "Mukoma Auto", email: "contact@mukoma-auto.ae", whatsapp: "+971 50 000 0000", city: "Dubai", verified: true },
-      { id: "adm-d2", name: "Kabeya Auto", email: "kabeya@example.com", whatsapp: "+971 55 111 1111", city: "Dubai", verified: false },
-      { id: "adm-d3", name: "Al Aweer Motors", email: "sales@alaweer.example", whatsapp: null, city: "Dubai", verified: false }
-    ];
-    AD_AGS = [
-      { id: "adm-a1", name: "TransAfrica Cargo", email: "ops@transafrica.example", whatsapp: "+971 52 222 2222", country: "Dubai UAE", verified: true },
-      { id: "adm-a2", name: "Gulf-Africa Shipping", email: "info@gulfafrica.example", whatsapp: null, country: "Dubai UAE", verified: false }
-    ];
-    AD_STATS = { dealers: 3, dealers_v: 1, ags: 2, ags_v: 1, listings: 12, sold: 3, convos: 9, reviews: 4 };
+    adminDemoData();
     show("dash-demo");
     hide("dash-loading");
     show("dash-admin");
     document.getElementById("ad-logout").style.display = "none";
-    renderAdmin();
+    adminEnter();
     return;
   }
 
@@ -110,7 +101,12 @@ async function init() {
   const role = (USER.user_metadata && USER.user_metadata.role) || "";
 
   hide("dash-loading");
-  if (role === "admin") { show("dash-admin"); await adminInit(); return; }
+  // Admin? The admin_users table is the source of truth; the old
+  // user_metadata "admin" flag still works as super admin (pre-SQL fallback).
+  let adRole = null;
+  try { const { data } = await yayoSB().rpc("yayo_admin_role"); adRole = data || null; } catch (e) { adRole = null; }
+  if (!adRole && role === "admin") adRole = "super_admin";
+  if (adRole) { AD_ROLE = adRole; show("dash-admin"); await adminInit(); adminEnter(); return; }
   if (role === "agency") { await agencyInit(); return; }
 
   // Dealer row is linked by email (fallback: company name from signup)
@@ -148,6 +144,7 @@ function enterDealer() {
   D_GAL = yayoPhotoList(DEALER.photos).map(u => ({ url: u }));
   logoView(D_LOGO, "pf-logo-view", DEALER.name);
   galThumbs(D_GAL, "pf-thumbs", "rmDealerPic");
+  licenseState("dealer");
   renderBadge();
   renderStats();
   renderOverview();
@@ -672,6 +669,7 @@ function enterAgency() {
   A_GAL = yayoPhotoList(AGENCY.photos).map(u => ({ url: u }));
   logoView(A_LOGO, "agl-view", AGENCY.name);
   galThumbs(A_GAL, "agg-thumbs", "rmAgencyPic");
+  licenseState("agency");
   document.getElementById("agf-name").value = AGENCY.name || "";
   document.getElementById("agf-country").value = AGENCY.country || "";
   document.getElementById("agf-years").value = AG_META.years || "";
@@ -818,99 +816,513 @@ async function saveAgProfile(e) {
   return false;
 }
 
-// ── Admin: verify dealers & agencies + platform stats ──
-let AD_DEALERS = [], AD_AGS = [], AD_STATS = {};
+// ═══════════════════════════════════════════════
+// ADMIN — the control room.
+// All mutations go through security-definer RPCs
+// (supabase/setup.sql §11) which check the caller's
+// role and write the audit log. Roles:
+// super_admin > admin_dealers / admin_support / admin_stats
+// ═══════════════════════════════════════════════
+let AD_ROLE = null;
+let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null;
+
+const AD_PERMS = {
+  super_admin:   ["stats", "dealers", "agencies", "listings", "users", "team", "log"],
+  admin_dealers: ["dealers", "agencies"],
+  admin_support: ["listings", "users"],
+  admin_stats:   ["stats"]
+};
+function adCan(section) { return (AD_PERMS[AD_ROLE] || []).includes(section); }
+
+function adminDemoData() {
+  AD_ROLE = "super_admin";
+  const day = 86400000, now = Date.now();
+  const iso = d => new Date(now - d * day).toISOString();
+  AD_DEALERS = [
+    { id: "adm-d1", name: "Mukoma Auto", email: "contact@mukoma-auto.ae", whatsapp: "+971 50 000 0000", city: "Dubai", verified: true, suspended: false, license_path: "adm-d1/license-demo.pdf", created_at: iso(90) },
+    { id: "adm-d2", name: "Kabeya Auto", email: "kabeya@example.com", whatsapp: "+971 55 111 1111", city: "Dubai", verified: false, suspended: false, license_path: "adm-d2/license-demo.jpg", created_at: iso(12) },
+    { id: "adm-d3", name: "Al Aweer Motors", email: "sales@alaweer.example", whatsapp: null, city: "Dubai", verified: false, suspended: true, license_path: null, rejected_reason: "Licence illisible", created_at: iso(30) }
+  ];
+  AD_AGS = [
+    { id: "adm-a1", name: "TransAfrica Cargo", email: "ops@transafrica.example", whatsapp: "+971 52 222 2222", country: "Dubai UAE", verified: true, suspended: false, license_path: "adm-a1/license-demo.pdf", created_at: iso(60) },
+    { id: "adm-a2", name: "Gulf-Africa Shipping", email: "info@gulfafrica.example", whatsapp: null, country: "Dubai UAE", verified: false, suspended: false, license_path: null, created_at: iso(5) }
+  ];
+  AD_LISTINGS = window.YAYO_DEMO.slice(0, 8).map((c, i) => ({
+    id: c.id, car_name: c.car_name, price: c.price, views: [412, 300, 255, 190, 122, 80, 34, 12][i],
+    active: i !== 6, sold: i === 5, hidden: i === 7, dealer_id: i % 2 ? "adm-d2" : "adm-d1",
+    dealers: { name: i % 2 ? "Kabeya Auto" : "Mukoma Auto" }
+  }));
+  AD_USERS = [
+    { id: "u1", email: "acheteur.kin@example.com", created_at: iso(2), last_sign_in_at: iso(0), banned: false },
+    { id: "u2", email: "marie.douala@example.com", created_at: iso(9), last_sign_in_at: iso(3), banned: false },
+    { id: "u3", email: "spam.account@example.com", created_at: iso(20), last_sign_in_at: iso(18), banned: true }
+  ];
+  AD_TEAM = [
+    { email: "yayoapp20@gmail.com", role: "super_admin", created_at: iso(90) },
+    { email: "assistant@example.com", role: "admin_dealers", created_at: iso(10) }
+  ];
+  AD_LOG = [
+    { admin_email: "yayoapp20@gmail.com", action: "verify", subject_type: "dealer", detail: null, created_at: iso(1) },
+    { admin_email: "assistant@example.com", action: "hide_listing", subject_type: "listing", detail: null, created_at: iso(2) },
+    { admin_email: "yayoapp20@gmail.com", action: "ban_user", subject_type: "user", detail: null, created_at: iso(3) }
+  ];
+  AD_STATS = {
+    users_total: 148, signups_today: 4, signups_7d: 23, signups_30d: 61, active_7d: 37, active_30d: 84,
+    dealers: 3, dealers_verified: 1, agencies: 2, agencies_verified: 1,
+    listings_total: 8, listings_active: 6, listings_new_7d: 3, sold: 1,
+    messages: 212, conversations: 39, favorites: 57, reviews: 4,
+    signups_by_day: Array.from({ length: 30 }, (_, i) => ({ d: new Date(now - (29 - i) * day).toISOString().slice(0, 10), n: Math.max(0, Math.round(2 + 2 * Math.sin(i / 3)) + (i % 7 === 0 ? 2 : 0)) })),
+    top_cars: AD_LISTINGS.slice(0, 5).map(l => ({ id: l.id, car_name: l.car_name, views: l.views })),
+    top_destinations: [{ city: "kinshasa", picks: 96 }, { city: "douala", picks: 41 }, { city: "abidjan", picks: 28 }, { city: "dakar", picks: 17 }]
+  };
+}
+
+// Real data — each section loads independently so one failure never blanks the rest
+async function adminInit() {
+  const sb = yayoSB();
+  const jobs = [];
+  if (adCan("dealers")) jobs.push(
+    sb.from("dealers").select("*").order("created_at", { ascending: false }).limit(500).then(r => { AD_DEALERS = r.data || []; }),
+    sb.from("shipping_agencies").select("*").order("created_at", { ascending: false }).limit(500).then(r => { AD_AGS = r.data || []; })
+  );
+  if (adCan("dealers") || adCan("listings")) jobs.push(
+    sb.from("listings").select("id, car_name, price, views, active, sold, hidden, dealer_id, dealers(name)")
+      .order("created_at", { ascending: false }).limit(1000).then(r => { AD_LISTINGS = r.data || []; })
+  );
+  if (adCan("team")) jobs.push(sb.from("admin_users").select("*").order("created_at").then(r => { AD_TEAM = r.data || []; }));
+  if (adCan("log")) jobs.push(sb.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => { AD_LOG = r.data || []; }));
+  if (adCan("stats")) jobs.push(sb.rpc("admin_stats").then(r => { AD_STATS = r.data || null; adSqlHint(r.error); }));
+  if (adCan("users")) jobs.push(adLoadUsers());
+  try { await Promise.all(jobs); } catch (e) { adSqlHint(e); }
+}
+
+// Missing table/function = setup.sql not run yet → one clear banner
+function adSqlHint(e) {
+  if (!e) return;
+  const m = (e.message || String(e)).toLowerCase();
+  if (/could not find|does not exist|schema cache|function/.test(m)) {
+    const el = document.getElementById("ad-sql-hint");
+    el.hidden = false;
+    el.textContent = t("ad_sql_hint");
+  }
+}
+
+function adminEnter() {
+  const tabs = (AD_PERMS[AD_ROLE] || []);
+  document.getElementById("ad-tabs").innerHTML = tabs.map((s, i) =>
+    `<button class="${i === 0 ? "on" : ""}" data-tab="ad-${s === "stats" ? "stats" : s}" onclick="showAdTab('ad-${s}')" >${t("ad_tab_" + (s === "stats" ? "stats" : s))}</button>`).join("");
+  renderAdmin();
+  if (tabs.length) showAdTab("ad-" + tabs[0]);
+}
 
 function showAdTab(name) {
-  ["ad-dealers", "ad-agencies", "ad-stats"].forEach(tb => {
-    document.getElementById("tab-" + tb).hidden = tb !== name;
+  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-users", "ad-team", "ad-log"].forEach(tb => {
+    const el = document.getElementById("tab-" + tb);
+    if (el) el.hidden = tb !== name;
   });
   document.querySelectorAll("#dash-admin .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
 }
 
-async function adminCount(table, mod) {
-  try {
-    let q = yayoSB().from(table).select("id", { count: "exact", head: true });
-    if (mod) q = mod(q);
-    const { count, error } = await q;
-    if (error) throw error;
-    return count || 0;
-  } catch (e) { return null; }
-}
-
-async function adminInit() {
-  try {
-    const sb = yayoSB();
-    const [d, a] = await Promise.all([
-      sb.from("dealers").select("*").order("created_at", { ascending: false }).limit(300),
-      sb.from("shipping_agencies").select("*").order("created_at", { ascending: false }).limit(300)
-    ]);
-    AD_DEALERS = d.data || [];
-    AD_AGS = a.data || [];
-  } catch (e) { AD_DEALERS = []; AD_AGS = []; }
-  AD_STATS = {
-    dealers: AD_DEALERS.length,
-    dealers_v: AD_DEALERS.filter(x => x.verified).length,
-    ags: AD_AGS.length,
-    ags_v: AD_AGS.filter(x => x.verified).length,
-    listings: await adminCount("listings", q => q.eq("active", true).eq("sold", false)),
-    sold: await adminCount("listings", q => q.eq("sold", true)),
-    convos: await adminCount("conversations"),
-    reviews: await adminCount("reviews")
-  };
-  renderAdmin();
-}
-
-function adminRow(x, type) {
-  const contact = [x.email, x.whatsapp].filter(Boolean).map(escapeHtml).join("<br>") || "—";
-  const place = escapeHtml(x.city || x.country || "");
-  return `
-  <tr>
-    <td class="dash-td-car">${yayoAvatarHtml(x.name, x.logo_url)} <b>${escapeHtml(x.name)}</b>${place ? `<span class="ad-place">${place}</span>` : ""}</td>
-    <td class="ad-contact">${contact}</td>
-    <td><span class="dash-st ${x.verified ? "active" : "off"}">${x.verified ? "✓ " + t("ad_st_verified") : t("ad_st_pending")}</span></td>
-    <td class="dash-td-actions">
-      <button onclick="adminVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
-    </td>
-  </tr>`;
-}
-
 function renderAdmin() {
-  document.getElementById("ad-dealer-rows").innerHTML = AD_DEALERS.map(x => adminRow(x, "dealer")).join("");
-  document.getElementById("ad-dealers-empty").hidden = AD_DEALERS.length > 0;
-  document.getElementById("ad-ag-rows").innerHTML = AD_AGS.map(x => adminRow(x, "agency")).join("");
-  document.getElementById("ad-ag-empty").hidden = AD_AGS.length > 0;
-  const s = AD_STATS;
-  const fmtN = v => (v === null || v === undefined) ? "—" : v;
-  document.getElementById("ad-stats").innerHTML = [
-    ["ad_stat_dealers", s.dealers], ["ad_stat_dealers_v", s.dealers_v],
-    ["ad_stat_ags", s.ags], ["ad_stat_ags_v", s.ags_v],
-    ["ad_stat_listings", s.listings], ["ad_stat_sold", s.sold],
-    ["ad_stat_convos", s.convos], ["ad_stat_reviews", s.reviews]
-  ].map(([k, v]) => `<div class="dash-stat"><span class="num">${fmtN(v)}</span><span class="lbl">${t(k)}</span></div>`).join("");
+  if (adCan("dealers")) { adRenderBiz("dealer"); adRenderBiz("agency"); }
+  if (adCan("listings")) adRenderListings();
+  if (adCan("users")) adRenderUsers();
+  if (adCan("team")) adRenderTeam();
+  if (adCan("log")) adRenderLog();
+  if (adCan("stats")) adRenderStats();
 }
 
-async function adminVerify(type, id, val) {
-  const list = type === "dealer" ? AD_DEALERS : AD_AGS;
-  const errEl = document.getElementById(type === "dealer" ? "ad-dealers-err" : "ad-ag-err");
-  errEl.hidden = true;
-  const x = list.find(r => String(r.id) === String(id));
+function adDate(s) {
+  if (!s) return "—";
+  try { return new Date(s).toLocaleDateString(YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR"); } catch (e) { return "—"; }
+}
+function adConfirm(key, name) { return confirm(t(key).replace("{name}", name || "")); }
+async function adRpc(fn, args) {
+  const { error } = await yayoSB().rpc(fn, args);
+  if (error) throw error;
+}
+function adFail(errId, e) {
+  adSqlHint(e);
+  const el = document.getElementById(errId);
+  el.hidden = false;
+  el.textContent = t("au_err_generic") + (e.message || e);
+}
+
+// ── Dealers & agencies ──
+function bizList(type) { return type === "dealer" ? AD_DEALERS : AD_AGS; }
+function bizStatus(x) {
+  if (x.suspended) return ["off", t("ad_st_suspended")];
+  if (x.verified) return ["active", "✓ " + t("ad_st_verified")];
+  return ["sold", t("ad_st_pending")];
+}
+function bizActionsHtml(type, x) {
+  return `
+    <button onclick="adOpenBiz('${type}','${x.id}')">${t("ad_act_profile")}</button>
+    <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
+    <button onclick="adVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
+    ${x.verified ? "" : `<button onclick="adReject('${type}','${x.id}')">${t("ad_act_reject")}</button>`}
+    <button onclick="adSuspend('${type}','${x.id}',${x.suspended ? "false" : "true"})">${x.suspended ? t("ad_act_unsuspend") : t("ad_act_suspend")}</button>
+    <button class="danger" onclick="adDeleteBiz('${type}','${x.id}')">${t("ad_act_delete")}</button>`;
+}
+
+function adRenderBiz(type) {
+  const p = type === "dealer" ? "d" : "a";
+  const q = (document.getElementById(`ad-${p}-search`).value || "").toLowerCase();
+  const f = document.getElementById(`ad-${p}-filter`).value;
+  const rows = bizList(type).filter(x => {
+    if (q && !((x.name || "") + " " + (x.email || "")).toLowerCase().includes(q)) return false;
+    if (f === "verified") return x.verified && !x.suspended;
+    if (f === "pending") return !x.verified && !x.suspended;
+    if (f === "suspended") return !!x.suspended;
+    return true;
+  });
+  const nListings = id => AD_LISTINGS.filter(l => String(l.dealer_id) === String(id)).length;
+  document.getElementById(type === "dealer" ? "ad-dealer-rows" : "ad-ag-rows").innerHTML = rows.map(x => {
+    const [cls, lbl] = bizStatus(x);
+    const contact = [x.email, x.whatsapp].filter(Boolean).map(escapeHtml).join("<br>") || "—";
+    const place = escapeHtml(x.city || x.country || "");
+    const extra = type === "dealer" ? ` · ${nListings(x.id)} ${t("ad_d_listings")}` : "";
+    return `
+    <tr>
+      <td class="dash-td-car">${yayoAvatarHtml(x.name, x.logo_url)} <b>${escapeHtml(x.name)}</b><span class="ad-place">${place}${extra}</span></td>
+      <td class="ad-contact">${contact}</td>
+      <td><span class="dash-st ${cls}">${lbl}</span></td>
+      <td class="dash-td-actions">${bizActionsHtml(type, x)}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById(type === "dealer" ? "ad-dealers-empty" : "ad-ag-empty").hidden = rows.length > 0;
+}
+
+// Full profile panel — review everything before deciding
+function adOpenBiz(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  const box = document.getElementById(type === "dealer" ? "ad-d-detail" : "ad-a-detail");
+  if (!x) { box.innerHTML = ""; return; }
+  const meta = type === "agency" ? parseAgencyData(x.routes).meta : {};
+  const gal = yayoPhotoList(x.photos);
+  const nL = AD_LISTINGS.filter(l => String(l.dealer_id) === String(x.id)).length;
+  const line = (lbl, val) => val ? `<p class="ad-dl"><b>${t(lbl)}</b> ${escapeHtml(String(val))}</p>` : "";
+  box.innerHTML = `
+  <div class="vd-card ad-detail">
+    <div class="ad-detail-head">
+      ${yayoAvatarHtml(x.name, x.logo_url, true)}
+      <div>
+        <h3>${escapeHtml(x.name)} <span class="dash-st ${bizStatus(x)[0]}">${bizStatus(x)[1]}</span></h3>
+        <p class="ad-place">${escapeHtml(x.email || "")} ${x.whatsapp ? "· " + escapeHtml(x.whatsapp) : ""} · ${t("ad_d_created")} ${adDate(x.created_at)}</p>
+      </div>
+      <button class="btn btn-ghost-dark" onclick="document.getElementById('${type === "dealer" ? "ad-d-detail" : "ad-a-detail"}').innerHTML=''">${t("ad_act_close")}</button>
+    </div>
+    ${line("ad_d_desc", meta.description)}
+    ${line("ad_d_pickup", meta.pickup)}
+    ${line("ad_d_langs", meta.languages)}
+    ${line("ad_d_years", meta.years)}
+    ${x.rejected_reason ? `<p class="ad-dl ad-reason"><b>${t("ad_d_reason")}</b> ${escapeHtml(x.rejected_reason)}</p>` : ""}
+    ${type === "dealer" ? `<p class="ad-dl"><b>${nL}</b> ${t("ad_d_listings")}</p>` : ""}
+    ${gal.length ? `<div class="up-thumbs">${gal.slice(0, 6).map(u => `<div class="up-thumb"><img src="${escapeHtml(u)}" alt=""></div>`).join("")}</div>` : ""}
+    <div class="dash-td-actions ad-detail-actions">${bizActionsHtml(type, x)}</div>
+  </div>`;
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// The trust gate: open the uploaded trade license (private bucket, signed URL)
+async function adLicense(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x || !x.license_path) { alert(t("ad_no_license")); return; }
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  try {
+    const { data, error } = await yayoSB().storage.from("licenses").createSignedUrl(x.license_path, 600);
+    if (error) throw error;
+    window.open(data.signedUrl, "_blank", "noopener");
+  } catch (e) { alert(t("ad_license_fail") + (e.message || e)); }
+}
+
+async function adBizAction(type, id, doRpc, apply) {
+  const errId = type === "dealer" ? "ad-dealers-err" : "ad-ag-err";
+  document.getElementById(errId).hidden = true;
+  const x = bizList(type).find(r => String(r.id) === String(id));
   if (!x) return;
-  if (!DEMO_ADMIN) {
-    try {
-      const table = type === "dealer" ? "dealers" : "shipping_agencies";
-      const { error } = await yayoSB().from(table).update({ verified: val }).eq("id", id);
+  try {
+    if (!DEMO_ADMIN) await doRpc(x);
+    apply(x);
+    adRenderBiz(type);
+    document.getElementById(type === "dealer" ? "ad-d-detail" : "ad-a-detail").innerHTML = "";
+  } catch (e) { adFail(errId, e); }
+}
+
+function adVerify(type, id, val) {
+  adBizAction(type, id,
+    () => adRpc("admin_set_verified", { subject: type, sid: id, val }),
+    x => { x.verified = val; if (val) x.rejected_reason = null; });
+}
+function adReject(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  const reason = prompt(t("ad_reject_reason"), x && x.rejected_reason || "");
+  if (reason === null) return;
+  adBizAction(type, id,
+    () => adRpc("admin_reject", { subject: type, sid: id, reason }),
+    y => { y.verified = false; y.rejected_reason = reason; });
+}
+function adSuspend(type, id, val) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x || !adConfirm(val ? "ad_c_suspend" : "ad_c_unsuspend", x.name)) return;
+  adBizAction(type, id,
+    () => adRpc("admin_set_suspended", { subject: type, sid: id, val }),
+    y => {
+      y.suspended = val;
+      if (type === "dealer") AD_LISTINGS.forEach(l => { if (String(l.dealer_id) === String(id)) l.hidden = val; });
+      if (adCan("listings")) adRenderListings();
+    });
+}
+function adDeleteBiz(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x || !adConfirm("ad_c_delete_biz", x.name)) return;
+  adBizAction(type, id,
+    () => adRpc("admin_delete_business", { subject: type, sid: id }),
+    () => {
+      if (type === "dealer") {
+        AD_DEALERS = AD_DEALERS.filter(r => String(r.id) !== String(id));
+        AD_LISTINGS = AD_LISTINGS.filter(l => String(l.dealer_id) !== String(id));
+        if (adCan("listings")) adRenderListings();
+      } else AD_AGS = AD_AGS.filter(r => String(r.id) !== String(id));
+    });
+}
+
+// ── Listings (all cars on the platform) ──
+function adRenderListings() {
+  const q = (document.getElementById("ad-l-search").value || "").toLowerCase();
+  const rows = AD_LISTINGS.filter(l => !q || ((l.car_name || "") + " " + ((l.dealers && l.dealers.name) || "")).toLowerCase().includes(q));
+  document.getElementById("ad-lst-rows").innerHTML = rows.map(l => {
+    const st = l.hidden ? ["off", t("ad_st_hidden")] : l.sold ? ["sold", t("d_st_sold")] : l.active ? ["active", t("d_st_active")] : ["sold", t("d_st_off")];
+    return `
+    <tr>
+      <td class="dash-td-car"><b>${escapeHtml(l.car_name)}</b></td>
+      <td>${escapeHtml((l.dealers && l.dealers.name) || "—")}</td>
+      <td>${fmt(l.price || 0)}</td>
+      <td>${l.views || 0}</td>
+      <td><span class="dash-st ${st[0]}">${st[1]}</span></td>
+      <td class="dash-td-actions">
+        <button onclick="adHideListing('${l.id}',${l.hidden ? "false" : "true"})">${l.hidden ? t("ad_act_show") : t("ad_act_hide")}</button>
+        <button class="danger" onclick="adDeleteListing('${l.id}')">${t("ad_act_delete")}</button>
+      </td>
+    </tr>`;
+  }).join("");
+  document.getElementById("ad-lst-empty").hidden = rows.length > 0;
+}
+async function adHideListing(id, val) {
+  const l = AD_LISTINGS.find(x => String(x.id) === String(id));
+  if (!l) return;
+  if (val && !adConfirm("ad_c_hide_listing", l.car_name)) return;
+  document.getElementById("ad-lst-err").hidden = true;
+  try {
+    if (!DEMO_ADMIN) await adRpc("admin_set_listing_hidden", { lid: id, val });
+    l.hidden = val;
+    adRenderListings();
+  } catch (e) { adFail("ad-lst-err", e); }
+}
+async function adDeleteListing(id) {
+  const l = AD_LISTINGS.find(x => String(x.id) === String(id));
+  if (!l || !adConfirm("ad_c_delete_listing", l.car_name)) return;
+  document.getElementById("ad-lst-err").hidden = true;
+  try {
+    if (!DEMO_ADMIN) await adRpc("admin_delete_listing", { lid: id });
+    AD_LISTINGS = AD_LISTINGS.filter(x => String(x.id) !== String(id));
+    adRenderListings();
+  } catch (e) { adFail("ad-lst-err", e); }
+}
+
+// ── Users (buyers) ──
+async function adLoadUsers() {
+  if (DEMO_ADMIN) { adRenderUsers(); return; }
+  document.getElementById("ad-users-err").hidden = true;
+  try {
+    const q = (document.getElementById("ad-u-search").value || "").trim();
+    const { data, error } = await yayoSB().rpc("admin_list_users", { q: q || null });
+    if (error) throw error;
+    AD_USERS = data || [];
+    adRenderUsers();
+  } catch (e) { adFail("ad-users-err", e); }
+}
+function adRenderUsers() {
+  document.getElementById("ad-user-rows").innerHTML = AD_USERS.map(u => `
+    <tr>
+      <td class="ad-contact">${escapeHtml(u.email || "—")}</td>
+      <td>${adDate(u.created_at)}</td>
+      <td>${adDate(u.last_sign_in_at)}</td>
+      <td><span class="dash-st ${u.banned ? "off" : "active"}">${u.banned ? t("ad_st_banned") : t("ad_st_ok")}</span></td>
+      <td class="dash-td-actions">
+        <button onclick="adBanUser('${u.id}',${u.banned ? "false" : "true"})">${u.banned ? t("ad_act_unban") : t("ad_act_ban")}</button>
+        <button class="danger" onclick="adDeleteUser('${u.id}')">${t("ad_act_delete")}</button>
+      </td>
+    </tr>`).join("");
+  document.getElementById("ad-users-empty").hidden = AD_USERS.length > 0;
+}
+async function adBanUser(id, val) {
+  const u = AD_USERS.find(x => String(x.id) === String(id));
+  if (!u || !adConfirm(val ? "ad_c_ban" : "ad_c_unban", u.email)) return;
+  document.getElementById("ad-users-err").hidden = true;
+  try {
+    if (!DEMO_ADMIN) await adRpc("admin_ban_user", { uid: id, val });
+    u.banned = val;
+    adRenderUsers();
+  } catch (e) { adFail("ad-users-err", e); }
+}
+async function adDeleteUser(id) {
+  const u = AD_USERS.find(x => String(x.id) === String(id));
+  if (!u || !adConfirm("ad_c_delete_user", u.email)) return;
+  document.getElementById("ad-users-err").hidden = true;
+  try {
+    if (!DEMO_ADMIN) await adRpc("admin_delete_user", { uid: id });
+    AD_USERS = AD_USERS.filter(x => String(x.id) !== String(id));
+    adRenderUsers();
+  } catch (e) { adFail("ad-users-err", e); }
+}
+
+// ── Admin team (super_admin only) ──
+function adRoleLabel(r) {
+  return t(r === "super_admin" ? "ad_r_super" : r === "admin_dealers" ? "ad_r_dealers" : r === "admin_support" ? "ad_r_support" : "ad_r_stats");
+}
+function adRenderTeam() {
+  const me = (USER && USER.email || "").toLowerCase();
+  document.getElementById("ad-team-rows").innerHTML = AD_TEAM.map(a => `
+    <tr>
+      <td class="ad-contact">${escapeHtml(a.email)}${a.email.toLowerCase() === me ? ` <span class="dash-st active">${t("ad_self_note")}</span>` : ""}</td>
+      <td>${adRoleLabel(a.role)}</td>
+      <td>${adDate(a.created_at)}</td>
+      <td class="dash-td-actions">${a.email.toLowerCase() === me ? "" : `<button class="danger" onclick="adRemoveAdmin('${escapeHtml(a.email)}')">${t("ad_remove")}</button>`}</td>
+    </tr>`).join("");
+}
+async function adAddAdmin() {
+  const email = (document.getElementById("ad-t-email").value || "").trim().toLowerCase();
+  const role = document.getElementById("ad-t-role").value;
+  const errEl = document.getElementById("ad-team-err");
+  errEl.hidden = true;
+  if (!email || !email.includes("@")) return;
+  try {
+    if (!DEMO_ADMIN) {
+      const { error } = await yayoSB().from("admin_users").upsert({ email, role, added_by: USER.email }, { onConflict: "email" });
       if (error) throw error;
-    } catch (e) {
-      errEl.hidden = false;
-      errEl.textContent = t("au_err_generic") + (e.message || e);
-      return;
+      yayoSB().rpc("_yayo_log", { a: "add_admin", st: "admin", sid: email, d: role }).then(() => {}, () => {});
     }
+    AD_TEAM = AD_TEAM.filter(a => a.email !== email).concat([{ email, role, created_at: new Date().toISOString() }]);
+    document.getElementById("ad-t-email").value = "";
+    adRenderTeam();
+    flashSaved("ad-team-saved");
+  } catch (e) { adFail("ad-team-err", e); }
+}
+async function adRemoveAdmin(email) {
+  if (!adConfirm("ad_c_remove_admin", email)) return;
+  const errEl = document.getElementById("ad-team-err");
+  errEl.hidden = true;
+  try {
+    if (!DEMO_ADMIN) {
+      const { error } = await yayoSB().from("admin_users").delete().eq("email", email);
+      if (error) throw error;
+      yayoSB().rpc("_yayo_log", { a: "remove_admin", st: "admin", sid: email, d: null }).then(() => {}, () => {});
+    }
+    AD_TEAM = AD_TEAM.filter(a => a.email !== email);
+    adRenderTeam();
+  } catch (e) { adFail("ad-team-err", e); }
+}
+
+// ── Audit log ──
+function adRenderLog() {
+  const rows = AD_LOG;
+  document.getElementById("ad-log-rows").innerHTML = rows.map(r => `
+    <div class="ad-log-line">
+      <span class="ad-log-when">${adDate(r.created_at)}</span>
+      <b>${escapeHtml(r.admin_email)}</b>
+      <span class="dash-st sold">${escapeHtml(r.action)}</span>
+      <span class="ad-log-what">${escapeHtml([r.subject_type, r.detail].filter(Boolean).join(" · "))}</span>
+    </div>`).join("");
+  document.getElementById("ad-log-empty").hidden = rows.length > 0;
+}
+
+// ── Statistics ──
+function adRenderStats() {
+  const s = AD_STATS;
+  const gaEl = document.getElementById("ad-ga-status");
+  gaEl.textContent = YAYO_CONFIG.GA4_ID ? t("ad_ga_set") + YAYO_CONFIG.GA4_ID : t("ad_ga_not_set");
+  if (!s) { document.getElementById("ad-stats").innerHTML = `<p class="dash-empty">${t("ad_none_yet")}</p>`; return; }
+  const cards = [
+    ["ad_stat_users", s.users_total], ["ad_stat_today", s.signups_today], ["ad_stat_7d", s.signups_7d], ["ad_stat_30d", s.signups_30d],
+    ["ad_stat_active7", s.active_7d], ["ad_stat_active30", s.active_30d],
+    ["ad_stat_dealers", s.dealers], ["ad_stat_dealers_v", s.dealers_verified],
+    ["ad_stat_ags", s.agencies], ["ad_stat_ags_v", s.agencies_verified],
+    ["ad_stat_listings", s.listings_active], ["ad_stat_new7", s.listings_new_7d],
+    ["ad_stat_total_listings", s.listings_total], ["ad_stat_sold", s.sold],
+    ["ad_stat_msgs", s.messages], ["ad_stat_convos", s.conversations],
+    ["ad_stat_favs", s.favorites], ["ad_stat_reviews", s.reviews]
+  ];
+  document.getElementById("ad-stats").innerHTML = cards.map(([k, v]) =>
+    `<div class="dash-stat"><span class="num">${v === null || v === undefined ? "—" : v}</span><span class="lbl">${t(k)}</span></div>`).join("");
+  document.getElementById("ad-spark").innerHTML = adSparkline(s.signups_by_day || []);
+  const cars = (s.top_cars || []);
+  document.getElementById("ad-top-cars").innerHTML = cars.length ? cars.map(c =>
+    `<div class="ad-top-line"><b>${escapeHtml(c.car_name)}</b><span>${c.views} ${t("ad_views_unit")}</span></div>`).join("")
+    : `<p class="dash-empty">${t("ad_none_yet")}</p>`;
+  const dests = (s.top_destinations || []);
+  document.getElementById("ad-top-dest").innerHTML = dests.length ? dests.map(d => {
+    const cfg = YAYO_CONFIG.DESTINATIONS[d.city];
+    return `<div class="ad-top-line"><b>${cfg ? cfg.flag + " " + cfg.name : escapeHtml(d.city)}</b><span>${d.picks} ${t("ad_picks_unit")}</span></div>`;
+  }).join("") : `<p class="dash-empty">${t("ad_none_yet")}</p>`;
+}
+
+// Simple inline SVG trend line — no chart library needed
+function adSparkline(series) {
+  const byDay = {};
+  series.forEach(p => { byDay[String(p.d).slice(0, 10)] = p.n; });
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
+    return byDay[d] || 0;
+  });
+  const max = Math.max(1, ...days);
+  const W = 560, H = 120, P = 8;
+  const pts = days.map((n, i) => `${P + i * (W - 2 * P) / 29},${H - P - n * (H - 2 * P) / max}`).join(" ");
+  return `
+  <svg viewBox="0 0 ${W} ${H}" class="ad-spark-svg" preserveAspectRatio="none" role="img">
+    <polyline points="${pts}" fill="none" stroke="#1FD8C9" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <polygon points="${P},${H - P} ${pts} ${W - P},${H - P}" fill="#1FD8C9" opacity="0.12"/>
+  </svg>
+  <div class="ad-spark-max">max ${max}/j</div>`;
+}
+
+// ── Trade license upload (dealer + agency profile tabs) ──
+function licenseState(kind) {
+  const biz = kind === "dealer" ? DEALER : AGENCY;
+  const el = document.getElementById(kind === "dealer" ? "pf-lic-state" : "agf-lic-state");
+  const btn = document.getElementById(kind === "dealer" ? "pf-lic-btn" : "agf-lic-btn");
+  if (!el || !btn) return;
+  if (biz && biz.license_path) {
+    el.textContent = biz.verified ? t("lic_have_v") : t("lic_have");
+    btn.textContent = t("lic_replace");
+  } else {
+    el.textContent = t("lic_hint");
+    btn.textContent = t("lic_btn");
   }
-  x.verified = val;
-  if (type === "dealer") { AD_STATS.dealers_v = AD_DEALERS.filter(r => r.verified).length; }
-  else { AD_STATS.ags_v = AD_AGS.filter(r => r.verified).length; }
-  renderAdmin();
+}
+async function uploadLicense(kind, files) {
+  const biz = kind === "dealer" ? DEALER : AGENCY;
+  const el = document.getElementById(kind === "dealer" ? "pf-lic-state" : "agf-lic-state");
+  const input = document.getElementById(kind === "dealer" ? "pf-lic-file" : "agf-lic-file");
+  const f = files && files[0];
+  if (!f || !biz) return;
+  input.value = "";
+  if (DEMO || DEMO_AG) { biz.license_path = "demo"; licenseState(kind); el.textContent = t("lic_saved"); return; }
+  el.textContent = t("up_uploading");
+  try {
+    const ext = (f.name.split(".").pop() || "pdf").toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
+    const path = biz.id + "/license-" + Date.now() + "." + ext;
+    const { error } = await yayoSB().storage.from("licenses").upload(path, f, { contentType: f.type });
+    if (error) throw error;
+    const table = kind === "dealer" ? "dealers" : "shipping_agencies";
+    const { error: e2 } = await yayoSB().from(table).update({ license_path: path }).eq("id", biz.id);
+    if (e2) throw e2;
+    biz.license_path = path;
+    licenseState(kind);
+    el.textContent = t("lic_saved");
+  } catch (e) {
+    el.textContent = /column|schema|bucket|not found/i.test(e.message || "") ? t("pf_sql_hint") : t("up_fail") + " (" + (e.message || e) + ")";
+  }
 }
 
 // Re-render translated content when the language changes
@@ -921,7 +1333,7 @@ window.onLangChange = () => {
   if (!document.getElementById("dash-agency-app").hidden) {
     syncRoutesFromDOM(); syncOfficesFromDOM(); enterAgency();
   }
-  if (!document.getElementById("dash-admin").hidden) renderAdmin();
+  if (!document.getElementById("dash-admin").hidden) adminEnter();
 };
 
 init();

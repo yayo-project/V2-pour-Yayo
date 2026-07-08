@@ -33,13 +33,15 @@ function brandOf(c) { const w = (c.car_name || "").split(" ")[0]; return BRANDS.
 
 async function loadCars() {
   try {
-    const { data, error } = await sb
+    let { data, error } = await sb
       .from("listings")
       .select("*, dealers(*)")
       .eq("active", true).eq("sold", false)
       .order("created_at", { ascending: false })
       .limit(200);
     if (!error && data && data.length > 0) {
+      // never show admin-hidden listings or suspended dealers to buyers
+      data = data.filter(l => !l.hidden && !(l.dealers && l.dealers.suspended));
       ALL = data.map(l => ({
         id: l.id,
         car_name: l.car_name,
@@ -208,7 +210,14 @@ function setDest(el) {
   document.querySelectorAll(".dpill").forEach(p => p.classList.remove("on"));
   el.classList.add("on");
   CUR = el.dataset.city;
+  trackDest(CUR);
   render();
+}
+
+// Top-destinations counter (admin stats) + traffic event — always best effort
+function trackDest(city) {
+  try { sb.rpc("yayo_dest", { c: city }).then(() => {}, () => {}); } catch (e) {}
+  if (typeof yayoTrack === "function") yayoTrack("choose_destination", { city });
 }
 
 function clearFilters() {

@@ -143,6 +143,13 @@
                 <p class="up-hint" data-i18n="ag_gal_hint">Ces photos apparaissent sur votre profil public — elles prouvent que votre agence existe vraiment.</p>
               </div>
             </div>
+            <div class="field field-wide">
+              <label data-i18n="lic_h">Licence commerciale</label>
+              <p class="up-hint" data-i18n="lic_p">Document privé — visible uniquement par l'équipe Yayo pour obtenir le badge Vérifié.</p>
+              <button type="button" class="btn btn-ghost-dark" id="agf-lic-btn" onclick="document.getElementById('agf-lic-file').click()" data-i18n="lic_btn">📄 Envoyer le document</button>
+              <input id="agf-lic-file" type="file" accept="image/*,application/pdf" hidden onchange="uploadLicense('agency', this.files)">
+              <p class="up-hint" id="agf-lic-state"></p>
+            </div>
             <h2 class="vd-h" data-i18n="ag_offices_h">Bureaux de destination</h2>
             <p class="dash-sub" data-i18n="ag_offices_p">Une vraie adresse par ville servie — c'est ce qui rassure les acheteurs.</p>
             <div id="ag-offices" class="form-grid"></div>
@@ -156,7 +163,7 @@
       </section>
     </div>
 
-    <!-- Admin: verify dealers & agencies, platform stats -->
+    <!-- Admin: the control room (role-based) -->
     <div id="dash-admin" hidden>
       <div class="dash-head">
         <div>
@@ -166,16 +173,49 @@
         <button class="btn btn-ghost-dark" id="ad-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
       </div>
 
-      <div class="dash-tabs" role="tablist">
-        <button class="on" data-tab="ad-dealers" onclick="showAdTab('ad-dealers')" data-i18n="ad_tab_dealers">Dealers</button>
-        <button data-tab="ad-agencies" onclick="showAdTab('ad-agencies')" data-i18n="ad_tab_agencies">Agences</button>
-        <button data-tab="ad-stats" onclick="showAdTab('ad-stats')" data-i18n="ad_tab_stats">Statistiques</button>
-      </div>
+      <p class="auth-error" id="ad-sql-hint" hidden></p>
+      <div class="dash-tabs" role="tablist" id="ad-tabs"></div>
 
-      <section id="tab-ad-dealers">
+      <!-- STATISTICS -->
+      <section id="tab-ad-stats" hidden>
+        <div class="dash-stats ad-stats-grid" id="ad-stats"></div>
+        <div class="ad-two-col">
+          <div class="vd-card">
+            <h2 class="vd-h" data-i18n="ad_trend_signups">Inscriptions — 30 derniers jours</h2>
+            <div id="ad-spark"></div>
+          </div>
+          <div class="vd-card">
+            <h2 class="vd-h" data-i18n="ad_top_cars">Voitures les plus vues</h2>
+            <div id="ad-top-cars"></div>
+          </div>
+          <div class="vd-card">
+            <h2 class="vd-h" data-i18n="ad_top_dest">Destinations les plus choisies</h2>
+            <div id="ad-top-dest"></div>
+          </div>
+          <div class="vd-card">
+            <h2 class="vd-h" data-i18n="ad_ga_h">Trafic du site (Google Analytics)</h2>
+            <p class="dash-sub" data-i18n="ad_ga_p">Visiteurs, sources, pages vues et temps réel — mesurés par Google Analytics 4.</p>
+            <p class="dash-sub" id="ad-ga-status"></p>
+            <a class="btn btn-ghost-dark" href="https://analytics.google.com" target="_blank" rel="noopener" data-i18n="ad_ga_open">Ouvrir Google Analytics ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- DEALERS -->
+      <section id="tab-ad-dealers" hidden>
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="ad_h_dealers">Dealers — vérification</h2>
-          <p class="dash-sub" data-i18n="ad_p_dealers">Vérifiez la licence commerciale, puis accordez le badge Vérifié Yayo. Un dealer vérifié inspire confiance aux acheteurs.</p>
+          <p class="dash-sub" data-i18n="ad_p_dealers">Vérifiez la licence commerciale, puis accordez le badge Vérifié Yayo.</p>
+          <div class="ad-filters">
+            <input id="ad-d-search" type="search" data-i18n-ph="ad_search_ph" placeholder="Rechercher par nom ou email…" oninput="adRenderBiz('dealer')">
+            <select id="ad-d-filter" onchange="adRenderBiz('dealer')">
+              <option value="all" data-i18n="ad_f_all">Tous</option>
+              <option value="verified" data-i18n="ad_f_verified">Vérifiés</option>
+              <option value="pending" data-i18n="ad_f_pending">En attente</option>
+              <option value="suspended" data-i18n="ad_f_suspended">Suspendus</option>
+            </select>
+          </div>
+          <div id="ad-d-detail"></div>
           <div class="dash-table-wrap">
             <table class="dash-table">
               <thead><tr>
@@ -192,10 +232,21 @@
         </div>
       </section>
 
+      <!-- AGENCIES -->
       <section id="tab-ad-agencies" hidden>
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="ad_h_ag">Agences — vérification</h2>
-          <p class="dash-sub" data-i18n="ad_p_ag">Une agence vérifiée devient visible aux acheteurs comme Verified Shipping Partner, avec ses routes et tarifs.</p>
+          <p class="dash-sub" data-i18n="ad_p_ag">Une agence vérifiée devient visible aux acheteurs comme Verified Shipping Partner.</p>
+          <div class="ad-filters">
+            <input id="ad-a-search" type="search" data-i18n-ph="ad_search_ph" placeholder="Rechercher par nom ou email…" oninput="adRenderBiz('agency')">
+            <select id="ad-a-filter" onchange="adRenderBiz('agency')">
+              <option value="all" data-i18n="ad_f_all">Tous</option>
+              <option value="verified" data-i18n="ad_f_verified">Vérifiés</option>
+              <option value="pending" data-i18n="ad_f_pending">En attente</option>
+              <option value="suspended" data-i18n="ad_f_suspended">Suspendus</option>
+            </select>
+          </div>
+          <div id="ad-a-detail"></div>
           <div class="dash-table-wrap">
             <table class="dash-table">
               <thead><tr>
@@ -212,8 +263,97 @@
         </div>
       </section>
 
-      <section id="tab-ad-stats" hidden>
-        <div class="dash-stats" id="ad-stats"></div>
+      <!-- LISTINGS -->
+      <section id="tab-ad-listings" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_listings">Toutes les annonces</h2>
+          <p class="dash-sub" data-i18n="ad_p_listings">Masquez ou supprimez une annonce fausse ou inappropriée.</p>
+          <div class="ad-filters">
+            <input id="ad-l-search" type="search" data-i18n-ph="ad_search_ph" placeholder="Rechercher…" oninput="adRenderListings()">
+          </div>
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead><tr>
+                <th data-i18n="ad_th_car">Voiture</th>
+                <th data-i18n="ad_th_dealer">Dealer</th>
+                <th data-i18n="d_th_price">Prix</th>
+                <th data-i18n="ad_th_views">Vues</th>
+                <th data-i18n="d_th_status">Statut</th>
+                <th data-i18n="d_th_actions">Actions</th>
+              </tr></thead>
+              <tbody id="ad-lst-rows"></tbody>
+            </table>
+          </div>
+          <p class="dash-empty" id="ad-lst-empty" hidden data-i18n="ad_no_listings">Aucune annonce.</p>
+          <p class="auth-error" id="ad-lst-err" hidden></p>
+        </div>
+      </section>
+
+      <!-- USERS -->
+      <section id="tab-ad-users" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_users">Acheteurs — comptes</h2>
+          <p class="dash-sub" data-i18n="ad_p_users">Suspendez un compte abusif ou supprimez un compte sur demande.</p>
+          <div class="ad-filters">
+            <input id="ad-u-search" type="search" data-i18n-ph="ad_user_search_ph" placeholder="Rechercher un email…" onkeydown="if(event.key==='Enter')adLoadUsers()">
+            <button class="btn btn-ghost-dark" onclick="adLoadUsers()" data-i18n="search_btn">Rechercher</button>
+          </div>
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead><tr>
+                <th data-i18n="ad_th_email">Email</th>
+                <th data-i18n="ad_th_signup">Inscription</th>
+                <th data-i18n="ad_th_lastseen">Dernière connexion</th>
+                <th data-i18n="d_th_status">Statut</th>
+                <th data-i18n="d_th_actions">Actions</th>
+              </tr></thead>
+              <tbody id="ad-user-rows"></tbody>
+            </table>
+          </div>
+          <p class="dash-empty" id="ad-users-empty" hidden data-i18n="ad_no_users">Aucun utilisateur trouvé.</p>
+          <p class="auth-error" id="ad-users-err" hidden></p>
+        </div>
+      </section>
+
+      <!-- ADMIN TEAM -->
+      <section id="tab-ad-team" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_team">Équipe admin</h2>
+          <p class="dash-sub" data-i18n="ad_p_team">Ajoutez un admin par email avec des permissions limitées.</p>
+          <div class="ad-filters">
+            <input id="ad-t-email" type="email" placeholder="email@exemple.com">
+            <select id="ad-t-role">
+              <option value="admin_dealers" data-i18n="ad_r_dealers">Dealers & agences</option>
+              <option value="admin_support" data-i18n="ad_r_support">Utilisateurs & annonces</option>
+              <option value="admin_stats" data-i18n="ad_r_stats">Statistiques seulement</option>
+              <option value="super_admin" data-i18n="ad_r_super">Super admin (tout)</option>
+            </select>
+            <button class="btn btn-solid" onclick="adAddAdmin()" data-i18n="ad_add_admin">+ Ajouter</button>
+            <span class="ag-saved" id="ad-team-saved" hidden data-i18n="ad_added_ok">Admin ajouté ✓</span>
+          </div>
+          <div class="dash-table-wrap">
+            <table class="dash-table">
+              <thead><tr>
+                <th data-i18n="ad_th_email">Email</th>
+                <th data-i18n="ad_th_role">Rôle</th>
+                <th data-i18n="ad_th_added">Ajouté</th>
+                <th data-i18n="d_th_actions">Actions</th>
+              </tr></thead>
+              <tbody id="ad-team-rows"></tbody>
+            </table>
+          </div>
+          <p class="auth-error" id="ad-team-err" hidden></p>
+        </div>
+      </section>
+
+      <!-- AUDIT LOG -->
+      <section id="tab-ad-log" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_log">Journal des actions</h2>
+          <p class="dash-sub" data-i18n="ad_p_log">Chaque action admin est enregistrée : qui, quoi, quand.</p>
+          <div id="ad-log-rows"></div>
+          <p class="dash-empty" id="ad-log-empty" hidden data-i18n="ad_no_log">Aucune action enregistrée pour l'instant.</p>
+        </div>
       </section>
     </div>
 
@@ -259,6 +399,13 @@
               <input id="pf-files" type="file" accept="image/*" multiple hidden onchange="addDealerPics(this.files)">
               <p class="up-hint" data-i18n="pf_gal_hint">Votre showroom, votre parc, votre équipe — depuis votre téléphone.</p>
             </div>
+          </div>
+          <div class="field field-wide">
+            <label data-i18n="lic_h">Licence commerciale</label>
+            <p class="up-hint" data-i18n="lic_p">Document privé — visible uniquement par l'équipe Yayo pour obtenir le badge Vérifié.</p>
+            <button type="button" class="btn btn-ghost-dark" id="pf-lic-btn" onclick="document.getElementById('pf-lic-file').click()" data-i18n="lic_btn">📄 Envoyer le document</button>
+            <input id="pf-lic-file" type="file" accept="image/*,application/pdf" hidden onchange="uploadLicense('dealer', this.files)">
+            <p class="up-hint" id="pf-lic-state"></p>
           </div>
           <div class="dash-form-actions">
             <button type="button" class="btn btn-solid" onclick="saveDealerProfile()" data-i18n="d_save">Enregistrer</button>
@@ -413,6 +560,7 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>

@@ -81,6 +81,7 @@
 </footer>
 
 <script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
@@ -113,7 +114,7 @@ async function loadFavPage() {
     try {
       const { data } = await yayoSB().from("listings")
         .select("*, dealers(name, verified)").in("id", realIds);
-      (data || []).forEach(l => cars.push({
+      (data || []).filter(l => !l.hidden).forEach(l => cars.push({
         id: l.id, car_name: l.car_name, mileage: l.mileage, fuel: l.fuel || "",
         condition: l.condition || "", price: l.price, ai: "good", photo_url: l.photo_url,
         dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified) }

@@ -61,9 +61,7 @@ Solo founder: Yayo (Ciunza), based in Dubai. Production domain: yayo.digital (ol
 11. ✅ Photo upload to Supabase Storage (car photos) + AI condition report
 12. ✅ PWA — installable, service worker, icons
 13. ✅ Favorites (heart + Mes favoris) + Reviews system (honest empty state, real reviews only)
-14. ✅ LOGO + GALLERY uploads for dealers AND agencies (car-photos & agency-photos buckets; logo_url/photos columns — run supabase/setup.sql). Dealer logo on cards + detail page; agency logo + gallery on public profile.
-15. ✅ Admin dashboard — verify/unverify dealers & agencies (badge + buyer visibility), platform stats. Admin role: run section 5 of supabase/setup.sql (?demo=admin to preview).
-NEXT: Later phases below (Mode 3, full agency dashboard, Yayo Sécurisé, tracking, diaspora, SEO pages).
+NEXT: (a) LOGO + GALLERY uploads for dealers AND agencies (buckets car-photos & agency-photos ready; add logo_url/photos columns via SQL). (b) Admin dashboard — approve/verify dealers & agencies, manage users, set limits, see stats.
 Later phases: Assistant Yayo Autonomous mode (Mode 3) with dealer rule limits; full agency dashboard (methods, cargo, locations/maps, bookings, tracking, reviews, full pricing matrix); Yayo Sécurisé (deposits via Flutterwave/mobile money); shipment tracking; diaspora mode ("Acheter pour un proche"); SEO landing pages per route/country.
 DATA FIX (verify done): car make/model must display correctly — a Ferrari must NOT show as "Toyota". Read the real make from the listing everywhere.
 
@@ -90,6 +88,21 @@ Same concept extends later to agencies (Assistant Yayo for Logistics: explains o
 Yayo's endgame: every participant in cross-border trade has an intelligent digital representative that collaborates with the others to complete a transaction. Buyer agent, Dealer agent (Assistant Yayo), Shipping agent, Inspection agent, Customs agent, Finance agent — each does real work, and eventually they coordinate with each other (e.g. buyer asks "Prado before Christmas" → agents check inventory, shipping dates, customs cost, financing → one complete answer, no human coordinating).
 BUT: never market this as "agentic AI." Customers buy outcomes: find the right car, import it safely, best price, on time, no fraud. The agents are the invisible engine; the felt experience is "importing from Dubai suddenly became simple." Buyers must never sense they're dealing with a bot.
 BUILD ORDER (critical): build each capability first as a reliable, human-triggered FEATURE — Customs agent = landed-cost calculator; Inspection agent = AI photo condition report; Dealer agent = Assistant Yayo reply suggestions; Buyer agent = price/budget tools. Only after each feature is proven and there's real transaction volume do we remove the human trigger and let it act autonomously, then let agents talk to each other. Autonomy and agent-to-agent orchestration are the LAST 10%, not the start. Every feature should be built so it CAN later become an agent, without attempting the full network now (too complex, too costly in tokens, too risky with real money pre-revenue).
+
+## Admin dashboard — the control room (spec)
+The admin dashboard is the founder's command center to run the whole platform. Current version is too basic (only verify/unverify). It must be professional and complete. Sections needed:
+- DEALERS: list all, search/filter (verified/pending/suspended), view full profile, VIEW UPLOADED LICENSE/DOCUMENTS to verify, approve → grant Vérifié badge, reject with reason, suspend/unsuspend, remove/delete, see their listings count & activity, edit if needed. Show subscription tier & status.
+- AGENCIES: same as dealers — list, view documents, verify → Verified Shipping Partner, reject, suspend, remove, view routes/pricing/coverage.
+- LISTINGS: see all cars, flag/hide inappropriate or fake listings, remove a listing, see which dealer owns it.
+- USERS (buyers): list, search, see activity, ban/suspend abusive users, delete on request (privacy).
+- DOCUMENT VERIFICATION: when a dealer/agency uploads a trade license, admin must be able to OPEN and view that file (stored in Supabase Storage) to check it before approving. This is the core trust gate.
+- ADMIN TEAM & ROLES: founder is super-admin. Must be able to ADD other admins by email and give them LIMITED permissions (e.g. an admin who can only verify dealers, or only view stats, not delete users). Roles: super_admin (everything), admin_dealers (dealers+agencies only), admin_support (users+listings), admin_stats (view only). Store role in the user record.
+- STATISTICS & ANALYTICS: two kinds.
+  (A) In-app metrics from Supabase (build now): total registered users, new signups (today/7d/30d, with a simple trend), active users (signed in last 7/30 days), active dealers/agencies, total & new listings, messages sent, favorites, conversations started, most-viewed cars (add a views counter on listings if missing), top destinations chosen. Show as clean stat cards + simple charts.
+  (B) Website traffic analytics (visitors, sources, pages, bounce, real-time) — Supabase CANNOT provide this; it needs a visitor-analytics tool. Integrate Google Analytics 4 (free) OR Plausible (simpler, privacy-friendly) across all pages, and link to it from the admin dashboard. Track: visitors, traffic sources (Google/WhatsApp/social/direct), page views, top pages, conversion funnel (landing → car view → contact/register). Founder will need to create the analytics account and paste a tracking ID.
+- SAFETY/AUDIT: log of admin actions (who verified/removed what, when) so nothing is untraceable. Confirmation dialogs before destructive actions (remove/ban/delete) — never one-click delete without confirm.
+- TECHNICAL ISSUES: a simple way to see reported problems / flagged content, and a fallback so if something breaks, admin can suspend a listing/dealer fast.
+Design: same navy/turquoise system, clean tables, clear action buttons, works on mobile. Every action confirmed before it runs. Only users with an admin role can access — non-admins are redirected.
 
 ## Honesty rule (pre-launch)
 Yayo has not completed real buyer transactions yet. NEVER use fake testimonials, invented customer names, or claims of completed deliveries/payments. Use honest framing: "how Yayo protects you," Yayo's promises, or clearly illustrative scenarios. Replace with real reviews only once real buyers exist.

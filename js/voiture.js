@@ -26,11 +26,15 @@ async function loadCar() {
     if (!CAR && CAR_ID === "") CAR = window.YAYO_DEMO[0];
   } else {
     try {
-      const { data, error } = await yayoSB()
+      let { data, error } = await yayoSB()
         .from("listings")
         .select("*, dealers(*)")
         .eq("id", CAR_ID).maybeSingle();
+      if (data && data.hidden) data = null; // hidden by admin — not shown to buyers
       if (!error && data) {
+        // view counter (best effort) + traffic funnel event
+        try { yayoSB().rpc("yayo_view", { lid: CAR_ID }).then(() => {}, () => {}); } catch (e2) {}
+        if (typeof yayoTrack === "function") yayoTrack("car_view", { car: data.car_name });
         CAR = {
           id: data.id,
           dealer_id: data.dealer_id,
@@ -169,9 +173,9 @@ async function loadAgencies() {
   if (String(CAR_ID).startsWith("demo") || CAR_ID === "") { AGENCIES = DEMO_AGENCIES; renderTransport(); return; }
   try {
     const { data } = await yayoSB().from("shipping_agencies")
-      .select("id, name, verified, routes")
+      .select("*")
       .eq("verified", true).limit(30);
-    AGENCIES = (data || []).map(a => {
+    AGENCIES = (data || []).filter(a => !a.suspended).map(a => {
       let d = a.routes;
       if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
       const routes = Array.isArray(d) ? d : (d && Array.isArray(d.routes) ? d.routes : []);
@@ -284,6 +288,7 @@ async function openChat() {
   panel.hidden = false;
   document.getElementById("vd-contact").style.display = "none";
   panel.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (typeof yayoTrack === "function") yayoTrack("contact_dealer", { car: CAR && CAR.car_name });
 
   if (String(CAR.id).startsWith("demo")) {
     addBubble("yayo", t("chat_demo"));

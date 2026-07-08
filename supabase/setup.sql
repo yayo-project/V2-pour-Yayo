@@ -70,3 +70,284 @@ create policy "agency-photos authenticated upload"
 update auth.users
 set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
 where email = 'yayoapp20@gmail.com';
+
+-- ═══════════════════════════════════════════════════════════
+-- 6) ADMIN TEAM & ROLES — who can administer Yayo, and how much
+-- super_admin: everything · admin_dealers: dealers+agencies
+-- admin_support: users+listings · admin_stats: statistics only
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.admin_users (
+  email text primary key,
+  role text not null default 'admin_stats'
+    check (role in ('super_admin','admin_dealers','admin_support','admin_stats')),
+  added_by text,
+  created_at timestamptz not null default now()
+);
+alter table public.admin_users enable row level security;
+
+-- The role of the person calling (null = not an admin). Security definer so
+-- RLS policies can use it without recursion.
+create or replace function public.yayo_admin_role()
+returns text language sql stable security definer set search_path = public as $$
+  select role from public.admin_users
+  where lower(email) = lower(coalesce(auth.jwt()->>'email',''))
+$$;
+
+drop policy if exists "admin_users read" on public.admin_users;
+create policy "admin_users read" on public.admin_users
+  for select using (public.yayo_admin_role() is not null);
+drop policy if exists "admin_users write" on public.admin_users;
+create policy "admin_users write" on public.admin_users
+  for all using (public.yayo_admin_role() = 'super_admin')
+  with check (public.yayo_admin_role() = 'super_admin');
+
+-- Founder = super admin
+insert into public.admin_users (email, role, added_by)
+values ('yayoapp20@gmail.com', 'super_admin', 'setup')
+on conflict (email) do update set role = 'super_admin';
+
+-- Requires the caller to hold one of the listed roles (raises otherwise)
+create or replace function public._yayo_require(roles text[])
+returns text language plpgsql stable security definer set search_path = public as $$
+declare r text;
+begin
+  r := public.yayo_admin_role();
+  if r is null or not (r = any(roles)) then
+    raise exception 'admin access denied';
+  end if;
+  return r;
+end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 7) AUDIT LOG — every admin action is recorded (who, what, when)
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.admin_audit_log (
+  id bigint generated always as identity primary key,
+  admin_email text not null,
+  action text not null,
+  subject_type text,
+  subject_id text,
+  detail text,
+  created_at timestamptz not null default now()
+);
+alter table public.admin_audit_log enable row level security;
+drop policy if exists "audit read" on public.admin_audit_log;
+create policy "audit read" on public.admin_audit_log
+  for select using (public.yayo_admin_role() is not null);
+-- no insert policy: rows are only written by the security-definer functions below
+
+create or replace function public._yayo_log(a text, st text, sid text, d text)
+returns void language sql security definer set search_path = public as $$
+  insert into admin_audit_log (admin_email, action, subject_type, subject_id, detail)
+  values (coalesce(auth.jwt()->>'email','?'), a, st, sid, d)
+$$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 8) NEW COLUMNS — statuses, license documents, view counter
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers add column if not exists suspended boolean not null default false;
+alter table public.dealers add column if not exists rejected_reason text;
+alter table public.dealers add column if not exists license_path text;
+alter table public.shipping_agencies add column if not exists suspended boolean not null default false;
+alter table public.shipping_agencies add column if not exists rejected_reason text;
+alter table public.shipping_agencies add column if not exists license_path text;
+alter table public.listings add column if not exists hidden boolean not null default false;
+alter table public.listings add column if not exists views int not null default 0;
+alter table public.users add column if not exists banned boolean not null default false;
+
+-- ═══════════════════════════════════════════════════════════
+-- 9) VIEW COUNTER + TOP DESTINATIONS (public, write-only counters)
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.yayo_view(lid uuid)
+returns void language sql security definer set search_path = public as $$
+  update listings set views = coalesce(views,0) + 1 where id = lid
+$$;
+
+create table if not exists public.destination_stats (
+  city text primary key,
+  picks bigint not null default 0
+);
+alter table public.destination_stats enable row level security;
+drop policy if exists "dest read" on public.destination_stats;
+create policy "dest read" on public.destination_stats for select using (true);
+
+create or replace function public.yayo_dest(c text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if lower(c) not in ('kinshasa','douala','abidjan','dakar','dubai') then return; end if;
+  insert into destination_stats (city, picks) values (lower(c), 1)
+  on conflict (city) do update set picks = destination_stats.picks + 1;
+end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 10) LICENSES — private bucket for trade licenses.
+-- Only the owner and admins can open a file (admins via signed URL).
+-- ═══════════════════════════════════════════════════════════
+insert into storage.buckets (id, name, public)
+values ('licenses', 'licenses', false)
+on conflict (id) do nothing;
+
+drop policy if exists "licenses upload" on storage.objects;
+create policy "licenses upload"
+  on storage.objects for insert
+  with check (bucket_id = 'licenses' and auth.role() = 'authenticated');
+
+drop policy if exists "licenses read" on storage.objects;
+create policy "licenses read"
+  on storage.objects for select
+  using (bucket_id = 'licenses' and (public.yayo_admin_role() is not null or owner = auth.uid()));
+
+-- ═══════════════════════════════════════════════════════════
+-- 11) ADMIN ACTIONS — all mutations go through these functions,
+-- which check the caller's role and write the audit log.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_set_verified(subject text, sid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set verified = val, rejected_reason = case when val then null else rejected_reason end where id = sid;
+  else
+    update shipping_agencies set verified = val, rejected_reason = case when val then null else rejected_reason end where id = sid;
+  end if;
+  perform _yayo_log(case when val then 'verify' else 'unverify' end, subject, sid::text, null);
+end $$;
+
+create or replace function public.admin_reject(subject text, sid uuid, reason text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set verified = false, rejected_reason = reason where id = sid;
+  else
+    update shipping_agencies set verified = false, rejected_reason = reason where id = sid;
+  end if;
+  perform _yayo_log('reject', subject, sid::text, reason);
+end $$;
+
+create or replace function public.admin_set_suspended(subject text, sid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set suspended = val where id = sid;
+    update listings set hidden = val where dealer_id = sid;
+  else
+    update shipping_agencies set suspended = val where id = sid;
+  end if;
+  perform _yayo_log(case when val then 'suspend' else 'unsuspend' end, subject, sid::text, null);
+end $$;
+
+create or replace function public.admin_delete_business(subject text, sid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    delete from messages where conversation_id in (select id from conversations where dealer_id = sid);
+    delete from conversations where dealer_id = sid;
+    begin delete from favorites where listing_id in (select id from listings where dealer_id = sid); exception when others then null; end;
+    begin delete from leads where dealer_id = sid; exception when others then null; end;
+    delete from reviews where subject_type = 'dealer' and subject_id = sid;
+    delete from listings where dealer_id = sid;
+    delete from dealers where id = sid;
+  else
+    delete from messages where conversation_id in (select id from conversations where agency_id = sid);
+    delete from conversations where agency_id = sid;
+    delete from reviews where subject_type = 'agency' and subject_id = sid;
+    delete from shipping_agencies where id = sid;
+  end if;
+  perform _yayo_log('delete', subject, sid::text, null);
+end $$;
+
+create or replace function public.admin_set_listing_hidden(lid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  update listings set hidden = val where id = lid;
+  perform _yayo_log(case when val then 'hide_listing' else 'show_listing' end, 'listing', lid::text, null);
+end $$;
+
+create or replace function public.admin_delete_listing(lid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  begin delete from favorites where listing_id = lid; exception when others then null; end;
+  delete from listings where id = lid;
+  perform _yayo_log('delete_listing', 'listing', lid::text, null);
+end $$;
+
+create or replace function public.admin_list_users(q text default null)
+returns table (id uuid, email text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  return query
+    select u.id, u.email::text, u.created_at, u.last_sign_in_at,
+           (u.banned_until is not null and u.banned_until > now()) as banned
+    from auth.users u
+    where q is null or q = '' or u.email ilike '%' || q || '%'
+    order by u.created_at desc
+    limit 500;
+end $$;
+
+create or replace function public.admin_ban_user(uid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  update auth.users set banned_until = case when val then 'infinity'::timestamptz else null end where id = uid;
+  begin update users set banned = val where id = uid; exception when others then null; end;
+  perform _yayo_log(case when val then 'ban_user' else 'unban_user' end, 'user', uid::text, null);
+end $$;
+
+create or replace function public.admin_delete_user(uid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  begin delete from favorites where user_id = uid; exception when others then null; end;
+  delete from messages where sender_id = uid
+    or conversation_id in (select id from conversations where user_id = uid);
+  delete from conversations where user_id = uid;
+  begin delete from reviews where user_id = uid; exception when others then null; end;
+  begin delete from users where id = uid; exception when others then null; end;
+  delete from auth.users where id = uid;
+  perform _yayo_log('delete_user', 'user', uid::text, null);
+end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 12) PLATFORM STATISTICS — one call returns everything
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_stats()
+returns json language plpgsql stable security definer set search_path = public as $$
+declare o json;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers','admin_support','admin_stats']);
+  select json_build_object(
+    'users_total',       (select count(*) from auth.users),
+    'signups_today',     (select count(*) from auth.users where created_at >= date_trunc('day', now())),
+    'signups_7d',        (select count(*) from auth.users where created_at >= now() - interval '7 days'),
+    'signups_30d',       (select count(*) from auth.users where created_at >= now() - interval '30 days'),
+    'active_7d',         (select count(*) from auth.users where last_sign_in_at >= now() - interval '7 days'),
+    'active_30d',        (select count(*) from auth.users where last_sign_in_at >= now() - interval '30 days'),
+    'signups_by_day',    (select coalesce(json_agg(json_build_object('d', d, 'n', n) order by d), '[]'::json)
+                          from (select date_trunc('day', created_at)::date d, count(*) n
+                                from auth.users where created_at >= now() - interval '30 days' group by 1) t),
+    'dealers',           (select count(*) from dealers),
+    'dealers_verified',  (select count(*) from dealers where verified),
+    'agencies',          (select count(*) from shipping_agencies),
+    'agencies_verified', (select count(*) from shipping_agencies where verified),
+    'listings_total',    (select count(*) from listings),
+    'listings_active',   (select count(*) from listings where active and not sold and not hidden),
+    'listings_new_7d',   (select count(*) from listings where created_at >= now() - interval '7 days'),
+    'sold',              (select count(*) from listings where sold),
+    'messages',          (select count(*) from messages),
+    'conversations',     (select count(*) from conversations),
+    'favorites',         (select count(*) from favorites),
+    'reviews',           (select count(*) from reviews),
+    'top_cars',          (select coalesce(json_agg(row_to_json(c)), '[]'::json)
+                          from (select id, car_name, views from listings
+                                where coalesce(views,0) > 0 order by views desc limit 5) c),
+    'top_destinations',  (select coalesce(json_agg(row_to_json(dd)), '[]'::json)
+                          from (select city, picks from destination_stats order by picks desc limit 5) dd)
+  ) into o;
+  return o;
+end $$;

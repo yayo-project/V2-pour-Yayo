@@ -60,6 +60,7 @@
 </main>
 
 <script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -158,6 +159,7 @@ async function doEmail(e) {
     const { data, error } = await yayoSignUpEmail(email, pass, { role: "buyer" });
     btn.disabled = false;
     if (error) return showError(friendly(error)), false;
+    if (typeof yayoTrack === "function") yayoTrack("sign_up", { method: "email" });
     if (data && data.session) { location.href = nextUrl; return false; }
     confirmShown = true;
     document.getElementById("auth-title").textContent = t("au_confirm_t");

@@ -16,7 +16,11 @@ const YAYO_CONFIG = {
     dubai:    { name: "Dubai",    flag: "🇦🇪", ship: 0,    duty: 0,    fees: 0 }
   },
   DEFAULT_DEST: "kinshasa",
-  FEATURED_LIMIT: 6
+  FEATURED_LIMIT: 6,
+
+  // Google Analytics 4 — paste your Measurement ID here (looks like "G-XXXXXXXXXX").
+  // Leave empty to disable tracking. Get one free at https://analytics.google.com
+  GA4_ID: ""
 };
 
 // Business avatar: logo image if uploaded, otherwise clean initials circle.
