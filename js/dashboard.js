@@ -175,7 +175,7 @@ function enterDealer() {
 function renderBadge() {
   const b = document.getElementById("dash-badge");
   b.className = DEALER.verified ? "vpill" : "dash-badge wait";
-  b.innerHTML = DEALER.verified ? yayoVBadge() + "<b>" + t("d_verified") + "</b>" : t("d_not_verified");
+  b.innerHTML = DEALER.verified ? "<b>" + t("d_verified") + "</b>" + yayoVBadge() : t("d_not_verified");
 }
 
 // "En cours de vérification" banner — pending businesses can prepare their
@@ -744,7 +744,7 @@ function enterAgency() {
   document.getElementById("ag-name").textContent = AGENCY.name;
   const b = document.getElementById("ag-badge");
   b.className = AGENCY.verified ? "vpill" : "dash-badge wait";
-  b.innerHTML = AGENCY.verified ? yayoVBadge() + "<b>" + t("ag_verified") + "</b>" : t("d_not_verified");
+  b.innerHTML = AGENCY.verified ? "<b>" + t("ag_verified") + "</b>" + yayoVBadge() : t("d_not_verified");
   renderPendingBanner("agency");
   renderAgencyOverview();
   A_LOGO = AGENCY.logo_url ? { url: AGENCY.logo_url } : null;
@@ -1059,7 +1059,7 @@ function adFail(errId, e) {
 function bizList(type) { return type === "dealer" ? AD_DEALERS : AD_AGS; }
 function bizStatus(x) {
   if (x.suspended) return ["off", t("ad_st_suspended")];
-  if (x.verified) return ["active", yayoVBadge() + " " + t("ad_st_verified")];
+  if (x.verified) return ["active", t("ad_st_verified") + " " + yayoVBadge()];
   return ["sold", t("ad_st_pending")];
 }
 function bizActionsHtml(type, x) {

@@ -621,9 +621,11 @@ body.no-scroll{overflow:hidden}
 [dir="rtl"] .vpill{padding:4px 7px 4px 12px}
 .chat-trust{margin:-2px 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 /* Full-width trust band — the unmissable version of the badge */
-.vband{display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,#EAF6FE,#D2EDFD);border:1.5px solid rgba(29,155,240,.45);border-radius:12px;padding:11px 14px;margin:10px 0 12px;box-shadow:0 2px 10px rgba(29,155,240,.16)}
-.vband .vseal{width:31px;height:31px;flex:none}
-.vband-tx b{display:block;font-size:14.5px;font-weight:800;color:#1786D3;letter-spacing:-.2px}
+.vband{display:flex;align-items:center;justify-content:space-between;gap:11px;background:linear-gradient(135deg,#EAF6FE,#D2EDFD);border:1.5px solid rgba(29,155,240,.45);border-radius:12px;padding:11px 14px;margin:10px 0 12px;box-shadow:0 2px 10px rgba(29,155,240,.16)}
+.vband .vseal-xl{width:31px;height:31px;flex:none}
+.vband-tx{flex:1;min-width:0}
+.vband-tx b{display:flex;align-items:center;gap:6px;font-size:14.5px;font-weight:800;color:#1786D3;letter-spacing:-.2px}
+.vband-tx b .vseal{width:17px;height:17px}
 .vband-tx span{display:block;font-size:12px;color:var(--ink-2);line-height:1.4;margin-top:1px}
 .chat-trust .vband{margin:0;width:100%}
 

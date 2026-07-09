@@ -155,8 +155,7 @@ function renderFavs() {
         <span class="landed-val">≈ ${fmt(c.price + dst.ship + c.price * dst.duty + dst.fees)}</span>
       </div>
       <div class="car-dealer">
-        ${c.dealer && c.dealer.verified ? yayoVBadge() : ""}
-        ${c.dealer ? escapeHtml(c.dealer.name) + " · Dubai" : ""}
+        ${c.dealer ? escapeHtml(c.dealer.name) + (c.dealer.verified ? " " + yayoVBadge() : "") + " · Dubai" : ""}
       </div>
     </div>
   </div>`).join("");

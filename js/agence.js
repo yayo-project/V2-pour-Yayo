@@ -57,7 +57,7 @@ async function render() {
     : `<div class="gal-empty" data-i18n="ap_gallery_empty">${t("ap_gallery_empty")}</div>`;
   const b = document.getElementById("ap-badge");
   b.className = AG.verified ? "vpill" : "dash-badge wait";
-  b.innerHTML = AG.verified ? yayoVBadge() + "<b>" + t("ag_verified") + "</b>" : t("d_not_verified");
+  b.innerHTML = AG.verified ? "<b>" + t("ag_verified") + "</b>" + yayoVBadge() : t("d_not_verified");
   // Full-width "Vérifié par Yayo" band on the contact card + above the chat
   document.getElementById("ap-trust").innerHTML = AG.verified ? yayoVBand(t("vband_a")) : "";
   const trust = document.getElementById("ap-chat-trust");

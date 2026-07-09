@@ -198,8 +198,7 @@ function render() {
       </div>`}
       <div class="car-dealer">
         ${yayoAvatarHtml(c.dealer.name, c.dealer.logo_url)}
-        ${c.dealer.verified ? yayoVBadge() : ""}
-        ${escapeHtml(c.dealer.name)} · Dubai
+        ${escapeHtml(c.dealer.name)}${c.dealer.verified ? " " + yayoVBadge() : ""} · Dubai
       </div>
     </div>
   </div>`).join("");
