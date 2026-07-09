@@ -54,6 +54,13 @@ function yayoVPill(label, sm) {
   return `<span class="vpill${sm ? " vpill-sm" : ""}">${yayoVBadge()}<b>${label || "Vérifié Yayo"}</b></span>`;
 }
 
+// BIG trust band: a full-width blue "Vérifié par Yayo" strip with the seal.
+// Shown on the "Vendu par" card, agency contact card and above every chat —
+// the moments where the buyer decides whether to trust.
+function yayoVBand(sub) {
+  return `<div class="vband">${yayoVBadge("xl")}<div class="vband-tx"><b>${t("vband_t")}</b><span>${sub || ""}</span></div></div>`;
+}
+
 // photos column arrives as jsonb array, or as a JSON string — normalize
 function yayoPhotoList(x) {
   if (Array.isArray(x)) return x.filter(u => typeof u === "string");

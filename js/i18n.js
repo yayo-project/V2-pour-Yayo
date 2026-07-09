@@ -350,7 +350,12 @@ fr: {
   ag_tab_overview: "Aperçu", ag_stat_routes: "Routes actives", d_stat_routes_p: "Prix moyen",
   // Admin — phone accounts
   ad_users_note: "{n} comptes affichés · dont {p} comptes téléphone 📱",
-  ad_user_search_ph2: "Rechercher un email ou un numéro…"
+  ad_user_search_ph2: "Rechercher un email ou un numéro…",
+  // Trust band (the big blue "Vérifié par Yayo" strip)
+  vband_t: "Vérifié par Yayo",
+  vband_d: "Licence commerciale contrôlée et approuvée par l'équipe Yayo.",
+  vband_a: "Documents, adresses et routes contrôlés par l'équipe Yayo.",
+  vband_chat: "conversation protégée, elle reste sur Yayo"
 },
 en: {
   nav_acheter: "Buy", nav_vendre: "Sell", nav_expedier: "Ship", nav_comment: "How it works", connexion: "Sign in",
@@ -670,7 +675,11 @@ en: {
   ch_unit_conv: "conv.", ch_unit_day: "/day",
   ag_tab_overview: "Overview", ag_stat_routes: "Active routes", d_stat_routes_p: "Average price",
   ad_users_note: "{n} accounts shown · including {p} phone accounts 📱",
-  ad_user_search_ph2: "Search an email or phone number…"
+  ad_user_search_ph2: "Search an email or phone number…",
+  vband_t: "Verified by Yayo",
+  vband_d: "Trade license checked and approved by the Yayo team.",
+  vband_a: "Documents, addresses and routes checked by the Yayo team.",
+  vband_chat: "protected conversation, it stays on Yayo"
 },
 ar: {
   nav_acheter: "اشترِ", nav_vendre: "بِع", nav_expedier: "الشحن", nav_comment: "كيف يعمل", connexion: "تسجيل الدخول",
@@ -990,7 +999,11 @@ ar: {
   ch_unit_conv: "محادثة", ch_unit_day: "/يوم",
   ag_tab_overview: "نظرة عامة", ag_stat_routes: "خطوط نشطة", d_stat_routes_p: "متوسط السعر",
   ad_users_note: "{n} حساباً معروضاً · منها {p} حسابات هاتف 📱",
-  ad_user_search_ph2: "ابحث عن بريد إلكتروني أو رقم هاتف…"
+  ad_user_search_ph2: "ابحث عن بريد إلكتروني أو رقم هاتف…",
+  vband_t: "موثّق من يايو",
+  vband_d: "تم فحص الرخصة التجارية واعتمادها من فريق يايو.",
+  vband_a: "تم فحص المستندات والعناوين والخطوط من فريق يايو.",
+  vband_chat: "محادثة محمية، تبقى على يايو"
 }
 };
 

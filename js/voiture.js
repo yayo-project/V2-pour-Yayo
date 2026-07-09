@@ -106,10 +106,12 @@ function render() {
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
     ? yayoVPill(t("d_verified")) + " · Dubai"
     : "Dubai";
-  // Same pill above the chat: the buyer sees WHO they are talking to
+  // Full-width "Vérifié par Yayo" band on the seller card…
+  document.getElementById("vd-trust").innerHTML = d.verified ? yayoVBand(t("vband_d")) : "";
+  // …and again above the chat, so the buyer sees WHO they are talking to
   const trust = document.getElementById("chat-trust");
   if (trust) trust.innerHTML = d.verified
-    ? yayoVPill(t("d_verified"), true) + `<span class="vd-free" style="margin:0">${escapeHtml(d.name)}</span>`
+    ? yayoVBand(escapeHtml(d.name) + " — " + t("vband_chat"))
     : "";
   renderDealerReviews();
 

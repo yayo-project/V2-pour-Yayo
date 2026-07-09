@@ -58,10 +58,11 @@ async function render() {
   const b = document.getElementById("ap-badge");
   b.className = AG.verified ? "vpill" : "dash-badge wait";
   b.innerHTML = AG.verified ? yayoVBadge() + "<b>" + t("ag_verified") + "</b>" : t("d_not_verified");
-  // Trust pill above the chat: the buyer sees WHO they are talking to
+  // Full-width "Vérifié par Yayo" band on the contact card + above the chat
+  document.getElementById("ap-trust").innerHTML = AG.verified ? yayoVBand(t("vband_a")) : "";
   const trust = document.getElementById("ap-chat-trust");
   if (trust) trust.innerHTML = AG.verified
-    ? yayoVPill(t("ag_verified"), true) + `<span class="vd-free" style="margin:0">${escapeHtml(AG.name)}</span>`
+    ? yayoVBand(escapeHtml(AG.name) + " — " + t("vband_chat"))
     : "";
 
   const meta = [];
