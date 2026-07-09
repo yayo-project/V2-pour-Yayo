@@ -358,6 +358,20 @@ end $$;
 -- in any format (+243..., 0812..., "812 345 678" all match).
 -- Also returns whether the account is phone-only.
 -- ═══════════════════════════════════════════════════════════
+-- (function itself is created in §13c below, which also merges the legacy
+-- WhatsApp accounts from the old public.users table)
+drop function if exists public.admin_list_users(text);
+
+-- Diagnostic: how many phone-only accounts exist? (run alone to see the count)
+-- select count(*) as phone_only_accounts from auth.users where phone is not null and coalesce(email,'') = '';
+
+-- ═══════════════════════════════════════════════════════════
+-- 13c) OLD WHATSAPP/PHONE USERS — they are NOT in Supabase Auth
+-- (count above returned 0). The original Yayo stored WhatsApp
+-- signups in the public.users table with the phone number in
+-- "identifier". The admin list now merges those legacy accounts
+-- in (shown with the 📱 tag, searchable by number).
+-- ═══════════════════════════════════════════════════════════
 drop function if exists public.admin_list_users(text);
 create or replace function public.admin_list_users(q text default null)
 returns table (id uuid, email text, phone text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
@@ -366,6 +380,8 @@ declare qd text;
 begin
   perform _yayo_require(array['super_admin','admin_support']);
   qd := regexp_replace(coalesce(q, ''), '\D', '', 'g');  -- digits only
+
+  -- 1) real login accounts (Supabase Auth)
   return query
     select u.id, u.email::text, u.phone::text, u.created_at, u.last_sign_in_at,
            (u.banned_until is not null and u.banned_until > now()) as banned
@@ -375,10 +391,43 @@ begin
        or (qd <> '' and regexp_replace(coalesce(u.phone::text, ''), '\D', '', 'g') like '%' || qd || '%')
     order by u.created_at desc
     limit 500;
+
+  -- 2) legacy WhatsApp/phone accounts from the old Yayo (public.users).
+  -- Only rows whose identifier looks like a phone number and that have no
+  -- matching Auth account. Wrapped in EXECUTE + exception so an unexpected
+  -- old schema can never break the admin list.
+  if q is null or q = '' or qd <> '' then
+    begin
+      return query execute
+        'select l.id, null::text as email, l.identifier::text as phone, ' ||
+        '       l.created_at, null::timestamptz, coalesce(l.banned, false) ' ||
+        'from public.users l ' ||
+        'where l.identifier is not null ' ||
+        '  and l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' ' ||
+        '  and not exists (select 1 from auth.users a where a.id = l.id ' ||
+        '        or regexp_replace(coalesce(a.phone::text,''''), ''\D'', '''', ''g'') = regexp_replace(l.identifier, ''\D'', '''', ''g'')) ' ||
+        '  and ($1 = '''' or regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $1 || ''%'') ' ||
+        'order by l.created_at desc limit 500'
+        using qd;
+    exception when others then
+      -- old table has a different shape — retry without created_at
+      begin
+        return query execute
+          'select l.id, null::text, l.identifier::text, null::timestamptz, null::timestamptz, false ' ||
+          'from public.users l ' ||
+          'where l.identifier is not null and l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' ' ||
+          '  and ($1 = '''' or regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $1 || ''%'') ' ||
+          'limit 500'
+          using qd;
+      exception when others then null;
+      end;
+    end;
+  end if;
 end $$;
 
--- Diagnostic: how many phone-only accounts exist? (run alone to see the count)
--- select count(*) as phone_only_accounts from auth.users where phone is not null and coalesce(email,'') = '';
+-- Diagnostics for the old table (run each line alone to see the results):
+-- select count(*) as old_yayo_users from public.users;
+-- select login_type, count(*) from public.users group by login_type;
 
 -- ═══════════════════════════════════════════════════════════
 -- 14) PLATFORM STATISTICS — one call returns everything
