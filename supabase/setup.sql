@@ -276,19 +276,9 @@ begin
   perform _yayo_log('delete_listing', 'listing', lid::text, null);
 end $$;
 
-create or replace function public.admin_list_users(q text default null)
-returns table (id uuid, email text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
-language plpgsql stable security definer set search_path = public as $$
-begin
-  perform _yayo_require(array['super_admin','admin_support']);
-  return query
-    select u.id, u.email::text, u.created_at, u.last_sign_in_at,
-           (u.banned_until is not null and u.banned_until > now()) as banned
-    from auth.users u
-    where q is null or q = '' or u.email ilike '%' || q || '%'
-    order by u.created_at desc
-    limit 500;
-end $$;
+-- (superseded by §13b below — same function with phone support; dropping here
+-- so re-running the file never hits "cannot change return type")
+drop function if exists public.admin_list_users(text);
 
 create or replace function public.admin_ban_user(uid uuid, val boolean)
 returns void language plpgsql security definer set search_path = public as $$
@@ -361,20 +351,7 @@ end $$;
 -- Phone-only accounts live in auth.users with email = null and
 -- the number in the "phone" column. The admin list now shows them.
 -- ═══════════════════════════════════════════════════════════
-drop function if exists public.admin_list_users(text);
-create or replace function public.admin_list_users(q text default null)
-returns table (id uuid, email text, phone text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
-language plpgsql stable security definer set search_path = public as $$
-begin
-  perform _yayo_require(array['super_admin','admin_support']);
-  return query
-    select u.id, u.email::text, u.phone::text, u.created_at, u.last_sign_in_at,
-           (u.banned_until is not null and u.banned_until > now()) as banned
-    from auth.users u
-    where q is null or q = '' or u.email ilike '%' || q || '%' or u.phone ilike '%' || q || '%'
-    order by u.created_at desc
-    limit 500;
-end $$;
+-- (function itself is created in §13b below, with smarter phone search)
 
 -- ═══════════════════════════════════════════════════════════
 -- 13b) PHONE SEARCH FIX — find phone accounts by typing digits
