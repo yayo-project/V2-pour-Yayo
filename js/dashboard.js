@@ -174,8 +174,8 @@ function enterDealer() {
 
 function renderBadge() {
   const b = document.getElementById("dash-badge");
-  b.className = "dash-badge " + (DEALER.verified ? "ok" : "wait");
-  b.innerHTML = DEALER.verified ? yayoVBadge() + " " + t("d_verified") : t("d_not_verified");
+  b.className = DEALER.verified ? "vpill" : "dash-badge wait";
+  b.innerHTML = DEALER.verified ? yayoVBadge() + "<b>" + t("d_verified") + "</b>" : t("d_not_verified");
 }
 
 // "En cours de vérification" banner — pending businesses can prepare their
@@ -743,8 +743,8 @@ function enterAgency() {
   show("dash-agency-app");
   document.getElementById("ag-name").textContent = AGENCY.name;
   const b = document.getElementById("ag-badge");
-  b.className = "dash-badge " + (AGENCY.verified ? "ok" : "wait");
-  b.innerHTML = AGENCY.verified ? yayoVBadge() + " " + t("ag_verified") : t("d_not_verified");
+  b.className = AGENCY.verified ? "vpill" : "dash-badge wait";
+  b.innerHTML = AGENCY.verified ? yayoVBadge() + "<b>" + t("ag_verified") + "</b>" : t("d_not_verified");
   renderPendingBanner("agency");
   renderAgencyOverview();
   A_LOGO = AGENCY.logo_url ? { url: AGENCY.logo_url } : null;

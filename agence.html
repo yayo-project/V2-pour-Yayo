@@ -109,6 +109,7 @@ gtag('config', 'G-NR2LTEVKET');
             <button class="btn btn-solid btn-block" id="ap-contact" onclick="openAgChat()" data-i18n="ap_contact">💬 Contacter l'agence</button>
             <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
             <div id="ap-chat" hidden>
+              <div class="chat-trust" id="ap-chat-trust"></div>
               <div class="chat-box" id="chat-box"></div>
               <form class="chat-form" onsubmit="return sendMsg(event)">
                 <input id="chat-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">

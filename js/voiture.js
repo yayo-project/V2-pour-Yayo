@@ -102,9 +102,15 @@ function render() {
   const pics = (d.photos || []).slice(0, 3);
   gal.hidden = !pics.length;
   gal.innerHTML = pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("");
+  // The trust pill next to the dealer name — big, blue, unmissable
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
-    ? yayoVBadge() + " " + t("verified_dubai")
+    ? yayoVPill(t("d_verified")) + " · Dubai"
     : "Dubai";
+  // Same pill above the chat: the buyer sees WHO they are talking to
+  const trust = document.getElementById("chat-trust");
+  if (trust) trust.innerHTML = d.verified
+    ? yayoVPill(t("d_verified"), true) + `<span class="vd-free" style="margin:0">${escapeHtml(d.name)}</span>`
+    : "";
   renderDealerReviews();
 
   renderCities();
@@ -236,7 +242,8 @@ function renderTransport() {
     <div class="ct-agency${on ? " on" : ""}">
       <div class="ct-agency-top">
         <div class="ct-agency-info">
-          <b>${yayoVBadge()} ${escapeHtml(a.name)}</b>
+          <b>${escapeHtml(a.name)}</b>
+          ${yayoVPill(t("ag_verified"), true)}
         </div>
         ${rv ? `<span class="rv-mini">${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> (${rv.count})</span>` : `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`}
       </div>

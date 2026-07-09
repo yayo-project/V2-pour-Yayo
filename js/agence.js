@@ -56,8 +56,13 @@ async function render() {
     ? `<div class="gal-row">${pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("")}</div>`
     : `<div class="gal-empty" data-i18n="ap_gallery_empty">${t("ap_gallery_empty")}</div>`;
   const b = document.getElementById("ap-badge");
-  b.className = "dash-badge " + (AG.verified ? "ok" : "wait");
-  b.innerHTML = AG.verified ? yayoVBadge() + " " + t("ag_verified") : t("d_not_verified");
+  b.className = AG.verified ? "vpill" : "dash-badge wait";
+  b.innerHTML = AG.verified ? yayoVBadge() + "<b>" + t("ag_verified") + "</b>" : t("d_not_verified");
+  // Trust pill above the chat: the buyer sees WHO they are talking to
+  const trust = document.getElementById("ap-chat-trust");
+  if (trust) trust.innerHTML = AG.verified
+    ? yayoVPill(t("ag_verified"), true) + `<span class="vd-free" style="margin:0">${escapeHtml(AG.name)}</span>`
+    : "";
 
   const meta = [];
   if (m.years) meta.push(m.years + " " + t("ap_years"));
