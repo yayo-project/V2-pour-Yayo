@@ -392,37 +392,45 @@ begin
     order by u.created_at desc
     limit 500;
 
-  -- 2) legacy WhatsApp/phone accounts from the old Yayo (public.users).
-  -- Only rows whose identifier looks like a phone number and that have no
-  -- matching Auth account. Wrapped in EXECUTE + exception so an unexpected
-  -- old schema can never break the admin list.
-  if q is null or q = '' or qd <> '' then
+  -- 2) legacy accounts from the old Yayo (public.users): WhatsApp/phone rows
+  -- (identifier = the number → shown in the phone column with the 📱 tag) AND
+  -- old email rows (identifier = the email). Only rows with no matching Auth
+  -- account, so nothing appears twice. Wrapped in EXECUTE + exception so an
+  -- unexpected old schema can never break the admin list.
+  begin
+    return query execute
+      'select l.id, ' ||
+      '       case when l.identifier like ''%@%'' then l.identifier end::text as email, ' ||
+      '       case when l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' then l.identifier end::text as phone, ' ||
+      '       l.created_at, null::timestamptz, coalesce(l.banned, false) ' ||
+      'from public.users l ' ||
+      'where l.identifier is not null ' ||
+      '  and (l.identifier like ''%@%'' or l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'') ' ||
+      '  and not exists (select 1 from auth.users a where a.id = l.id ' ||
+      '        or lower(coalesce(a.email,'''')) = lower(l.identifier) ' ||
+      '        or (l.identifier not like ''%@%'' and regexp_replace(coalesce(a.phone::text,''''), ''\D'', '''', ''g'') = regexp_replace(l.identifier, ''\D'', '''', ''g''))) ' ||
+      '  and ($1 = '''' or l.identifier ilike ''%'' || $1 || ''%'' ' ||
+      '       or ($2 <> '''' and regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $2 || ''%'')) ' ||
+      'order by l.created_at desc limit 500'
+      using coalesce(q, ''), qd;
+  exception when others then
+    -- old table has a different shape — retry without created_at/banned
     begin
       return query execute
-        'select l.id, null::text as email, l.identifier::text as phone, ' ||
-        '       l.created_at, null::timestamptz, coalesce(l.banned, false) ' ||
+        'select l.id, ' ||
+        '       case when l.identifier like ''%@%'' then l.identifier end::text, ' ||
+        '       case when l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' then l.identifier end::text, ' ||
+        '       null::timestamptz, null::timestamptz, false ' ||
         'from public.users l ' ||
         'where l.identifier is not null ' ||
-        '  and l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' ' ||
-        '  and not exists (select 1 from auth.users a where a.id = l.id ' ||
-        '        or regexp_replace(coalesce(a.phone::text,''''), ''\D'', '''', ''g'') = regexp_replace(l.identifier, ''\D'', '''', ''g'')) ' ||
-        '  and ($1 = '''' or regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $1 || ''%'') ' ||
-        'order by l.created_at desc limit 500'
-        using qd;
-    exception when others then
-      -- old table has a different shape — retry without created_at
-      begin
-        return query execute
-          'select l.id, null::text, l.identifier::text, null::timestamptz, null::timestamptz, false ' ||
-          'from public.users l ' ||
-          'where l.identifier is not null and l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'' ' ||
-          '  and ($1 = '''' or regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $1 || ''%'') ' ||
-          'limit 500'
-          using qd;
-      exception when others then null;
-      end;
+        '  and (l.identifier like ''%@%'' or l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'') ' ||
+        '  and ($1 = '''' or l.identifier ilike ''%'' || $1 || ''%'' ' ||
+        '       or ($2 <> '''' and regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $2 || ''%'')) ' ||
+        'limit 500'
+        using coalesce(q, ''), qd;
+    exception when others then null;
     end;
-  end if;
+  end;
 end $$;
 
 -- Diagnostics for the old table (run each line alone to see the results):
