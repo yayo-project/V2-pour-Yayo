@@ -151,11 +151,11 @@ function renderFavs() {
         <span class="car-price-lbl">${t("a_dubai")}</span>
       </div>
       <div class="landed">
-        <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
+        <span class="landed-lbl">🚢 ${t("rendu2")} ${dst.name}</span>
         <span class="landed-val">≈ ${fmt(c.price + dst.ship + c.price * dst.duty + dst.fees)}</span>
       </div>
       <div class="car-dealer">
-        ${c.dealer && c.dealer.verified ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span>' : ""}
+        ${c.dealer && c.dealer.verified ? yayoVBadge() : ""}
         ${c.dealer ? escapeHtml(c.dealer.name) + " · Dubai" : ""}
       </div>
     </div>

@@ -34,8 +34,9 @@ async function loadCars() {
       .limit(YAYO_CONFIG.FEATURED_LIMIT);
 
     if (!error && data && data.length > 0) {
-      // never show admin-hidden listings or suspended dealers to buyers
-      data = data.filter(l => !l.hidden && !(l.dealers && l.dealers.suspended));
+      // buyers only ever see listings from ADMIN-VERIFIED dealers
+      // (pending/suspended dealers prepare in their dashboard, invisible here)
+      data = data.filter(l => !l.hidden && l.dealers && l.dealers.verified && !l.dealers.suspended);
       CARS = data.map(l => ({
         id: l.id,
         car_name: l.car_name,
@@ -78,12 +79,12 @@ function renderCars() {
       </div>
       ${CUR === "dubai" ? "" : `
       <div class="landed">
-        <span class="landed-lbl">🚢 ${t("rendu")} ${dst.name}</span>
+        <span class="landed-lbl">🚢 ${t("rendu2")} ${dst.name}</span>
         <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR))}</span>
       </div>`}
       <div class="car-dealer">
         ${yayoAvatarHtml(c.dealer.name, c.dealer.logo_url)}
-        ${c.dealer.verified ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span>' : ""}
+        ${c.dealer.verified ? yayoVBadge() : ""}
         ${escapeHtml(c.dealer.name)} · Dubai
       </div>
     </div>

@@ -377,6 +377,33 @@ begin
 end $$;
 
 -- ═══════════════════════════════════════════════════════════
+-- 13b) PHONE SEARCH FIX — find phone accounts by typing digits
+-- in any format (+243..., 0812..., "812 345 678" all match).
+-- Also returns whether the account is phone-only.
+-- ═══════════════════════════════════════════════════════════
+drop function if exists public.admin_list_users(text);
+create or replace function public.admin_list_users(q text default null)
+returns table (id uuid, email text, phone text, created_at timestamptz, last_sign_in_at timestamptz, banned boolean)
+language plpgsql stable security definer set search_path = public as $$
+declare qd text;
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  qd := regexp_replace(coalesce(q, ''), '\D', '', 'g');  -- digits only
+  return query
+    select u.id, u.email::text, u.phone::text, u.created_at, u.last_sign_in_at,
+           (u.banned_until is not null and u.banned_until > now()) as banned
+    from auth.users u
+    where q is null or q = ''
+       or u.email ilike '%' || q || '%'
+       or (qd <> '' and regexp_replace(coalesce(u.phone::text, ''), '\D', '', 'g') like '%' || qd || '%')
+    order by u.created_at desc
+    limit 500;
+end $$;
+
+-- Diagnostic: how many phone-only accounts exist? (run alone to see the count)
+-- select count(*) as phone_only_accounts from auth.users where phone is not null and coalesce(email,'') = '';
+
+-- ═══════════════════════════════════════════════════════════
 -- 14) PLATFORM STATISTICS — one call returns everything
 -- ═══════════════════════════════════════════════════════════
 create or replace function public.admin_stats()
@@ -414,3 +441,47 @@ begin
   ) into o;
   return o;
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 15) SECURITY — verification is ADMIN-ONLY, never automatic.
+-- Logging in (Google/email/phone) only proves identity. Anyone
+-- can APPLY to become a dealer/agency, but the "verified" and
+-- "suspended" flags can only be changed by an admin. A trigger
+-- enforces it at the database level, so even a hacked client
+-- cannot self-verify. Existing rows (e.g. Mukoma) are untouched.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.yayo_guard_verification()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(public.yayo_admin_role(), '') in ('super_admin','admin_dealers') then
+    return new;  -- admins may change anything
+  end if;
+  if TG_OP = 'INSERT' then
+    -- every new application starts pending, never pre-verified
+    new.verified := false;
+    new.suspended := false;
+    new.rejected_reason := null;
+  else
+    -- non-admins can edit their profile but NOT their status
+    new.verified := old.verified;
+    new.suspended := old.suspended;
+    new.rejected_reason := old.rejected_reason;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists yayo_guard_dealers on public.dealers;
+create trigger yayo_guard_dealers
+  before insert or update on public.dealers
+  for each row execute function public.yayo_guard_verification();
+
+drop trigger if exists yayo_guard_agencies on public.shipping_agencies;
+create trigger yayo_guard_agencies
+  before insert or update on public.shipping_agencies
+  for each row execute function public.yayo_guard_verification();
+
+-- Dealer application details ("Devenir dealer" form)
+alter table public.dealers add column if not exists description text;
+
+-- The admin RPCs (§11) bypass the trigger correctly because they are
+-- called BY an admin — yayo_admin_role() sees the admin's login.

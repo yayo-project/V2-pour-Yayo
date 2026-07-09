@@ -21,8 +21,10 @@ async function loadAgency() {
     AG = (window.YAYO_DEMO_AGENCIES || []).find(a => a.id === AG_ID) || null;
   } else {
     try {
-      const { data } = await yayoSB().from("shipping_agencies")
+      let { data } = await yayoSB().from("shipping_agencies")
         .select("*").eq("id", AG_ID).maybeSingle();
+      // pending/suspended agencies are not public until admin approval
+      if (data && (!data.verified || data.suspended)) data = null;
       if (data) {
         let d = data.routes;
         if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
@@ -55,7 +57,7 @@ async function render() {
     : `<div class="gal-empty" data-i18n="ap_gallery_empty">${t("ap_gallery_empty")}</div>`;
   const b = document.getElementById("ap-badge");
   b.className = "dash-badge " + (AG.verified ? "ok" : "wait");
-  b.textContent = AG.verified ? "✓ " + t("ag_verified") : t("d_not_verified");
+  b.innerHTML = AG.verified ? yayoVBadge() + " " + t("ag_verified") : t("d_not_verified");
 
   const meta = [];
   if (m.years) meta.push(m.years + " " + t("ap_years"));

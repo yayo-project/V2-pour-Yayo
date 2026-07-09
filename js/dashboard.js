@@ -81,9 +81,10 @@ const DEMO_AG_ROUTES = [
 async function init() {
   if (DEMO) {
     DEALER = DEMO_DEALER;
-    LISTINGS = window.YAYO_DEMO.slice(0, 6).map(c => ({ ...c, active: true, sold: false }));
+    LISTINGS = window.YAYO_DEMO.slice(0, 6).map((c, i) => ({ ...c, active: true, sold: false, views: [412, 300, 255, 190, 122, 80][i] }));
     LISTINGS[4].sold = true; LISTINGS[5].active = false;
     CONVOS = demoConvos();
+    CONVOS.forEach((c, i) => { c.created_at = new Date(Date.now() - (i * 5 + 2) * 86400000).toISOString(); });
     UNREAD = { "dc-1": 2 };
     show("dash-demo");
     document.getElementById("dash-logout").style.display = "none"; // .btn display overrides [hidden]
@@ -95,6 +96,7 @@ async function init() {
     AG_META = JSON.parse(JSON.stringify(DEMO_AG_META));
     ROUTES = JSON.parse(JSON.stringify(DEMO_AG_ROUTES));
     CONVOS = demoAgConvos();
+    CONVOS.forEach((c, i) => { c.created_at = new Date(Date.now() - (i * 7 + 3) * 86400000).toISOString(); });
     UNREAD = { "ac-1": 1 };
     show("dash-demo");
     document.getElementById("ag-logout").style.display = "none";
@@ -124,14 +126,12 @@ async function init() {
   if (adRole) { AD_ROLE = adRole; show("dash-admin"); await adminInit(); adminEnter(); return; }
   if (role === "agency") { await agencyInit(); return; }
 
-  // Dealer row is linked by email (fallback: company name from signup)
+  // Dealer row is linked STRICTLY by email. (The old company-name fallback was
+  // a security hole: anyone could type an existing dealer's name at signup and
+  // land in that dealer's dashboard.)
   try {
     const sb = yayoSB();
     let { data } = await sb.from("dealers").select("*").eq("email", USER.email).maybeSingle();
-    if (!data && USER.user_metadata && USER.user_metadata.company) {
-      const r = await sb.from("dealers").select("*").ilike("name", USER.user_metadata.company).limit(1);
-      data = r.data && r.data[0];
-    }
     if (!data && role === "dealer") {
       // Registered dealer without a profile row yet — create it (admin activates later)
       const ins = await sb.from("dealers").insert({
@@ -161,8 +161,10 @@ function enterDealer() {
   galThumbs(D_GAL, "pf-thumbs", "rmDealerPic");
   licenseState("dealer");
   renderBadge();
+  renderPendingBanner("dealer");
   renderStats();
   renderOverview();
+  renderDealerCharts();
   renderListings();
   renderConvoList();
   renderChips();
@@ -173,7 +175,34 @@ function enterDealer() {
 function renderBadge() {
   const b = document.getElementById("dash-badge");
   b.className = "dash-badge " + (DEALER.verified ? "ok" : "wait");
-  b.textContent = DEALER.verified ? "✓ " + t("d_verified") : t("d_not_verified");
+  b.innerHTML = DEALER.verified ? yayoVBadge() + " " + t("d_verified") : t("d_not_verified");
+}
+
+// "En cours de vérification" banner — pending businesses can prepare their
+// profile/listings, but nothing is public until an admin approves.
+function renderPendingBanner(kind) {
+  const biz = kind === "dealer" ? DEALER : AGENCY;
+  const box = document.getElementById(kind === "dealer" ? "d-pending" : "ag-pending");
+  const p = document.getElementById(kind === "dealer" ? "d-pending-p" : "ag-pending-p");
+  if (!box) return;
+  box.hidden = !!biz.verified;
+  if (biz.verified) return;
+  let txt = t("pend_p");
+  if (biz.license_path) txt = t("pend_lic_ok") + " " + t("pend_p");
+  if (biz.rejected_reason) txt = t("pend_rejected") + " « " + biz.rejected_reason + " ». " + t("pend_reapply");
+  p.textContent = txt;
+}
+
+// Overview charts: conversations per day + views per listing (top 8)
+function renderDealerCharts() {
+  const convEl = document.getElementById("ov-chart-convos");
+  const viewEl = document.getElementById("ov-chart-views");
+  if (!convEl || !viewEl) return;
+  const series = yayoDailySeries(CONVOS.map(c => c.created_at));
+  convEl.innerHTML = series.length ? yayoLineChart(series, 30) : `<p class="yy-empty">${t("ch_none")}</p>`;
+  viewEl.innerHTML = yayoBarChart(
+    LISTINGS.slice().sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 8)
+      .map(l => ({ label: l.car_name, value: l.views || 0 })));
 }
 
 // ── Data ──
@@ -197,6 +226,7 @@ async function loadConvos() {
       id: c.id,
       car_name: c.car_name || "—",
       buyer: t("d_buyer"),
+      created_at: c.created_at, // for the 30-day trend chart
       msgs: null // loaded on open
     }));
   } catch (e) { CONVOS = []; }
@@ -687,11 +717,8 @@ function buildAgencyPayload() {
 async function agencyInit() {
   try {
     const sb = yayoSB();
+    // Agency row linked STRICTLY by email (no name matching — see dealer note)
     let { data } = await sb.from("shipping_agencies").select("*").eq("email", USER.email).maybeSingle();
-    if (!data && USER.user_metadata && USER.user_metadata.company) {
-      const r = await sb.from("shipping_agencies").select("*").ilike("name", USER.user_metadata.company).limit(1);
-      data = r.data && r.data[0];
-    }
     if (!data) {
       const ins = await sb.from("shipping_agencies").insert({
         name: (USER.user_metadata && USER.user_metadata.company) || USER.email.split("@")[0],
@@ -717,7 +744,9 @@ function enterAgency() {
   document.getElementById("ag-name").textContent = AGENCY.name;
   const b = document.getElementById("ag-badge");
   b.className = "dash-badge " + (AGENCY.verified ? "ok" : "wait");
-  b.textContent = AGENCY.verified ? "✓ " + t("ag_verified") : t("d_not_verified");
+  b.innerHTML = AGENCY.verified ? yayoVBadge() + " " + t("ag_verified") : t("d_not_verified");
+  renderPendingBanner("agency");
+  renderAgencyOverview();
   A_LOGO = AGENCY.logo_url ? { url: AGENCY.logo_url } : null;
   A_GAL = yayoPhotoList(AGENCY.photos).map(u => ({ url: u }));
   logoView(A_LOGO, "agl-view", AGENCY.name);
@@ -736,8 +765,26 @@ function enterAgency() {
   openRequestedTab(true);
 }
 
+// Agency overview: stat cards + 30-day conversations trend + rates per city
+function renderAgencyOverview() {
+  const el = document.getElementById("ag-stat-routes");
+  if (!el) return;
+  const active = ROUTES.filter(r => r.price > 0);
+  el.textContent = active.length;
+  document.getElementById("ag-stat-convos").textContent = CONVOS.length;
+  document.getElementById("ag-stat-unread").textContent = Object.values(UNREAD).reduce((s, n) => s + n, 0);
+  const series = yayoDailySeries(CONVOS.map(c => c.created_at));
+  document.getElementById("ag-chart-convos").innerHTML =
+    series.length ? yayoLineChart(series, 30) : `<p class="yy-empty">${t("ch_none")}</p>`;
+  document.getElementById("ag-chart-routes").innerHTML = yayoBarChart(
+    active.map(r => {
+      const d = YAYO_CONFIG.DESTINATIONS[r.city];
+      return { label: d ? d.flag + " " + d.name : r.city, value: r.price };
+    }), "$");
+}
+
 function showAgTab(name) {
-  ["ag-routes", "ag-profile"].forEach(tb => {
+  ["ag-overview", "ag-routes", "ag-profile"].forEach(tb => {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
   // The messages panel is shared with the dealer dashboard
@@ -820,6 +867,7 @@ async function saveRoutes() {
   ROUTES = ROUTES.filter(r => r.price > 0);
   renderRoutes();
   renderOffices();
+  renderAgencyOverview();
   const err = document.getElementById("ag-routes-err");
   err.hidden = true;
   if (DEMO_AG) { flashSaved("ag-routes-saved"); return; }
@@ -913,6 +961,7 @@ function adminDemoData() {
   AD_USERS = [
     { id: "u1", email: "acheteur.kin@example.com", created_at: iso(2), last_sign_in_at: iso(0), banned: false },
     { id: "u2", email: "marie.douala@example.com", created_at: iso(9), last_sign_in_at: iso(3), banned: false },
+    { id: "u4", email: null, phone: "+243812345678", created_at: iso(200), last_sign_in_at: iso(45), banned: false },
     { id: "u3", email: "spam.account@example.com", created_at: iso(20), last_sign_in_at: iso(18), banned: true }
   ];
   AD_TEAM = [
@@ -1010,7 +1059,7 @@ function adFail(errId, e) {
 function bizList(type) { return type === "dealer" ? AD_DEALERS : AD_AGS; }
 function bizStatus(x) {
   if (x.suspended) return ["off", t("ad_st_suspended")];
-  if (x.verified) return ["active", "✓ " + t("ad_st_verified")];
+  if (x.verified) return ["active", yayoVBadge() + " " + t("ad_st_verified")];
   return ["sold", t("ad_st_pending")];
 }
 function bizActionsHtml(type, x) {
@@ -1201,6 +1250,13 @@ async function adLoadUsers() {
   } catch (e) { adFail("ad-users-err", e); }
 }
 function adRenderUsers() {
+  // Count line: proves phone-only (old WhatsApp/SMS) accounts are included
+  const note = document.getElementById("ad-users-note");
+  if (note) {
+    const phones = AD_USERS.filter(u => u.phone && !u.email).length;
+    note.hidden = !AD_USERS.length;
+    note.textContent = t("ad_users_note").replace("{n}", AD_USERS.length).replace("{p}", phones);
+  }
   document.getElementById("ad-user-rows").innerHTML = AD_USERS.map(u => `
     <tr>
       <td class="ad-contact">${escapeHtml(u.email || u.phone || "—")}${u.email && u.phone ? `<br>📱 ${escapeHtml(u.phone)}` : ""}${!u.email && u.phone ? ` <span class="dash-st sold">📱 SMS</span>` : ""}</td>
@@ -1313,35 +1369,14 @@ function adRenderStats() {
   ];
   document.getElementById("ad-stats").innerHTML = cards.map(([k, v]) =>
     `<div class="dash-stat"><span class="num">${v === null || v === undefined ? "—" : v}</span><span class="lbl">${t(k)}</span></div>`).join("");
-  document.getElementById("ad-spark").innerHTML = adSparkline(s.signups_by_day || []);
-  const cars = (s.top_cars || []);
-  document.getElementById("ad-top-cars").innerHTML = cars.length ? cars.map(c =>
-    `<div class="ad-top-line"><b>${escapeHtml(c.car_name)}</b><span>${c.views} ${t("ad_views_unit")}</span></div>`).join("")
-    : `<p class="dash-empty">${t("ad_none_yet")}</p>`;
-  const dests = (s.top_destinations || []);
-  document.getElementById("ad-top-dest").innerHTML = dests.length ? dests.map(d => {
-    const cfg = YAYO_CONFIG.DESTINATIONS[d.city];
-    return `<div class="ad-top-line"><b>${cfg ? cfg.flag + " " + cfg.name : escapeHtml(d.city)}</b><span>${d.picks} ${t("ad_picks_unit")}</span></div>`;
-  }).join("") : `<p class="dash-empty">${t("ad_none_yet")}</p>`;
-}
-
-// Simple inline SVG trend line — no chart library needed
-function adSparkline(series) {
-  const byDay = {};
-  series.forEach(p => { byDay[String(p.d).slice(0, 10)] = p.n; });
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
-    return byDay[d] || 0;
-  });
-  const max = Math.max(1, ...days);
-  const W = 560, H = 120, P = 8;
-  const pts = days.map((n, i) => `${P + i * (W - 2 * P) / 29},${H - P - n * (H - 2 * P) / max}`).join(" ");
-  return `
-  <svg viewBox="0 0 ${W} ${H}" class="ad-spark-svg" preserveAspectRatio="none" role="img">
-    <polyline points="${pts}" fill="none" stroke="#1FD8C9" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <polygon points="${P},${H - P} ${pts} ${W - P},${H - P}" fill="#1FD8C9" opacity="0.12"/>
-  </svg>
-  <div class="ad-spark-max">max ${max}/j</div>`;
+  document.getElementById("ad-spark").innerHTML = yayoLineChart(s.signups_by_day || [], 30);
+  document.getElementById("ad-top-cars").innerHTML = yayoBarChart(
+    (s.top_cars || []).map(c => ({ label: c.car_name, value: c.views })));
+  document.getElementById("ad-top-dest").innerHTML = yayoBarChart(
+    (s.top_destinations || []).map(d => {
+      const cfg = YAYO_CONFIG.DESTINATIONS[d.city];
+      return { label: cfg ? cfg.flag + " " + cfg.name : d.city, value: d.picks };
+    }));
 }
 
 // ── Trade license upload (dealer + agency profile tabs) ──
@@ -1377,6 +1412,7 @@ async function uploadLicense(kind, files) {
     if (e2) throw e2;
     biz.license_path = path;
     licenseState(kind);
+    renderPendingBanner(kind);
     el.textContent = t("lic_saved");
   } catch (e) {
     el.textContent = /column|schema|bucket|not found/i.test(e.message || "") ? t("pf_sql_hint") : t("up_fail") + " (" + (e.message || e) + ")";
@@ -1386,7 +1422,7 @@ async function uploadLicense(kind, files) {
 // Re-render translated content when the language changes
 window.onLangChange = () => {
   if (!document.getElementById("dash-dealer").hidden) {
-    renderBadge(); renderOverview(); renderListings(); renderConvoList(); renderChips();
+    renderBadge(); renderPendingBanner("dealer"); renderOverview(); renderDealerCharts(); renderListings(); renderConvoList(); renderChips();
   }
   if (!document.getElementById("dash-agency-app").hidden) {
     syncRoutesFromDOM(); syncOfficesFromDOM(); enterAgency();

@@ -31,6 +31,8 @@ async function loadCar() {
         .select("*, dealers(*)")
         .eq("id", CAR_ID).maybeSingle();
       if (data && data.hidden) data = null; // hidden by admin — not shown to buyers
+      // pending/suspended dealer = listing not public yet (admin approval first)
+      if (data && !(data.dealers && data.dealers.verified && !data.dealers.suspended)) data = null;
       if (!error && data) {
         // view counter (best effort) + traffic funnel event
         try { yayoSB().rpc("yayo_view", { lid: CAR_ID }).then(() => {}, () => {}); } catch (e2) {}
@@ -101,7 +103,7 @@ function render() {
   gal.hidden = !pics.length;
   gal.innerHTML = pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("");
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
-    ? '<span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ' + t("verified_dubai")
+    ? yayoVBadge() + " " + t("verified_dubai")
     : "Dubai";
   renderDealerReviews();
 
@@ -153,15 +155,26 @@ function renderBreakdown() {
   const ship = route ? route.price : d.ship;
   const shipLbl = route
     ? `${t("ct_price_lbl")}<span class="ct-src">${escapeHtml(CHOSEN.name)}</span>`
-    : t("bd_ship");
+    : t("bd_ship2");
   const duty = CAR.price * d.duty;
   const total = CAR.price + ship + duty + d.fees;
+  // Two clearly separated blocks so no buyer ever thinks the TOTAL goes to the
+  // dealer: (1) car price = the only money for the seller, (2) fees paid
+  // separately to the agency / government / port.
   box.innerHTML = `
-    <div class="cost-line"><span>${t("bd_price")}</span><b>${fmt(CAR.price)}</b></div>
-    <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
-    <div class="cost-line"><span>${t("bd_duty")}</span><b>${fmt(duty)}</b></div>
-    <div class="cost-line"><span>${t("bd_fees")}</span><b>${fmt(d.fees)}</b></div>
-    <div class="cost-total"><span>${t("bd_total")} ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>`;
+    <div class="pay-block pay-dealer">
+      <div class="pay-head">🚗 ${t("bd_pay_dealer")}</div>
+      <div class="cost-line"><span>${t("bd_pay_dealer_line")}</span><b>${fmt(CAR.price)}</b></div>
+      <div class="pay-sub">${t("bd_pay_dealer_note")}</div>
+    </div>
+    <div class="pay-block">
+      <div class="pay-head">🚢 ${t("bd_fees_h")}</div>
+      <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
+      <div class="cost-line"><span>${t("bd_duty2")}</span><b>${fmt(duty)}</b></div>
+      <div class="cost-line"><span>${t("bd_fees2")}</span><b>${fmt(d.fees)}</b></div>
+    </div>
+    <div class="cost-total"><span>${t("bd_total2")} — ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>
+    <p class="pay-explain">${t("bd_explain")}</p>`;
 }
 
 // ── Choisir le transport (phase 8) ──
@@ -223,7 +236,7 @@ function renderTransport() {
     <div class="ct-agency${on ? " on" : ""}">
       <div class="ct-agency-top">
         <div class="ct-agency-info">
-          <b><span class="vcheck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M20 6L9 17l-5-5"/></svg></span> ${escapeHtml(a.name)}</b>
+          <b>${yayoVBadge()} ${escapeHtml(a.name)}</b>
         </div>
         ${rv ? `<span class="rv-mini">${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> (${rv.count})</span>` : `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`}
       </div>

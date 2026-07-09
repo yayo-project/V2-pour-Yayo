@@ -161,19 +161,24 @@ gtag('config', 'G-NR2LTEVKET');
             <label for="v-phone" data-i18n="v_phone">Téléphone (Dubai)</label>
             <input id="v-phone" type="tel" required placeholder="+971 …">
           </div>
-          <div class="field">
+          <div class="field field-wide">
+            <label for="v-desc" data-i18n="v_desc_lbl">Description de l'entreprise (optionnel)</label>
+            <textarea id="v-desc" rows="2" maxlength="600" data-i18n-ph="v_desc_ph" placeholder="Votre activité, vos routes, depuis quand…"></textarea>
+          </div>
+          <div class="field" id="v-email-field">
             <label for="v-email" data-i18n="v_email">Email professionnel</label>
             <input id="v-email" type="email" autocomplete="email" required data-i18n-ph="v_email_ph" placeholder="vous@entreprise.com">
           </div>
-          <div class="field">
+          <div class="field" id="v-pass-field">
             <label for="v-pass" data-i18n="au_pass">Mot de passe</label>
             <input id="v-pass" type="password" autocomplete="new-password" required minlength="6" data-i18n-ph="au_pass_ph" placeholder="6 caractères minimum">
           </div>
         </div>
+        <p class="auth-note" id="v-logged" hidden></p>
         <div class="auth-error" id="v-error" hidden></div>
         <div class="auth-ok" id="v-ok" hidden></div>
         <button type="submit" class="btn btn-solid btn-block" id="v-btn" style="margin-top:14px" data-i18n="v_reg_btn">Créer mon compte</button>
-        <p class="auth-note" data-i18n="v_reg_note">En créant un compte vous acceptez d'être contacté par l'équipe Yayo pour l'activation.</p>
+        <p class="auth-note" data-i18n="v_apply_note">Votre demande passe en vérification (sous 24h). Vous accédez à votre dashboard immédiatement pour préparer votre profil.</p>
       </form>
     </div>
   </div>
@@ -222,6 +227,22 @@ gtag('config', 'G-NR2LTEVKET');
 <script>
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 
+// Separate APPLICATION to become an agency — always starts PENDING until an
+// admin reviews the license. Logged-in buyers apply with their account.
+let LOGGED_USER = null;
+(async () => {
+  LOGGED_USER = await yayoUser();
+  if (!LOGGED_USER) return;
+  document.getElementById("v-email-field").hidden = true;
+  document.getElementById("v-pass-field").hidden = true;
+  document.getElementById("v-email").required = false;
+  document.getElementById("v-pass").required = false;
+  const lg = document.getElementById("v-logged");
+  lg.hidden = false;
+  lg.textContent = t("v_logged_as") + " " + LOGGED_USER.email;
+  document.getElementById("v-btn").textContent = t("v_apply_btn");
+})();
+
 async function doRegister(e) {
   e.preventDefault();
   const err = document.getElementById("v-error");
@@ -231,27 +252,47 @@ async function doRegister(e) {
 
   const company = document.getElementById("v-company").value.trim();
   const phone = document.getElementById("v-phone").value.trim();
-  const email = document.getElementById("v-email").value.trim();
-  const pass = document.getElementById("v-pass").value;
+  const desc = document.getElementById("v-desc").value.trim() || null;
 
-  const { data, error } = await yayoSignUpEmail(email, pass, { role: "agency", company, phone });
-  btn.disabled = false;
-  if (error) {
-    err.hidden = false;
-    err.textContent = error.message.includes("already registered")
-      ? t("au_err_exists")
-      : t("au_err_generic") + error.message;
-    return false;
-  }
-  // Best-effort profile row; admin activates the account afterwards
   try {
-    await yayoSB().from("shipping_agencies").insert({ name: company, email, whatsapp: phone, country: "Dubai UAE", verified: false });
-  } catch (ignored) {}
-  // Account active right away (no email confirmation)? Straight to the dashboard.
-  if (data && data.session) { location.href = "dashboard.html"; return false; }
-  ok.hidden = false;
-  ok.textContent = t("v_ok");
-  e.target.reset();
+    if (LOGGED_USER) {
+      const { error: mErr } = await yayoSB().auth.updateUser({ data: { role: "agency", company, phone } });
+      if (mErr) throw mErr;
+      const { error: iErr } = await yayoSB().from("shipping_agencies").insert({
+        name: company, email: LOGGED_USER.email, whatsapp: phone, country: "Dubai UAE",
+        routes: JSON.stringify({ v: 2, description: desc, offices: {}, routes: [] }), verified: false
+      });
+      if (iErr && !/duplicate/i.test(iErr.message || "")) throw iErr;
+      location.href = "dashboard.html";
+      return false;
+    }
+    const email = document.getElementById("v-email").value.trim();
+    const pass = document.getElementById("v-pass").value;
+    const { data, error } = await yayoSignUpEmail(email, pass, { role: "agency", company, phone });
+    if (error) {
+      err.hidden = false;
+      err.textContent = error.message.includes("already registered")
+        ? t("au_err_exists")
+        : t("au_err_generic") + error.message;
+      btn.disabled = false;
+      return false;
+    }
+    // Pending profile row — the §15 trigger guarantees verified stays false
+    try {
+      await yayoSB().from("shipping_agencies").insert({
+        name: company, email, whatsapp: phone, country: "Dubai UAE",
+        routes: JSON.stringify({ v: 2, description: desc, offices: {}, routes: [] }), verified: false
+      });
+    } catch (ignored) {}
+    if (data && data.session) { location.href = "dashboard.html"; return false; }
+    ok.hidden = false;
+    ok.textContent = t("v_ok_pending");
+    e.target.reset();
+  } catch (e2) {
+    err.hidden = false;
+    err.textContent = t("au_err_generic") + (e2.message || e2);
+  }
+  btn.disabled = false;
   return false;
 }
 </script>

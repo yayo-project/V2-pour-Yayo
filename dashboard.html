@@ -80,13 +80,37 @@ gtag('config', 'G-NR2LTEVKET');
         <button class="btn btn-ghost-dark" id="ag-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
       </div>
 
+      <div class="pend-banner" id="ag-pending" hidden>
+        <h3 data-i18n="pend_h">⏳ En cours de vérification (sous 24h)</h3>
+        <p id="ag-pending-p"></p>
+      </div>
+
       <div class="dash-tabs" role="tablist">
-        <button class="on" data-tab="ag-routes" onclick="showAgTab('ag-routes')" data-i18n="ag_tab_routes">Mes routes</button>
+        <button class="on" data-tab="ag-overview" onclick="showAgTab('ag-overview')" data-i18n="ag_tab_overview">Aperçu</button>
+        <button data-tab="ag-routes" onclick="showAgTab('ag-routes')" data-i18n="ag_tab_routes">Mes routes</button>
         <button data-tab="ag-messages" onclick="showAgTab('ag-messages')" data-i18n="d_tab_messages">Messages</button>
         <button data-tab="ag-profile" onclick="showAgTab('ag-profile')" data-i18n="ag_tab_profile">Profil</button>
       </div>
 
-      <section id="tab-ag-routes">
+      <section id="tab-ag-overview">
+        <div class="dash-stats">
+          <div class="dash-stat"><span class="num" id="ag-stat-routes">0</span><span class="lbl" data-i18n="ag_stat_routes">Routes actives</span></div>
+          <div class="dash-stat"><span class="num" id="ag-stat-convos">0</span><span class="lbl" data-i18n="d_stat_convos">Conversations</span></div>
+          <div class="dash-stat"><span class="num" id="ag-stat-unread">0</span><span class="lbl" data-i18n="d_stat_unread">Messages non lus</span></div>
+        </div>
+        <div class="chart-grid">
+          <div class="vd-card chart-card">
+            <h2 class="vd-h" data-i18n="ch_convos">Nouvelles conversations — 30 jours</h2>
+            <div id="ag-chart-convos"></div>
+          </div>
+          <div class="vd-card chart-card">
+            <h2 class="vd-h" data-i18n="ch_routes">Vos tarifs par destination</h2>
+            <div id="ag-chart-routes"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-ag-routes" hidden>
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="ag_routes_h">Mes routes et tarifs</h2>
           <p class="dash-sub" data-i18n="ag_routes_p">Vos prix réels, affichés aux acheteurs. Une route = un prix par voiture.</p>
@@ -304,9 +328,10 @@ gtag('config', 'G-NR2LTEVKET');
           <h2 class="vd-h" data-i18n="ad_h_users">Acheteurs — comptes</h2>
           <p class="dash-sub" data-i18n="ad_p_users">Suspendez un compte abusif ou supprimez un compte sur demande.</p>
           <div class="ad-filters">
-            <input id="ad-u-search" type="search" data-i18n-ph="ad_user_search_ph" placeholder="Rechercher un email…" onkeydown="if(event.key==='Enter')adLoadUsers()">
+            <input id="ad-u-search" type="search" data-i18n-ph="ad_user_search_ph2" placeholder="Rechercher un email ou un numéro…" onkeydown="if(event.key==='Enter')adLoadUsers()">
             <button class="btn btn-ghost-dark" onclick="adLoadUsers()" data-i18n="search_btn">Rechercher</button>
           </div>
+          <p class="ad-users-note" id="ad-users-note" hidden></p>
           <div class="dash-table-wrap">
             <table class="dash-table">
               <thead><tr>
@@ -377,6 +402,11 @@ gtag('config', 'G-NR2LTEVKET');
         <button class="btn btn-ghost-dark" id="dash-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
       </div>
 
+      <div class="pend-banner" id="d-pending" hidden>
+        <h3 data-i18n="pend_h">⏳ En cours de vérification (sous 24h)</h3>
+        <p id="d-pending-p"></p>
+      </div>
+
       <div class="dash-tabs" role="tablist">
         <button class="on" data-tab="overview" onclick="showTab('overview')" data-i18n="d_tab_overview">Aperçu</button>
         <button data-tab="listings" onclick="showTab('listings')" data-i18n="d_tab_listings">Mes annonces</button>
@@ -432,6 +462,16 @@ gtag('config', 'G-NR2LTEVKET');
           <div class="dash-stat"><span class="num" id="stat-convos">0</span><span class="lbl" data-i18n="d_stat_convos">Conversations</span></div>
           <div class="dash-stat"><span class="num" id="stat-unread">0</span><span class="lbl" data-i18n="d_stat_unread">Messages non lus</span></div>
           <div class="dash-stat"><span class="num" id="stat-views">0</span><span class="lbl" data-i18n="d_stat_views">Vues totales</span></div>
+        </div>
+        <div class="chart-grid">
+          <div class="vd-card chart-card">
+            <h2 class="vd-h" data-i18n="ch_convos">Nouvelles conversations — 30 jours</h2>
+            <div id="ov-chart-convos"></div>
+          </div>
+          <div class="vd-card chart-card">
+            <h2 class="vd-h" data-i18n="ch_views">Vues par annonce</h2>
+            <div id="ov-chart-views"></div>
+          </div>
         </div>
         <div class="vd-card">
           <h2 class="vd-h" data-i18n="d_recent">Dernières conversations</h2>
@@ -578,6 +618,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
+<script src="js/charts.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/dashboard.js"></script>
 </body>

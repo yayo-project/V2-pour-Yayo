@@ -312,7 +312,45 @@ fr: {
   msgs_login: "Connectez-vous pour voir vos messages.",
   msgs_empty_h: "Aucune conversation pour l'instant",
   msgs_empty_p: "Contactez un dealer depuis une annonce — sa réponse arrivera ici.",
-  d_stat_unread: "Messages non lus", d_stat_views: "Vues totales"
+  d_stat_unread: "Messages non lus", d_stat_views: "Vues totales",
+  // Language switcher label
+  lang_lbl: "Langue",
+  // Landed price — who receives which payment (never one big payment to the dealer)
+  bd_pay_dealer: "Prix payé au dealer",
+  bd_pay_dealer_line: "Prix de la voiture (à Dubai)",
+  bd_pay_dealer_note: "C'est le SEUL montant destiné au vendeur de la voiture.",
+  bd_fees_h: "Frais payés séparément — jamais au dealer",
+  bd_ship2: "Transport maritime → payé à l'agence (estimation)",
+  bd_duty2: "Douane & taxes → payées au gouvernement (estimation)",
+  bd_fees2: "Frais port & dossier (estimation)",
+  bd_total2: "Coût total du projet",
+  bd_explain: "<b>Important :</b> ce total n'est pas un paiement unique au dealer. C'est le coût complet de votre projet, réglé en plusieurs étapes à des acteurs différents : la voiture au dealer, le transport à l'agence, la douane au gouvernement. Les frais de transport et de douane sont des estimations.",
+  rendu2: "Coût total livré",
+  cost_grp_dealer: "Payé au dealer", cost_grp_fees: "Payé séparément (transport, douane…)",
+  cost_split_note: "Le total n'est jamais envoyé en une fois au dealer : chaque partie est payée séparément, au bon moment, au bon acteur.",
+  // Pending verification (dealer + agency dashboards)
+  pend_h: "⏳ En cours de vérification (sous 24h)",
+  pend_p: "Notre équipe vérifie votre dossier. Préparez tranquillement votre profil et vos annonces : ils deviendront visibles aux acheteurs dès l'approbation. Pour accélérer, envoyez votre licence commerciale dans l'onglet Profil.",
+  pend_lic_ok: "Licence reçue ✓ — vérification en cours.",
+  pend_rejected: "Demande refusée :",
+  pend_reapply: "Corrigez le point indiqué puis renvoyez votre licence dans l'onglet Profil — nous réexaminerons votre dossier.",
+  // Devenir dealer / agence (application form)
+  v_city_lbl: "Ville", v_desc_lbl: "Description de l'entreprise (optionnel)",
+  v_desc_ph: "Votre activité, vos marques, depuis quand…",
+  v_apply_btn: "Envoyer ma demande de vérification",
+  v_apply_note: "Votre demande passe en vérification (sous 24h). Vous accédez à votre dashboard immédiatement pour préparer votre profil.",
+  v_ok_pending: "Demande envoyée ! Vérifiez votre email pour confirmer votre compte, puis connectez-vous : votre dashboard vous attend pendant que notre équipe vérifie votre dossier (sous 24h).",
+  v_logged_as: "Connecté en tant que",
+  // Dashboard charts
+  ch_convos: "Nouvelles conversations — 30 jours",
+  ch_views: "Vues par annonce",
+  ch_routes: "Vos tarifs par destination",
+  ch_none: "Pas encore de données — elles apparaîtront avec l'activité.",
+  ch_unit_conv: "conv.", ch_unit_day: "/jour",
+  ag_tab_overview: "Aperçu", ag_stat_routes: "Routes actives", d_stat_routes_p: "Prix moyen",
+  // Admin — phone accounts
+  ad_users_note: "{n} comptes affichés · dont {p} comptes téléphone 📱",
+  ad_user_search_ph2: "Rechercher un email ou un numéro…"
 },
 en: {
   nav_acheter: "Buy", nav_vendre: "Sell", nav_expedier: "Ship", nav_comment: "How it works", connexion: "Sign in",
@@ -600,7 +638,39 @@ en: {
   msgs_login: "Log in to see your messages.",
   msgs_empty_h: "No conversations yet",
   msgs_empty_p: "Contact a dealer from a listing — their reply will arrive here.",
-  d_stat_unread: "Unread messages", d_stat_views: "Total views"
+  d_stat_unread: "Unread messages", d_stat_views: "Total views",
+  lang_lbl: "Language",
+  bd_pay_dealer: "Paid to the dealer",
+  bd_pay_dealer_line: "Car price (in Dubai)",
+  bd_pay_dealer_note: "This is the ONLY amount that goes to the car seller.",
+  bd_fees_h: "Paid separately — never to the dealer",
+  bd_ship2: "Sea freight → paid to the agency (estimate)",
+  bd_duty2: "Customs & taxes → paid to the government (estimate)",
+  bd_fees2: "Port & paperwork fees (estimate)",
+  bd_total2: "Total project cost",
+  bd_explain: "<b>Important:</b> this total is not one payment to the dealer. It is the full cost of your project, paid in steps to different parties: the car to the dealer, shipping to the agency, customs to the government. Freight and customs figures are estimates.",
+  rendu2: "Total delivered cost",
+  cost_grp_dealer: "Paid to the dealer", cost_grp_fees: "Paid separately (shipping, customs…)",
+  cost_split_note: "The total is never wired at once to the dealer: each part is paid separately, at the right time, to the right party.",
+  pend_h: "⏳ Verification in progress (within 24h)",
+  pend_p: "Our team is reviewing your application. Prepare your profile and listings — they will become visible to buyers once approved. To speed things up, upload your trade license in the Profile tab.",
+  pend_lic_ok: "License received ✓ — under review.",
+  pend_rejected: "Application rejected:",
+  pend_reapply: "Fix the issue mentioned, then re-upload your license in the Profile tab — we will review again.",
+  v_city_lbl: "City", v_desc_lbl: "Business description (optional)",
+  v_desc_ph: "Your activity, brands, since when…",
+  v_apply_btn: "Submit my verification request",
+  v_apply_note: "Your application goes into review (within 24h). You get dashboard access right away to prepare your profile.",
+  v_ok_pending: "Request sent! Check your email to confirm your account, then sign in: your dashboard is ready while our team reviews your application (within 24h).",
+  v_logged_as: "Signed in as",
+  ch_convos: "New conversations — 30 days",
+  ch_views: "Views per listing",
+  ch_routes: "Your rates per destination",
+  ch_none: "No data yet — it will appear with activity.",
+  ch_unit_conv: "conv.", ch_unit_day: "/day",
+  ag_tab_overview: "Overview", ag_stat_routes: "Active routes", d_stat_routes_p: "Average price",
+  ad_users_note: "{n} accounts shown · including {p} phone accounts 📱",
+  ad_user_search_ph2: "Search an email or phone number…"
 },
 ar: {
   nav_acheter: "اشترِ", nav_vendre: "بِع", nav_expedier: "الشحن", nav_comment: "كيف يعمل", connexion: "تسجيل الدخول",
@@ -888,7 +958,39 @@ ar: {
   msgs_login: "سجّل الدخول لرؤية رسائلك.",
   msgs_empty_h: "لا محادثات بعد",
   msgs_empty_p: "تواصل مع تاجر من أي إعلان — سيصلك رده هنا.",
-  d_stat_unread: "رسائل غير مقروءة", d_stat_views: "إجمالي المشاهدات"
+  d_stat_unread: "رسائل غير مقروءة", d_stat_views: "إجمالي المشاهدات",
+  lang_lbl: "اللغة",
+  bd_pay_dealer: "المبلغ المدفوع للتاجر",
+  bd_pay_dealer_line: "سعر السيارة (في دبي)",
+  bd_pay_dealer_note: "هذا هو المبلغ الوحيد الذي يذهب لبائع السيارة.",
+  bd_fees_h: "رسوم تُدفع بشكل منفصل — ليست للتاجر أبداً",
+  bd_ship2: "الشحن البحري ← يُدفع للوكالة (تقدير)",
+  bd_duty2: "الجمارك والضرائب ← تُدفع للحكومة (تقدير)",
+  bd_fees2: "رسوم الميناء والأوراق (تقدير)",
+  bd_total2: "التكلفة الإجمالية للمشروع",
+  bd_explain: "<b>مهم:</b> هذا الإجمالي ليس دفعة واحدة للتاجر. إنه التكلفة الكاملة لمشروعك، تُدفع على مراحل لجهات مختلفة: السيارة للتاجر، الشحن للوكالة، الجمارك للحكومة. أرقام الشحن والجمارك تقديرية.",
+  rendu2: "التكلفة الكاملة حتى التسليم",
+  cost_grp_dealer: "يُدفع للتاجر", cost_grp_fees: "يُدفع بشكل منفصل (شحن، جمارك…)",
+  cost_split_note: "الإجمالي لا يُرسل أبداً دفعة واحدة للتاجر: كل جزء يُدفع بشكل منفصل، في الوقت المناسب، للجهة الصحيحة.",
+  pend_h: "⏳ قيد التحقق (خلال 24 ساعة)",
+  pend_p: "فريقنا يراجع طلبك. جهّز ملفك وإعلاناتك بهدوء — ستظهر للمشترين فور الموافقة. للتسريع، ارفع رخصتك التجارية من تبويب الملف.",
+  pend_lic_ok: "تم استلام الرخصة ✓ — قيد المراجعة.",
+  pend_rejected: "تم رفض الطلب:",
+  pend_reapply: "صحّح الملاحظة المذكورة ثم أعد رفع رخصتك من تبويب الملف — سنراجع طلبك مجدداً.",
+  v_city_lbl: "المدينة", v_desc_lbl: "وصف الشركة (اختياري)",
+  v_desc_ph: "نشاطك، علاماتك التجارية، منذ متى…",
+  v_apply_btn: "إرسال طلب التوثيق",
+  v_apply_note: "يدخل طلبك مرحلة التحقق (خلال 24 ساعة). تحصل على لوحة التحكم فوراً لتجهيز ملفك.",
+  v_ok_pending: "تم إرسال الطلب! تحقق من بريدك لتأكيد حسابك ثم سجّل الدخول: لوحتك جاهزة بينما يراجع فريقنا طلبك (خلال 24 ساعة).",
+  v_logged_as: "مسجّل الدخول باسم",
+  ch_convos: "محادثات جديدة — 30 يوماً",
+  ch_views: "المشاهدات لكل إعلان",
+  ch_routes: "أسعارك حسب الوجهة",
+  ch_none: "لا بيانات بعد — ستظهر مع النشاط.",
+  ch_unit_conv: "محادثة", ch_unit_day: "/يوم",
+  ag_tab_overview: "نظرة عامة", ag_stat_routes: "خطوط نشطة", d_stat_routes_p: "متوسط السعر",
+  ad_users_note: "{n} حساباً معروضاً · منها {p} حسابات هاتف 📱",
+  ad_user_search_ph2: "ابحث عن بريد إلكتروني أو رقم هاتف…"
 }
 };
 
@@ -921,6 +1023,14 @@ function setLang(lang) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Globe + "Langue" label so everyone understands what FR/EN/AR is
+  document.querySelectorAll(".lang").forEach(box => {
+    if (box.querySelector(".lang-lbl")) return;
+    const s = document.createElement("span");
+    s.className = "lang-lbl";
+    s.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span data-i18n="lang_lbl">Langue</span>';
+    box.insertBefore(s, box.firstChild);
+  });
   document.querySelectorAll(".lang button").forEach(b => {
     if (!b.dataset.lang) b.dataset.lang = b.textContent.trim().toLowerCase();
     b.addEventListener("click", () => setLang(b.dataset.lang));
