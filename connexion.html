@@ -107,11 +107,41 @@ let confirmShown = false;
 // Explicit ?next= wins; otherwise dealers/agencies/admins land on their dashboard
 const nextParam = new URLSearchParams(location.search).get("next");
 const nextUrl = nextParam || "index.html";
+let redirecting = false;
 async function goHome() {
+  if (redirecting) return; redirecting = true;
   if (nextParam) { location.href = nextParam; return; }
   const u = await yayoUser();
   location.href = yayoHomeFor(u);
 }
+
+// ── Zero friction ──
+// 1. Already signed in? Straight in — no form, no password.
+//    (Except when arriving from a reset-password email: that flow must show the form.)
+const isRecovery = /type=recovery/.test(location.hash);
+if (!isRecovery) {
+  yayoSB().auth.getSession().then(({ data }) => {
+    if (!data.session) return;
+    confirmShown = true;
+    document.getElementById("auth-title").textContent = t("au_auto_t");
+    document.getElementById("auth-sub").textContent = t("au_auto_p");
+    document.getElementById("auth-methods").hidden = true;
+    document.getElementById("phone-form").hidden = true;
+    document.getElementById("email-form").hidden = true;
+    document.getElementById("auth-switch").hidden = true;
+    goHome();
+  });
+}
+// Also catch the moment a session appears (email-confirmation link, OAuth return)
+yayoSB().auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_IN" && !isRecovery && !recoveryMode) goHome();
+});
+
+// 2. Signed out but has been here before? Greet by name, preselect their
+//    method, prefill their number/email — one tap and they're back in.
+let GREET = "";
+let LAST = null;
+try { LAST = JSON.parse(localStorage.getItem("yayo-last-login") || "null"); } catch (e) { LAST = null; }
 
 // ── Login method: phone (primary) or email ──
 let METHOD = "phone";
@@ -180,7 +210,8 @@ async function resendCode(e) {
 // Mode-dependent strings live here (not data-i18n) so signup/signin state survives language switches
 function updateModeText() {
   if (confirmShown) return;
-  document.getElementById("auth-title").textContent = signupMode ? t("au_title_up") : t("au_title_in");
+  document.getElementById("auth-title").textContent = signupMode ? t("au_title_up")
+    : (GREET ? t("au_back_name").replace("{name}", GREET) : t("au_title_in"));
   document.getElementById("auth-sub").textContent = signupMode ? t("au_sub_up") : t("au_sub_in");
   document.getElementById("auth-btn").textContent = signupMode ? t("au_btn_up") : t("au_btn_in");
   document.getElementById("auth-switch").innerHTML = signupMode ? t("au_sw_up") : t("au_sw_in");
@@ -283,7 +314,29 @@ async function doEmail(e) {
   return false;
 }
 
-setMethod("phone");
+// Returning user: greet + preselect + prefill (one tap to get back in)
+if (LAST && !isRecovery) {
+  GREET = (LAST.name || "").trim();
+  if (GREET.length > 16) GREET = GREET.slice(0, 15) + "…";
+  if (LAST.method === "phone" && LAST.phone) {
+    setMethod("phone");
+    const digits = LAST.phone.replace(/^\+/, "");
+    const cc = document.getElementById("a-cc");
+    const opt = [...cc.options].find(o => digits.startsWith(o.value.replace("+", "")));
+    if (opt) {
+      cc.value = opt.value;
+      document.getElementById("a-phone").value = digits.slice(opt.value.length - 1);
+    }
+  } else if (LAST.method === "email" && LAST.email) {
+    setMethod("email");
+    document.getElementById("a-email").value = LAST.email;
+  } else {
+    // Google users: the big "Continuer avec Google" button is their one tap
+    setMethod("phone");
+  }
+} else {
+  setMethod("phone");
+}
 updateModeText();
 </script>
 </body>

@@ -91,7 +91,17 @@ async function yayoEnsureUserRow(user) {
 async function initAuthNav() {
   const user = await yayoUser();
   if (!user) return;
-  const name = (user.user_metadata && (user.user_metadata.company || user.user_metadata.full_name)) || user.email.split("@")[0];
+  const name = (user.user_metadata && (user.user_metadata.company || user.user_metadata.full_name)) || (user.email || user.phone || "").split("@")[0];
+  // Remember who this is so the login page can greet them and prefill
+  // their method next time (never stores a password).
+  try {
+    localStorage.setItem("yayo-last-login", JSON.stringify({
+      name,
+      method: (user.app_metadata && user.app_metadata.provider) || "email",
+      email: user.email || "",
+      phone: user.phone || ""
+    }));
+  } catch (e) { /* private mode */ }
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
     el.href = "dashboard.html";

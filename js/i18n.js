@@ -81,6 +81,7 @@ fr: {
   au_reset_sent_t: "Email envoyé 📬", au_reset_sent_p: "Nous avons envoyé un lien à {email}. Ouvrez-le pour choisir un nouveau mot de passe.",
   au_reset_t: "Nouveau mot de passe", au_reset_p: "Choisissez un nouveau mot de passe pour votre compte.", au_reset_btn: "Enregistrer le mot de passe", au_reset_done: "Mot de passe modifié ! Vous êtes connecté.",
   logout_confirm: "Se déconnecter de Yayo ?", logout: "Déconnexion", logout_sub: "Quitter mon compte",
+  au_auto_t: "Vous êtes déjà connecté ✓", au_auto_p: "Un instant, on vous ouvre la porte…", au_back_name: "Bon retour, {name} 👋",
   // Vendre
   v_h1: "Vendez vos voitures à <em>toute l'Afrique francophone</em>",
   v_sub: "Des milliers d'acheteurs à Kinshasa, Douala, Abidjan et Dakar cherchent leur prochaine voiture à Dubai. Mettez la vôtre devant eux.",
@@ -426,6 +427,7 @@ en: {
   au_reset_sent_t: "Email sent 📬", au_reset_sent_p: "We sent a link to {email}. Open it to choose a new password.",
   au_reset_t: "New password", au_reset_p: "Choose a new password for your account.", au_reset_btn: "Save password", au_reset_done: "Password updated! You are signed in.",
   logout_confirm: "Sign out of Yayo?", logout: "Sign out", logout_sub: "Leave my account",
+  au_auto_t: "You're already signed in ✓", au_auto_p: "One moment, taking you in…", au_back_name: "Welcome back, {name} 👋",
   v_h1: "Sell your cars to <em>all of French-speaking Africa</em>",
   v_sub: "Thousands of buyers in Kinshasa, Douala, Abidjan and Dakar are looking for their next car in Dubai. Put yours in front of them.",
   v_cta: "Create my dealer account — 30 seconds",
@@ -750,6 +752,7 @@ ar: {
   au_reset_sent_t: "تم إرسال البريد 📬", au_reset_sent_p: "أرسلنا رابطاً إلى {email}. افتحه لاختيار كلمة مرور جديدة.",
   au_reset_t: "كلمة مرور جديدة", au_reset_p: "اختر كلمة مرور جديدة لحسابك.", au_reset_btn: "حفظ كلمة المرور", au_reset_done: "تم تغيير كلمة المرور! أنت متصل الآن.",
   logout_confirm: "تسجيل الخروج من يايو؟", logout: "تسجيل الخروج", logout_sub: "مغادرة حسابي",
+  au_auto_t: "أنت متصل بالفعل ✓", au_auto_p: "لحظة من فضلك، جارٍ إدخالك…", au_back_name: "مرحباً بعودتك، {name} 👋",
   v_h1: "بِع سياراتك إلى <em>كل أفريقيا الفرنكوفونية</em>",
   v_sub: "آلاف المشترين في كينشاسا ودوالا وأبيدجان وداكار يبحثون عن سيارتهم القادمة في دبي. اعرض سياراتك أمامهم.",
   v_cta: "أنشئ حساب التاجر — ٣٠ ثانية",
