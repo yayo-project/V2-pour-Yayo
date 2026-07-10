@@ -689,7 +689,7 @@ async function dashSend(e) {
 }
 
 async function dashLogout() {
-  if (confirm(t("logout_confirm"))) { await yayoSB().auth.signOut(); location.href = "index.html"; }
+  if (confirm(t("logout_confirm"))) await yayoSignOut();
 }
 
 // ── Agency dashboard (Phase 1: profile + offices + routes with promise) ──

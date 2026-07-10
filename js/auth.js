@@ -3,12 +3,19 @@
 // Singleton client + topbar account state.
 // ═══════════════════════════════════════════════
 function yayoSB() {
-  if (!window.__yayoSB) window.__yayoSB = window.supabase.createClient(YAYO_CONFIG.SUPABASE_URL, YAYO_CONFIG.SUPABASE_KEY);
+  if (!window.__yayoSB) window.__yayoSB = window.supabase.createClient(YAYO_CONFIG.SUPABASE_URL, YAYO_CONFIG.SUPABASE_KEY, {
+    // Session survives tab close / reload / navigation. Only an explicit
+    // logout (or a truly expired refresh token) ends it.
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: window.localStorage }
+  });
   return window.__yayoSB;
 }
 
 async function yayoUser() {
-  try { const { data } = await yayoSB().auth.getUser(); return data.user || null; }
+  // Read the session saved in the browser (no network round-trip). The old
+  // getUser() pinged Supabase on every page load — one slow/failed request
+  // and the whole site painted "logged out" even though the session was fine.
+  try { const { data } = await yayoSB().auth.getSession(); return (data.session && data.session.user) || null; }
   catch (e) { return null; }
 }
 
@@ -59,8 +66,13 @@ function yayoHomeFor(user) {
 }
 
 async function yayoSignOut() {
-  await yayoSB().auth.signOut();
-  location.reload();
+  try { await yayoSB().auth.signOut(); } catch (e) { /* clear locally anyway */ }
+  location.href = "index.html";
+}
+
+// Header logout used on every page (confirm first, then out + home)
+async function yayoNavLogout() {
+  if (confirm(t("logout_confirm"))) await yayoSignOut();
 }
 
 // Make sure the logged-in auth user has a row in the legacy users table
@@ -92,6 +104,17 @@ async function initAuthNav() {
       a.title = t("nav_fav");
       el.parentNode.insertBefore(a, el);
     }
+    // "Déconnexion" right after the account chip — on every page
+    if (!el.parentNode.querySelector(".logout-link")) {
+      const o = document.createElement("a");
+      o.href = "#";
+      o.className = "logout-link";
+      o.title = t("logout");
+      o.setAttribute("aria-label", t("logout"));
+      o.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>';
+      o.addEventListener("click", (ev) => { ev.preventDefault(); yayoNavLogout(); });
+      el.parentNode.insertBefore(o, el.nextSibling);
+    }
   });
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
     el.innerHTML = "<b>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
@@ -102,6 +125,15 @@ async function initAuthNav() {
       a.setAttribute("data-fav-nav", "1");
       a.innerHTML = "<b>♥ " + t("nav_fav") + "</b> <span>" + t("fav_p") + "</span>";
       el.parentNode.insertBefore(a, el);
+    }
+    // "Déconnexion" entry at the end of the mobile menu
+    if (!el.parentNode.querySelector("[data-logout-nav]")) {
+      const o = document.createElement("a");
+      o.href = "#";
+      o.setAttribute("data-logout-nav", "1");
+      o.innerHTML = "<b>" + t("logout") + "</b> <span>" + t("logout_sub") + "</span>";
+      o.addEventListener("click", (ev) => { ev.preventDefault(); yayoNavLogout(); });
+      el.parentNode.insertBefore(o, el.nextSibling);
     }
   });
 }

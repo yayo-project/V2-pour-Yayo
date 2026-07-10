@@ -493,6 +493,8 @@ body.no-scroll{overflow:hidden}
 .fav.on:hover{color:#fff}
 .fav-link{color:#fff;font-size:17px;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s}
 .fav-link:hover{color:var(--teal-bright)}
+.logout-link{color:#B8C7DA;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
+.logout-link:hover{color:#FF8F8F}
 .dash-head{background:linear-gradient(135deg,#071B33,#0F3358);border-radius:var(--radius);padding:24px 24px 22px;color:#fff;box-shadow:var(--sh-lg,0 10px 34px rgba(10,37,64,.18));position:relative;overflow:hidden}
 .dash-head::before{content:'';position:absolute;right:-80px;top:-120px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(31,216,201,.16),transparent 70%);pointer-events:none}
 .dash-head .dash-title{color:#fff}
