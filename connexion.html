@@ -163,7 +163,7 @@ function phoneErr(msg) {
   el.textContent = msg || "";
 }
 function friendlyPhone(error) {
-  const m = (error && error.message) || "";
+  const m = yayoErrMsg(error);
   if (/provider|not enabled|disabled|unsupported/i.test(m)) return t("au_sms_unavail");
   if (/rate limit|too many/i.test(m)) return t("au_err_rate");
   if (/invalid|expired/i.test(m) && CODE_SENT) return t("au_code_bad");
@@ -267,12 +267,13 @@ function showError(msg) {
 }
 
 function friendly(error) {
-  const m = (error && error.message) || "";
+  const m = yayoErrMsg(error);
   if (m.includes("Invalid login credentials")) return t("au_err_creds");
   if (m.includes("already registered")) return t("au_err_exists");
   if (m.includes("Email not confirmed")) return t("au_err_confirm");
-  if (m.includes("rate limit")) return t("au_err_rate");
-  return t("au_err_generic") + m;
+  if (/rate limit|too many|security purposes/i.test(m)) return t("au_err_rate");
+  if (/error sending|sending recovery|sending confirmation|smtp/i.test(m)) return t("au_err_smtp") + " (" + m + ")";
+  return t("au_err_generic") + (m || t("au_err_retry"));
 }
 
 async function doGoogle() {

@@ -43,9 +43,42 @@ async function yayoSignUpEmail(email, password, meta) {
   return { data, error };
 }
 
+// Pull a human-readable message out of any Supabase/fetch error.
+// Some failures arrive as an object whose default string form is "{}" —
+// dig for the real text so the user (and console) never see an empty error.
+function yayoErrMsg(e) {
+  if (!e) return "";
+  if (typeof e === "string") return e;
+  const m = e.message || e.error_description || e.error || e.msg || e.details || "";
+  if (m && m !== "{}") return String(m) + (e.status ? " (code " + e.status + ")" : "");
+  if (e.name || e.status) return (e.name || "error") + (e.status ? " (HTTP " + e.status + ")" : "");
+  try {
+    const s = JSON.stringify(e, Object.getOwnPropertyNames(e));
+    if (s && s !== "{}") return s;
+  } catch (x) { /* circular */ }
+  return "network error";
+}
+
+// Direct call to the recover endpoint: supabase-js swallows the server's
+// error body on 5xx (we saw message "{}"), so read the real msg ourselves.
 async function yayoResetPassword(email) {
-  const { error } = await yayoSB().auth.resetPasswordForEmail(email, { redirectTo: yayoRedirectUrl("connexion.html") });
-  return error;
+  const redirectTo = yayoRedirectUrl("connexion.html");
+  try {
+    const r = await fetch(YAYO_CONFIG.SUPABASE_URL + "/auth/v1/recover?redirect_to=" + encodeURIComponent(redirectTo), {
+      method: "POST",
+      headers: { apikey: YAYO_CONFIG.SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+    if (r.ok) return null;
+    let body = {};
+    try { body = await r.json(); } catch (x) { /* non-JSON body */ }
+    const msg = body.msg || body.message || body.error_description || body.error || ("HTTP " + r.status);
+    console.error("[Yayo] resetPasswordForEmail failed:", r.status, body, "redirectTo:", redirectTo);
+    return { message: msg, status: r.status, error_id: body.error_id };
+  } catch (e) {
+    console.error("[Yayo] resetPasswordForEmail threw:", e, "redirectTo:", redirectTo);
+    return e;
+  }
 }
 
 // ── Phone login (SMS one-time code, no password) ──
