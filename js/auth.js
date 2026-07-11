@@ -222,6 +222,14 @@ document.addEventListener("DOMContentLoaded", initPasswordEyes);
 function initReportLink() {
   const foot = document.querySelector(".footer-bottom");
   if (!foot || foot.querySelector(".report-link")) return;
+  // Conditions & Confidentialité — founder-approved, linked on every page
+  if (!/conditions\.html/.test(location.pathname)) {
+    const c = document.createElement("a");
+    c.href = "conditions.html";
+    c.className = "report-link";
+    c.textContent = t("f_terms");
+    foot.appendChild(c);
+  }
   const a = document.createElement("a");
   a.href = "#";
   a.className = "report-link";
