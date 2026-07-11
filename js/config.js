@@ -31,6 +31,11 @@ const YAYO_CONFIG = {
   DEFAULT_DEST: "kinshasa",
   FEATURED_LIMIT: 6,
 
+  // Phone login (SMS one-time code). OFF until SMS credits are funded
+  // (Brevo SMS hook — queue item #5). Flip to true to bring the phone
+  // tab back on connexion.html; all the code stays in place.
+  SMS_LOGIN: false,
+
   // Google Analytics 4 — the gtag snippet in each page's <head> uses this same ID.
   GA4_ID: "G-NR2LTEVKET"
 };

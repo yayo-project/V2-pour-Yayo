@@ -143,7 +143,11 @@ let GREET = "";
 let LAST = null;
 try { LAST = JSON.parse(localStorage.getItem("yayo-last-login") || "null"); } catch (e) { LAST = null; }
 
-// ── Login method: phone (primary) or email ──
+// ── Login method: phone (primary, when SMS is funded) or email ──
+// SMS_LOGIN=false in js/config.js hides the phone tab entirely — email +
+// Google only. Flip the flag when Brevo SMS credits are loaded.
+const SMS_ON = !!YAYO_CONFIG.SMS_LOGIN;
+if (!SMS_ON) document.getElementById("auth-methods").hidden = true;
 let METHOD = "phone";
 function setMethod(m) {
   METHOD = m;
@@ -319,7 +323,7 @@ async function doEmail(e) {
 if (LAST && !isRecovery) {
   GREET = (LAST.name || "").trim();
   if (GREET.length > 16) GREET = GREET.slice(0, 15) + "…";
-  if (LAST.method === "phone" && LAST.phone) {
+  if (SMS_ON && LAST.method === "phone" && LAST.phone) {
     setMethod("phone");
     const digits = LAST.phone.replace(/^\+/, "");
     const cc = document.getElementById("a-cc");
@@ -328,15 +332,15 @@ if (LAST && !isRecovery) {
       cc.value = opt.value;
       document.getElementById("a-phone").value = digits.slice(opt.value.length - 1);
     }
-  } else if (LAST.method === "email" && LAST.email) {
+  } else if (LAST.email) {
     setMethod("email");
-    document.getElementById("a-email").value = LAST.email;
+    if (LAST.method === "email") document.getElementById("a-email").value = LAST.email;
   } else {
     // Google users: the big "Continuer avec Google" button is their one tap
-    setMethod("phone");
+    setMethod(SMS_ON ? "phone" : "email");
   }
 } else {
-  setMethod("phone");
+  setMethod(SMS_ON ? "phone" : "email");
 }
 updateModeText();
 </script>
