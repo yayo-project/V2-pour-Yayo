@@ -1,0 +1,53 @@
+<!-- Yayo — Magic link (FR + EN + AR). Paste into Supabase → Auth → Email Templates → Magic Link -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F7FB;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <tr><td align="center">
+    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #DFE6EE;">
+      <tr>
+        <td style="background:#0A2540;padding:26px 32px;text-align:center;">
+          <span style="font-size:26px;font-weight:800;color:#1FD8C9;letter-spacing:1px;">YAYO</span>
+          <div style="color:#B8C7DA;font-size:12px;margin-top:4px;">Votre voiture, de Dubai à chez vous</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:30px 32px 8px;">
+          <h1 style="margin:0 0 10px;font-size:19px;color:#0A2540;">Votre lien de connexion ✨</h1>
+          <p style="margin:0 0 18px;font-size:14.5px;line-height:1.6;color:#3F5473;">
+            Pas de mot de passe à retenir : cliquez sur le bouton et vous êtes connecté.
+            Le lien est valable une seule fois.
+          </p>
+          <p style="text-align:center;margin:0 0 22px;">
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#1FD8C9;color:#0A2540;font-weight:800;font-size:15px;padding:13px 34px;border-radius:12px;text-decoration:none;">Me connecter à Yayo</a>
+          </p>
+          <p style="margin:0 0 6px;font-size:12.5px;color:#7A8CA5;line-height:1.6;">
+            Si vous n'avez pas demandé ce lien, ignorez cet email.
+          </p>
+        </td>
+      </tr>
+      <tr><td style="padding:0 32px;"><hr style="border:0;border-top:1px solid #DFE6EE;margin:16px 0;"></td></tr>
+      <tr>
+        <td style="padding:0 32px 8px;">
+          <h2 style="margin:0 0 8px;font-size:15px;color:#0A2540;">Your sign-in link</h2>
+          <p style="margin:0 0 12px;font-size:13.5px;line-height:1.6;color:#3F5473;">
+            No password needed — the button above signs you in. The link works once.
+            If you didn't request it, ignore this email.
+          </p>
+        </td>
+      </tr>
+      <tr><td style="padding:0 32px;"><hr style="border:0;border-top:1px solid #DFE6EE;margin:12px 0;"></td></tr>
+      <tr>
+        <td style="padding:0 32px 24px;" dir="rtl">
+          <h2 style="margin:0 0 8px;font-size:15px;color:#0A2540;">رابط تسجيل الدخول</h2>
+          <p style="margin:0 0 12px;font-size:13.5px;line-height:1.7;color:#3F5473;">
+            لا حاجة لكلمة مرور — الزر أعلاه يسجّل دخولك مباشرة. الرابط صالح لمرة واحدة.
+            إذا لم تطلبه، تجاهل هذا البريد.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#071B33;padding:18px 32px;text-align:center;">
+          <span style="color:#7A8CA5;font-size:11.5px;">© 2026 Yayo · yayo.digital · Dubai → Afrique</span>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>

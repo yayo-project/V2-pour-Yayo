@@ -81,6 +81,16 @@ async function mxOpen(id) {
   }
   MX_CUR.msgs.forEach(m => mxBubble(m.me, m.me ? m.text : (m.display || m.text)));
   if (!MX_CUR.msgs.length) mxBubble(false, t("chat_start"));
+
+  // Live: new replies pop in instantly (translated), no refresh needed
+  if (window.__mxLiveOff) window.__mxLiveOff();
+  window.__mxLiveOff = yayoLiveMessages(MX_CUR.id, MX_USER.id, async m => {
+    const tr = await yayoTranslate([m.content], YAYO_LANG);
+    const text = tr[0] || m.content;
+    MX_CUR.msgs.push({ me: false, text: m.content, display: text });
+    mxBubble(false, text);
+    try { yayoSB().rpc("yayo_mark_read", { cid: MX_CUR.id }).then(() => {}, () => {}); } catch (e) {}
+  });
 }
 
 function mxBubble(me, text) {

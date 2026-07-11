@@ -49,6 +49,7 @@ async function loadCar() {
           body: data.body || "",
           price: data.price,
           photo_url: data.photo_url,
+          photos: yayoPhotoList(data.photos),
           description: data.description || "",
           dealer: {
             name: (data.dealers && data.dealers.name) || "Dealer Yayo",
@@ -75,10 +76,7 @@ function render() {
     [CAR.mileage ? CAR.mileage.toLocaleString("fr-FR") + " km" : "", CAR.fuel].filter(Boolean).join(" · ");
   document.getElementById("vd-price").textContent = fmt(CAR.price);
 
-  const img = document.getElementById("vd-img");
-  img.alt = CAR.car_name;
-  img.onerror = function () { this.parentNode.classList.add("noimg"); this.remove(); };
-  img.src = CAR.photo_url || "";
+  renderGallery();
 
   updateAiBadge();
 
@@ -119,6 +117,51 @@ function render() {
   renderBreakdown();
   renderTransport();
   renderSimilar();
+}
+
+// ── Photo gallery: all photos browsable big (arrows + swipe + thumbnails) ──
+let GAL = [];
+let GAL_I = 0;
+function renderGallery() {
+  GAL = (CAR.photos && CAR.photos.length) ? CAR.photos : (CAR.photo_url ? [CAR.photo_url] : []);
+  GAL_I = 0;
+  const img = document.getElementById("vd-img");
+  img.alt = CAR.car_name;
+  img.onerror = function () { this.parentNode.classList.add("noimg"); this.style.display = "none"; };
+  galShow(0);
+
+  const multi = GAL.length > 1;
+  document.getElementById("vd-prev").hidden = !multi;
+  document.getElementById("vd-next").hidden = !multi;
+  document.getElementById("vd-count").hidden = !multi;
+  const th = document.getElementById("vd-thumbs");
+  th.hidden = !multi;
+  if (multi) {
+    th.innerHTML = GAL.map((u, i) =>
+      `<button type="button" class="${i === 0 ? "on" : ""}" data-i="${i}"><img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></button>`).join("");
+    th.querySelectorAll("button").forEach(b => b.addEventListener("click", () => galShow(+b.dataset.i)));
+    document.getElementById("vd-prev").onclick = () => galShow(GAL_I - 1);
+    document.getElementById("vd-next").onclick = () => galShow(GAL_I + 1);
+    // swipe on mobile
+    let x0 = null;
+    const zone = document.getElementById("vd-photo");
+    zone.ontouchstart = e => { x0 = e.touches[0].clientX; };
+    zone.ontouchend = e => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) galShow(GAL_I + (dx < 0 ? 1 : -1));
+      x0 = null;
+    };
+  }
+}
+function galShow(i) {
+  if (!GAL.length) return;
+  GAL_I = (i + GAL.length) % GAL.length;
+  const img = document.getElementById("vd-img");
+  img.style.display = "";
+  img.src = GAL[GAL_I];
+  document.getElementById("vd-count").textContent = (GAL_I + 1) + " / " + GAL.length;
+  document.querySelectorAll("#vd-thumbs button").forEach((b, j) => b.classList.toggle("on", j === GAL_I));
 }
 
 // Demo cars keep their preset demo badge; a real car only shows a badge
@@ -164,8 +207,10 @@ function renderBreakdown() {
   const shipLbl = route
     ? `${t("ct_price_lbl")}<span class="ct-src">${escapeHtml(CHOSEN.name)}</span>`
     : t("bd_ship2");
-  const duty = CAR.price * d.duty;
-  const total = CAR.price + ship + duty + d.fees;
+  // Published customs formula on CIF (car + freight) — every line "estimation"
+  const cx = yayoCustoms(CAR.price, ship, CUR);
+  const total = CAR.price + ship + cx.total + d.fees;
+  const pct = r => (r * 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " %";
   // Two clearly separated blocks so no buyer ever thinks the TOTAL goes to the
   // dealer: (1) car price = the only money for the seller, (2) fees paid
   // separately to the agency / government / port.
@@ -178,8 +223,11 @@ function renderBreakdown() {
     <div class="pay-block">
       <div class="pay-head">🚢 ${t("bd_fees_h")}</div>
       <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
-      <div class="cost-line"><span>${t("bd_duty2")}</span><b>${fmt(duty)}</b></div>
+      <div class="cost-line"><span>${t("bd_duty3")} (${pct(cx.c.duty)})</span><b>${fmt(cx.duty)}</b></div>
+      ${cx.extra ? `<div class="cost-line"><span>${t("bd_levies")} (${pct(cx.c.extra)})</span><b>${fmt(cx.extra)}</b></div>` : ""}
+      <div class="cost-line"><span>${t("bd_vat")} (${pct(cx.c.vat)})</span><b>${fmt(cx.vat)}</b></div>
       <div class="cost-line"><span>${t("bd_fees2")}</span><b>${fmt(d.fees)}</b></div>
+      <div class="pay-sub">${t("bd_customs_note")}</div>
     </div>
     <div class="cost-total"><span>${t("bd_total2")} — ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>
     <p class="pay-explain">${t("bd_explain")}</p>`;
@@ -343,6 +391,12 @@ async function openChat() {
     }
     list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content));
     if (!list.length) addBubble("yayo", t("chat_start"));
+    // Live: the dealer's replies appear instantly, translated, no refresh
+    if (window.__vdLiveOff) window.__vdLiveOff();
+    window.__vdLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
+      const tr = await yayoTranslate([m.content], YAYO_LANG);
+      addBubble("them", tr[0] || m.content);
+    });
   } catch (e) {
     addBubble("yayo", t("chat_soon"));
   }

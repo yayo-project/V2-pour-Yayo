@@ -489,9 +489,14 @@ gtag('config', 'G-NR2LTEVKET');
           <h2 class="vd-h" id="lst-form-title" data-i18n="d_form_add">Ajouter une voiture</h2>
           <form onsubmit="return saveListing(event)">
             <div class="form-grid">
-              <div class="field field-wide">
-                <label for="lf-name" data-i18n="d_f_name">Nom de la voiture</label>
-                <input id="lf-name" type="text" required maxlength="80" data-i18n-ph="d_f_name_ph" placeholder="Ex : Toyota Land Cruiser GXR 2021">
+              <div class="field">
+                <label for="lf-make" data-i18n="d_f_make">Marque</label>
+                <select id="lf-make" required onchange="document.getElementById('lf-make-other').hidden = this.value !== '__other'"></select>
+                <input id="lf-make-other" type="text" maxlength="40" hidden style="margin-top:8px" data-i18n-ph="d_f_make_other_ph" placeholder="Écrivez la marque">
+              </div>
+              <div class="field">
+                <label for="lf-model" data-i18n="d_f_model">Modèle</label>
+                <input id="lf-model" type="text" required maxlength="60" data-i18n-ph="d_f_model_ph" placeholder="Ex : Land Cruiser GXR">
               </div>
               <div class="field">
                 <label for="lf-price" data-i18n="d_f_price">Prix (USD, à Dubai)</label>

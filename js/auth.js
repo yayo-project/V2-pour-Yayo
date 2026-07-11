@@ -208,6 +208,25 @@ function initPasswordEyes() {
 }
 document.addEventListener("DOMContentLoaded", initPasswordEyes);
 
+// ── Real-time chat (Supabase Realtime) ──
+// Subscribe to new messages in ONE conversation. Returns an unsubscribe fn.
+// onMsg receives the raw message row (only messages from OTHER people —
+// your own sends are already painted locally).
+function yayoLiveMessages(convoId, myId, onMsg) {
+  try {
+    const ch = yayoSB().channel("live-msgs-" + convoId)
+      .on("postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: "conversation_id=eq." + convoId },
+        payload => {
+          const m = payload.new;
+          if (!m || m.sender_id === myId) return;
+          onMsg(m);
+        })
+      .subscribe();
+    return () => { try { yayoSB().removeChannel(ch); } catch (e) {} };
+  } catch (e) { return () => {}; }
+}
+
 // ── Unread messages badge (both sides: buyer + dealer + agency) ──
 // A ✉ icon appears in the topbar with the number of unread messages.
 async function yayoUnreadTotal() {

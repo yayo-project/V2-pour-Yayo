@@ -417,22 +417,63 @@ async function uploadPhotos() {
   return out;
 }
 
+// Makes seen in the Dubai → Africa corridor. "Autre" always last.
+const CAR_MAKES = ["Toyota", "Lexus", "Nissan", "Mitsubishi", "Honda", "Hyundai", "Kia",
+  "Mercedes-Benz", "BMW", "Audi", "Volkswagen", "Porsche", "Land Rover", "Jaguar", "Jeep",
+  "Ford", "Chevrolet", "GMC", "Dodge", "Cadillac", "Mazda", "Suzuki", "Isuzu", "Subaru",
+  "Peugeot", "Renault", "Ferrari", "Lamborghini", "Bentley", "Rolls-Royce", "Maserati",
+  "Tesla", "BYD", "Changan", "Chery", "Geely", "Haval", "MG"];
+
+function fillMakeSelect(current) {
+  const sel = document.getElementById("lf-make");
+  const list = CAR_MAKES.slice();
+  // keep an unknown make from an old listing selectable
+  if (current && !list.some(m => m.toLowerCase() === current.toLowerCase())) list.unshift(current);
+  sel.innerHTML = `<option value="" disabled ${current ? "" : "selected"}>${t("d_f_make_ph")}</option>`
+    + list.map(m => `<option${current && m.toLowerCase() === current.toLowerCase() ? " selected" : ""}>${m}</option>`).join("")
+    + `<option value="__other">${t("d_f_make_other")}</option>`;
+}
+
+// Old listings only have car_name — split it: first word(s) matching a known
+// make, the rest is the model (trailing year stripped, shown in its own field)
+function splitCarName(name) {
+  const clean = (name || "").replace(/\s+(19|20)\d{2}\s*$/, "").trim();
+  const lower = clean.toLowerCase();
+  const make = CAR_MAKES.find(m => lower.startsWith(m.toLowerCase()));
+  if (make) return { make, model: clean.slice(make.length).trim() };
+  const w = clean.split(/\s+/);
+  return { make: w[0] || "", model: w.slice(1).join(" ") };
+}
+
 let EDIT_ID = null;
 function openForm(l) {
   EDIT_ID = l ? l.id : null;
   document.getElementById("lst-form-title").textContent = t(l ? "d_form_edit" : "d_form_add");
-  document.getElementById("lf-name").value = l ? l.car_name : "";
+  const mm = l ? (l.make ? { make: l.make, model: l.model || "" } : splitCarName(l.car_name)) : { make: "", model: "" };
+  fillMakeSelect(mm.make);
+  document.getElementById("lf-model").value = mm.model;
   document.getElementById("lf-price").value = l ? l.price : "";
   document.getElementById("lf-year").value = l ? (l.year || "") : "";
   document.getElementById("lf-km").value = l ? (l.mileage || "") : "";
   document.getElementById("lf-cond").value = (l && l.condition) || "Très bon état";
   document.getElementById("lf-color").value = l ? (l.color || "") : "";
   document.getElementById("lf-desc").value = l ? (l.description || "") : "";
-  PHOTOS = (l && l.photo_url) ? [{ url: l.photo_url }] : [];
+  const gal = l ? yayoPhotoList(l.photos) : [];
+  PHOTOS = gal.length ? gal.map(u => ({ url: u })) : ((l && l.photo_url) ? [{ url: l.photo_url }] : []);
+  const other = document.getElementById("lf-make-other");
+  other.hidden = true; other.value = "";
   renderThumbs();
   hide("lst-err");
   show("lst-form");
-  document.getElementById("lf-name").focus();
+  document.getElementById("lf-make").focus();
+}
+
+// The car's display name is composed — never free text again
+function lfCarName() {
+  const sel = document.getElementById("lf-make").value;
+  const make = sel === "__other" ? document.getElementById("lf-make-other").value.trim() : sel;
+  const model = document.getElementById("lf-model").value.trim();
+  return { make, model, name: (make + " " + model).trim() };
 }
 function closeForm() { hide("lst-form"); EDIT_ID = null; }
 function findListing(id) { return LISTINGS.find(l => String(l.id) === String(id)); }
@@ -455,14 +496,19 @@ async function saveListing(e) {
   }
   if (btn) { btn.disabled = false; btn.textContent = t("d_save"); }
 
+  const mm = lfCarName();
+  if (!mm.make || !mm.model) { err.hidden = false; err.textContent = t("d_f_make_need"); return false; }
   const payload = {
-    car_name: document.getElementById("lf-name").value.trim(),
+    car_name: mm.name,
+    make: mm.make,
+    model: mm.model,
     price: parseInt(document.getElementById("lf-price").value, 10),
     year: parseInt(document.getElementById("lf-year").value, 10) || null,
     mileage: parseInt(document.getElementById("lf-km").value, 10) || null,
     condition: document.getElementById("lf-cond").value,
     color: document.getElementById("lf-color").value.trim() || null,
     photo_url: photoUrls[0],
+    photos: photoUrls,
     description: document.getElementById("lf-desc").value.trim() || null
   };
   if (DEMO) {
@@ -473,15 +519,17 @@ async function saveListing(e) {
   }
   try {
     const sb = yayoSB();
-    if (EDIT_ID) {
-      const { error } = await sb.from("listings").update(payload).eq("id", EDIT_ID).eq("dealer_id", DEALER.id);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from("listings").insert({
-        ...payload, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: true, sold: false
-      });
-      if (error) throw error;
+    const write = async (pl) => EDIT_ID
+      ? sb.from("listings").update(pl).eq("id", EDIT_ID).eq("dealer_id", DEALER.id)
+      : sb.from("listings").insert({ ...pl, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: true, sold: false });
+    let { error } = await write(payload);
+    // setup.sql §17 not run yet → make/model/photos columns missing: save the
+    // rest anyway (car_name keeps everything working), never block the dealer
+    if (error && /column|make|model|photos/i.test(error.message || "")) {
+      const { make, model, photos, ...slim } = payload;
+      ({ error } = await write(slim));
     }
+    if (error) throw error;
     await loadListings();
     closeForm(); renderListings(); renderStats();
   } catch (err2) {
@@ -582,7 +630,7 @@ async function assistSuggest() {
 
 // 💡 Suggested price range for the listing form (dealer tool)
 async function estimatePrice() {
-  const name = document.getElementById("lf-name").value.trim();
+  const name = lfCarName().name;
   const out = document.getElementById("est-out");
   if (!name) { out.hidden = false; out.textContent = t("d_est_need_name"); return; }
   const btn = document.getElementById("est-btn");
@@ -661,6 +709,18 @@ async function openConvo(id) {
     incoming.forEach((m, i) => { m.display = translated[i]; });
   }
   CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.me ? m.text : (m.display || m.text)));
+
+  // Live: buyer messages appear instantly (translated), no refresh
+  if (!DEMO && !DEMO_AG && USER) {
+    if (window.__dashLiveOff) window.__dashLiveOff();
+    window.__dashLiveOff = yayoLiveMessages(CUR_CONVO.id, USER.id, async m => {
+      const tr = await yayoTranslate([m.content], YAYO_LANG);
+      const text = tr[0] || m.content;
+      CUR_CONVO.msgs.push({ me: false, text: m.content, display: text });
+      addMsg(false, text);
+      try { yayoSB().rpc("yayo_mark_read", { cid: CUR_CONVO.id }).then(() => {}, () => {}); } catch (e) {}
+    });
+  }
 }
 
 function addMsg(me, text) {

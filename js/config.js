@@ -7,13 +7,26 @@ const YAYO_CONFIG = {
   SUPABASE_URL: "https://wkjxdkeqffsjarjxlsyh.supabase.co",
   SUPABASE_KEY: "sb_publishable_-mDN0Rd9q8q2SJuJPsn_qw_ieHvuSB8",
 
-  // Destinations: shipping (USD) + duty factor (estimation, refined per country)
+  // Destinations: shipping (USD, replaced by the chosen agency's REAL price)
+  // + published customs structure per country — ALWAYS shown as "estimation".
+  // Customs are computed on CIF (car price + freight), the real base used by
+  // customs offices, not on the car price alone.
+  //   duty  = import duty (DRC: tarif douanier ~10% vehicles; CEMAC TEC 30%;
+  //           UEMOA TEC 20% for CI/Sénégal)
+  //   extra = excise/levies (DRC droits de consommation ~10%; CI/SN
+  //           prélèvements communautaires + redevance statistique ~2-2.5%)
+  //   vat   = TVA applied on (CIF + duty + extra): DRC 16%, CM 19.25%, CI/SN 18%
+  // legacy `duty` kept as the flat effective fallback for any old code path.
   DESTINATIONS: {
-    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 3200, duty: 0.45, fees: 1070 },
-    douala:   { name: "Douala",   flag: "🇨🇲", ship: 2800, duty: 0.50, fees: 1070 },
-    abidjan:  { name: "Abidjan",  flag: "🇨🇮", ship: 3500, duty: 0.44, fees: 1070 },
-    dakar:    { name: "Dakar",    flag: "🇸🇳", ship: 3300, duty: 0.48, fees: 1070 },
-    dubai:    { name: "Dubai",    flag: "🇦🇪", ship: 0,    duty: 0,    fees: 0 }
+    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 3200, fees: 1070, duty: 0.45,
+                customs: { duty: 0.10, extra: 0.10, vat: 0.16 } },
+    douala:   { name: "Douala",   flag: "🇨🇲", ship: 2800, fees: 1070, duty: 0.50,
+                customs: { duty: 0.30, extra: 0.00, vat: 0.1925 } },
+    abidjan:  { name: "Abidjan",  flag: "🇨🇮", ship: 3500, fees: 1070, duty: 0.44,
+                customs: { duty: 0.20, extra: 0.025, vat: 0.18 } },
+    dakar:    { name: "Dakar",    flag: "🇸🇳", ship: 3300, fees: 1070, duty: 0.48,
+                customs: { duty: 0.20, extra: 0.024, vat: 0.18 } },
+    dubai:    { name: "Dubai",    flag: "🇦🇪", ship: 0, fees: 0, duty: 0, customs: null }
   },
   DEFAULT_DEST: "kinshasa",
   FEATURED_LIMIT: 6,
@@ -21,6 +34,28 @@ const YAYO_CONFIG = {
   // Google Analytics 4 — the gtag snippet in each page's <head> uses this same ID.
   GA4_ID: "G-NR2LTEVKET"
 };
+
+// ── Customs estimation (published formulas, per country) ──
+// Returns every line of the estimate so pages can show a real breakdown.
+// base = CIF (car price + freight) — what customs offices actually tax.
+function yayoCustoms(price, ship, destKey) {
+  const d = YAYO_CONFIG.DESTINATIONS[destKey];
+  if (!d || !d.customs) return { duty: 0, extra: 0, vat: 0, total: 0, c: null };
+  const c = d.customs;
+  const cif = price + ship;
+  const duty = cif * c.duty;
+  const extra = cif * c.extra;
+  const vat = (cif + duty + extra) * c.vat;
+  return { duty, extra, vat, total: duty + extra + vat, c };
+}
+
+// Full landed total for a destination (optionally with a real agency price)
+function yayoLandedTotal(price, destKey, shipOverride) {
+  const d = YAYO_CONFIG.DESTINATIONS[destKey];
+  if (!d || destKey === "dubai") return price;
+  const ship = (shipOverride != null) ? shipOverride : d.ship;
+  return price + ship + yayoCustoms(price, ship, destKey).total + d.fees;
+}
 
 // Business avatar: logo image if uploaded, otherwise clean initials circle.
 // Used for dealers (car cards, detail page) and agencies (profile).

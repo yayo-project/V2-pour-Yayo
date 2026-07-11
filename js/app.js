@@ -17,9 +17,7 @@ function fmt(n) {
 }
 
 function landedTotal(price, destKey) {
-  const d = DEST[destKey];
-  if (!d || destKey === "dubai") return price;
-  return price + d.ship + price * d.duty + d.fees;
+  return yayoLandedTotal(price, destKey);
 }
 
 // ── Load real listings from Supabase ──
@@ -108,8 +106,8 @@ function updateCostCard() {
   const basePrice = 38500;
   setText("cost-city", d.name);
   setText("cost-ship", fmt(d.ship));
-  setText("cost-duty", fmt(basePrice * d.duty));
-  setText("cost-total", fmt(basePrice + d.ship + basePrice * d.duty + 420 + 650));
+  setText("cost-duty", fmt(yayoCustoms(basePrice, d.ship, key).total));
+  setText("cost-total", fmt(yayoLandedTotal(basePrice, key)));
 }
 
 function setText(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; }

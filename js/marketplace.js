@@ -27,7 +27,7 @@ function bodyOf(c) {
 }
 
 function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
-function landedTotal(price, key) { const d = DEST[key]; if (!d || key === "dubai") return price; return price + d.ship + price * d.duty + d.fees; }
+function landedTotal(price, key) { return yayoLandedTotal(price, key); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function brandOf(c) { const w = (c.car_name || "").split(" ")[0]; return BRANDS.find(b => b.toLowerCase() === w.toLowerCase()) || w; }
 

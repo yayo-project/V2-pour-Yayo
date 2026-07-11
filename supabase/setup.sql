@@ -519,3 +519,22 @@ alter table public.dealers add column if not exists description text;
 
 -- The admin RPCs (§11) bypass the trigger correctly because they are
 -- called BY an admin — yayo_admin_role() sees the admin's login.
+
+-- ═══════════════════════════════════════════════════════════
+-- 16) REAL-TIME CHAT — messages appear instantly, no refresh.
+-- Adds the messages table to the Realtime publication (RLS
+-- still applies: each person only receives their own convos).
+-- Safe to re-run: the exception handler ignores "already added".
+-- ═══════════════════════════════════════════════════════════
+do $$ begin
+  alter publication supabase_realtime add table public.messages;
+exception when duplicate_object then null; end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 17) LISTINGS — separate make/model (kills the "Ferrari shown
+-- as Toyota" bug class) + photos array for the photo gallery
+-- on the car page (photo_url stays = the cover photo).
+-- ═══════════════════════════════════════════════════════════
+alter table public.listings add column if not exists make text;
+alter table public.listings add column if not exists model text;
+alter table public.listings add column if not exists photos jsonb;
