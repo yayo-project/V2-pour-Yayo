@@ -116,6 +116,9 @@ async function init() {
   USER = await yayoUser();
   if (!USER) { location.href = "connexion.html?next=" + encodeURIComponent("dashboard.html"); return; }
   const role = (USER.user_metadata && USER.user_metadata.role) || "";
+  // messages.sender_id points at the users table — without this row a
+  // dealer/agency's first chat reply is silently rejected (FK violation)
+  await yayoEnsureUserRow(USER);
 
   hide("dash-loading");
   // Admin? The admin_users table is the source of truth; the old
