@@ -253,6 +253,10 @@ yayoSB().auth.onAuthStateChange((event) => {
   recoveryMode = true;
   confirmShown = true;
   setMethod("email");
+  // Focused screen: just the new-password field — no Google, no tabs, no notes
+  const g = document.querySelector(".btn-google"); if (g) g.hidden = true;
+  document.getElementById("auth-methods").hidden = true;
+  document.querySelectorAll(".auth-note").forEach(n => { n.hidden = true; });
   document.getElementById("auth-title").textContent = t("au_reset_t");
   document.getElementById("auth-sub").textContent = t("au_reset_p");
   document.getElementById("auth-btn").textContent = t("au_reset_btn");
