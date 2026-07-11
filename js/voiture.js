@@ -425,6 +425,7 @@ async function sendMsg(e) {
   try {
     const user = await yayoUser();
     await yayoSB().from("messages").insert({ conversation_id: CONVO.id, sender_id: user.id, content: text });
+    yayoNotifyMessage(CONVO.id);
   } catch (err) { /* bubble already shown; sync will retry next load */ }
   return false;
 }

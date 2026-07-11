@@ -743,6 +743,7 @@ async function dashSend(e) {
   if (!DEMO && !DEMO_AG) {
     try {
       await yayoSB().from("messages").insert({ conversation_id: CUR_CONVO.id, sender_id: USER.id, content: text });
+      yayoNotifyMessage(CUR_CONVO.id);
     } catch (err) { /* shown locally; will sync on next load */ }
   }
   return false;

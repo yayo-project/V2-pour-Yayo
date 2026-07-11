@@ -615,3 +615,10 @@ begin
     'favorites', moved_favs, 'conversations', moved_convos);
 end $$;
 grant execute on function public.yayo_claim_legacy() to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 20) EMAIL NOTIFICATION "un acheteur vous a écrit" — throttle
+-- column: one notification email per conversation per 30 min,
+-- stamped by the Netlify function (service role).
+-- ═══════════════════════════════════════════════════════════
+alter table public.conversations add column if not exists last_notified_at timestamptz;

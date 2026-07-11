@@ -306,6 +306,19 @@ async function sendReport(e) {
   return false;
 }
 
+// ── "Vous avez un nouveau message" email (Brevo via Netlify Function) ──
+// Fire-and-forget after sending a chat message: the function decides who to
+// notify, throttles (30 min/convo) and never blocks or breaks the chat.
+function yayoNotifyMessage(convoId) {
+  try {
+    fetch("/.netlify/functions/notify-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: convoId })
+    }).catch(() => {});
+  } catch (e) { /* offline/local — chat works regardless */ }
+}
+
 // ── Real-time chat (Supabase Realtime) ──
 // Subscribe to new messages in ONE conversation. Returns an unsubscribe fn.
 // onMsg receives the raw message row (only messages from OTHER people —

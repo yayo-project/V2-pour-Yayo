@@ -112,6 +112,7 @@ async function mxSend(e) {
   MX_CUR.msgs.push({ me: true, text });
   try {
     await yayoSB().from("messages").insert({ conversation_id: MX_CUR.id, sender_id: MX_USER.id, content: text });
+    yayoNotifyMessage(MX_CUR.id);
   } catch (err) { /* shown locally; will sync on next load */ }
   return false;
 }
