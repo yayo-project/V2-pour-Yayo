@@ -990,12 +990,12 @@ async function saveAgProfile(e) {
 // super_admin > admin_dealers / admin_support / admin_stats
 // ═══════════════════════════════════════════════
 let AD_ROLE = null;
-let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null;
+let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null, AD_REPORTS = [];
 
 const AD_PERMS = {
-  super_admin:   ["stats", "dealers", "agencies", "listings", "users", "team", "log"],
+  super_admin:   ["stats", "dealers", "agencies", "listings", "reports", "users", "team", "log"],
   admin_dealers: ["dealers", "agencies"],
-  admin_support: ["listings", "users"],
+  admin_support: ["listings", "reports", "users"],
   admin_stats:   ["stats"]
 };
 function adCan(section) { return (AD_PERMS[AD_ROLE] || []).includes(section); }
@@ -1042,6 +1042,11 @@ function adminDemoData() {
     top_cars: AD_LISTINGS.slice(0, 5).map(l => ({ id: l.id, car_name: l.car_name, views: l.views })),
     top_destinations: [{ city: "kinshasa", picks: 96 }, { city: "douala", picks: 41 }, { city: "abidjan", picks: 28 }, { city: "dakar", picks: 17 }]
   };
+  AD_REPORTS = [
+    { id: "rp-1", created_at: iso(0), kind: "bug", message: "Le bouton de recherche ne répond pas sur mon téléphone (Tecno Spark).", contact: "visiteur@example.com", url: "https://yayo.digital/acheter.html", status: "nouveau" },
+    { id: "rp-2", created_at: iso(2), kind: "listing", message: "Cette annonce montre une photo qui ne correspond pas au modèle indiqué.", contact: null, url: "https://yayo.digital/voiture.html?id=demo-3", status: "en_cours" },
+    { id: "rp-3", created_at: iso(6), kind: "other", message: "Bravo pour le site, mais les prix en francs CFA seraient utiles.", contact: null, url: "https://yayo.digital/", status: "resolu" }
+  ];
 }
 
 // Real data — each section loads independently so one failure never blanks the rest
@@ -1060,6 +1065,10 @@ async function adminInit() {
   if (adCan("log")) jobs.push(sb.from("admin_audit_log").select("*").order("created_at", { ascending: false }).limit(100).then(r => { AD_LOG = r.data || []; }));
   if (adCan("stats")) jobs.push(sb.rpc("admin_stats").then(r => { AD_STATS = r.data || null; adSqlHint(r.error); }));
   if (adCan("users")) jobs.push(adLoadUsers());
+  if (adCan("reports")) jobs.push(
+    sb.from("reports").select("*").order("created_at", { ascending: false }).limit(300)
+      .then(r => { AD_REPORTS = r.data || []; if (r.error) adSqlHint(r.error); })
+  );
   try { await Promise.all(jobs); } catch (e) { adSqlHint(e); }
 }
 
@@ -1083,7 +1092,7 @@ function adminEnter() {
 }
 
 function showAdTab(name) {
-  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-users", "ad-team", "ad-log"].forEach(tb => {
+  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-reports", "ad-users", "ad-team", "ad-log"].forEach(tb => {
     const el = document.getElementById("tab-" + tb);
     if (el) el.hidden = tb !== name;
   });
@@ -1093,6 +1102,7 @@ function showAdTab(name) {
 function renderAdmin() {
   if (adCan("dealers")) { adRenderBiz("dealer"); adRenderBiz("agency"); }
   if (adCan("listings")) adRenderListings();
+  if (adCan("reports")) adRenderReports();
   if (adCan("users")) adRenderUsers();
   if (adCan("team")) adRenderTeam();
   if (adCan("log")) adRenderLog();
@@ -1113,6 +1123,50 @@ function adFail(errId, e) {
   const el = document.getElementById(errId);
   el.hidden = false;
   el.textContent = t("au_err_generic") + (e.message || e);
+}
+
+// ── Reports (Signalements) — nouveau → en cours → résolu ──
+const RP_KINDS = { bug: "rp_k_bug", listing: "rp_k_listing", business: "rp_k_business", other: "rp_k_other" };
+function adRenderReports() {
+  const f = (document.getElementById("ad-rp-filter") || {}).value || "open";
+  const rows = AD_REPORTS.filter(r =>
+    f === "all" ? true : f === "resolu" ? r.status === "resolu" : r.status !== "resolu");
+  document.getElementById("ad-rp-empty").hidden = !!rows.length;
+  document.getElementById("ad-rp-list").innerHTML = rows.map(r => {
+    const st = r.status || "nouveau";
+    const pill = st === "resolu" ? ["active", t("ad_rp_st_done")]
+      : st === "en_cours" ? ["sold", t("ad_rp_st_doing")] : ["off", t("ad_rp_st_new")];
+    let page = "";
+    try { page = new URL(r.url).pathname + (new URL(r.url).search || ""); } catch (e) { page = r.url || ""; }
+    return `
+    <div class="rp-card vd-card" style="margin-bottom:12px;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <b>${t(RP_KINDS[r.kind] || "rp_k_other")}</b>
+        <span class="status ${pill[0]}">${pill[1]}</span>
+      </div>
+      <p style="margin:8px 0;white-space:pre-wrap">${escapeHtml(r.message)}</p>
+      <p class="dash-sub" style="margin:0 0 10px">
+        ${adDate(r.created_at)}${page ? ` · <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(page)}</a>` : ""}${r.contact ? " · ✉ " + escapeHtml(r.contact) : ""}
+      </p>
+      <div class="ad-actions">
+        ${st !== "en_cours" && st !== "resolu" ? `<button onclick="adReportStatus('${r.id}','en_cours')">${t("ad_rp_take")}</button>` : ""}
+        ${st !== "resolu" ? `<button onclick="adReportStatus('${r.id}','resolu')">${t("ad_rp_resolve")}</button>` : `<button onclick="adReportStatus('${r.id}','nouveau')">${t("ad_rp_reopen")}</button>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function adReportStatus(id, status) {
+  const r = AD_REPORTS.find(x => String(x.id) === String(id));
+  if (!r) return;
+  const old = r.status;
+  r.status = status;
+  adRenderReports();
+  if (DEMO_ADMIN) return;
+  try {
+    const { error } = await yayoSB().from("reports").update({ status }).eq("id", id);
+    if (error) throw error;
+  } catch (e) { r.status = old; adRenderReports(); adFail("ad-rp-err", e); }
 }
 
 // ── Dealers & agencies ──

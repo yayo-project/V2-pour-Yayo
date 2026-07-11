@@ -322,6 +322,24 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
       </section>
 
+      <!-- REPORTS (Signalements) -->
+      <section id="tab-ad-reports" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_reports">Signalements</h2>
+          <p class="dash-sub" data-i18n="ad_p_reports">Problèmes signalés par les visiteurs — traitez-les : nouveau → en cours → résolu.</p>
+          <div class="ad-filters">
+            <select id="ad-rp-filter" onchange="adRenderReports()">
+              <option value="open" data-i18n="ad_rp_f_open">À traiter</option>
+              <option value="all" data-i18n="ad_f_all">Tous</option>
+              <option value="resolu" data-i18n="ad_rp_f_done">Résolus</option>
+            </select>
+          </div>
+          <div id="ad-rp-list"></div>
+          <p class="dash-empty" id="ad-rp-empty" hidden data-i18n="ad_no_reports">Aucun signalement — tout va bien ✓</p>
+          <p class="auth-error" id="ad-rp-err" hidden></p>
+        </div>
+      </section>
+
       <!-- USERS -->
       <section id="tab-ad-users" hidden>
         <div class="vd-card">

@@ -538,3 +538,80 @@ exception when duplicate_object then null; end $$;
 alter table public.listings add column if not exists make text;
 alter table public.listings add column if not exists model text;
 alter table public.listings add column if not exists photos jsonb;
+
+-- ═══════════════════════════════════════════════════════════
+-- 18) "SIGNALER UN PROBLÈME" — reports from any visitor
+-- (logged in or not) land in the admin dashboard with a
+-- status workflow: nouveau → en cours → résolu.
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.reports (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  url text,
+  kind text,
+  message text not null,
+  contact text,
+  user_id uuid,
+  status text not null default 'nouveau',
+  admin_note text
+);
+alter table public.reports enable row level security;
+drop policy if exists reports_insert_any on public.reports;
+create policy reports_insert_any on public.reports
+  for insert to anon, authenticated with check (true);
+drop policy if exists reports_admin_select on public.reports;
+create policy reports_admin_select on public.reports
+  for select to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');
+drop policy if exists reports_admin_update on public.reports;
+create policy reports_admin_update on public.reports
+  for update to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');
+
+-- ═══════════════════════════════════════════════════════════
+-- 19) LEGACY ACCOUNT RECONNECTION — the 29 old-Yayo accounts
+-- (WhatsApp/email in public.users.identifier) get their old
+-- favorites/conversations re-attached the FIRST time they log
+-- in with the same email (or phone, once SMS login is live).
+-- Called automatically by the client after login; safe to call
+-- many times (already-claimed rows are skipped).
+-- ═══════════════════════════════════════════════════════════
+alter table public.users add column if not exists claimed_at timestamptz;
+
+create or replace function public.yayo_claim_legacy()
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  em text; ph text; legacy_id uuid;
+  moved_favs int := 0; moved_convos int := 0;
+begin
+  if uid is null then return jsonb_build_object('claimed', false); end if;
+  select email, phone into em, ph from auth.users where id = uid;
+  select u.id into legacy_id from public.users u
+    where u.id <> uid and u.claimed_at is null
+      and (
+        (em is not null and em <> '' and lower(trim(u.identifier)) = lower(em))
+        or (ph is not null and ph <> ''
+            and regexp_replace(coalesce(u.identifier, ''), '\D', '', 'g') <> ''
+            and regexp_replace(coalesce(u.identifier, ''), '\D', '', 'g')
+              = regexp_replace(ph, '\D', '', 'g'))
+      )
+    limit 1;
+  if legacy_id is null then return jsonb_build_object('claimed', false); end if;
+
+  -- re-attach the old data to the fresh auth account (each step defensive:
+  -- an unknown old schema must never abort the login flow)
+  begin
+    update public.favorites set user_id = uid where user_id = legacy_id;
+    get diagnostics moved_favs = row_count;
+  exception when others then null; end;
+  begin
+    update public.conversations set user_id = uid where user_id = legacy_id;
+    get diagnostics moved_convos = row_count;
+  exception when others then null; end;
+  begin
+    update public.users set claimed_at = now() where id = legacy_id;
+  exception when others then null; end;
+
+  return jsonb_build_object('claimed', true,
+    'favorites', moved_favs, 'conversations', moved_convos);
+end $$;
+grant execute on function public.yayo_claim_legacy() to authenticated;

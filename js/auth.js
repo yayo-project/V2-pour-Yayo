@@ -135,6 +135,16 @@ async function initAuthNav() {
       phone: user.phone || ""
     }));
   } catch (e) { /* private mode */ }
+  // Old-Yayo accounts: first login with the same email/number re-attaches
+  // their favorites & conversations (yayo_claim_legacy RPC — setup.sql §19).
+  // Fire-and-forget, once per account per device.
+  try {
+    const ck = "yayo-claimed-" + user.id;
+    if (!localStorage.getItem(ck)) {
+      localStorage.setItem(ck, "1");
+      yayoSB().rpc("yayo_claim_legacy").then(() => {}, () => {});
+    }
+  } catch (e) { /* non-blocking */ }
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
     el.href = "dashboard.html";
@@ -207,6 +217,86 @@ function initPasswordEyes() {
   });
 }
 document.addEventListener("DOMContentLoaded", initPasswordEyes);
+
+// ── "Signaler un problème" — discreet link in every footer → reports table ──
+function initReportLink() {
+  const foot = document.querySelector(".footer-bottom");
+  if (!foot || foot.querySelector(".report-link")) return;
+  const a = document.createElement("a");
+  a.href = "#";
+  a.className = "report-link";
+  a.textContent = "⚑ " + t("rp_link");
+  a.addEventListener("click", ev => { ev.preventDefault(); openReportModal(); });
+  foot.appendChild(a);
+}
+document.addEventListener("DOMContentLoaded", initReportLink);
+
+function openReportModal() {
+  let ov = document.getElementById("rp-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "rp-overlay";
+    ov.className = "rp-overlay";
+    ov.innerHTML = `
+      <div class="rp-modal" role="dialog" aria-modal="true">
+        <button type="button" class="rp-close" aria-label="Fermer" onclick="closeReportModal()">✕</button>
+        <h3>${t("rp_h")}</h3>
+        <p class="rp-sub">${t("rp_p")}</p>
+        <form onsubmit="return sendReport(event)">
+          <label>${t("rp_kind")}</label>
+          <select id="rp-kind">
+            <option value="bug">${t("rp_k_bug")}</option>
+            <option value="listing">${t("rp_k_listing")}</option>
+            <option value="business">${t("rp_k_business")}</option>
+            <option value="other">${t("rp_k_other")}</option>
+          </select>
+          <label for="rp-msg">${t("rp_msg")}</label>
+          <textarea id="rp-msg" rows="4" required maxlength="1500" placeholder="${t("rp_msg_ph")}"></textarea>
+          <label for="rp-contact">${t("rp_contact")}</label>
+          <input id="rp-contact" type="email" maxlength="120" placeholder="${t("rp_contact_ph")}">
+          <p class="auth-error" id="rp-err" hidden></p>
+          <div class="rp-actions">
+            <button type="submit" class="btn btn-solid" id="rp-send">${t("rp_send")}</button>
+            <button type="button" class="btn btn-ghost-dark" onclick="closeReportModal()">${t("d_cancel")}</button>
+          </div>
+        </form>
+        <p class="rp-done" id="rp-done" hidden>✓ ${t("rp_done")}</p>
+      </div>`;
+    ov.addEventListener("click", ev => { if (ev.target === ov) closeReportModal(); });
+    document.body.appendChild(ov);
+  }
+  ov.classList.add("open");
+}
+function closeReportModal() {
+  const ov = document.getElementById("rp-overlay");
+  if (ov) ov.classList.remove("open");
+}
+async function sendReport(e) {
+  e.preventDefault();
+  const err = document.getElementById("rp-err");
+  err.hidden = true;
+  const btn = document.getElementById("rp-send");
+  btn.disabled = true;
+  try {
+    const user = await yayoUser();
+    const { error } = await yayoSB().from("reports").insert({
+      url: location.href.slice(0, 400),
+      kind: document.getElementById("rp-kind").value,
+      message: document.getElementById("rp-msg").value.trim(),
+      contact: document.getElementById("rp-contact").value.trim() || (user && user.email) || null,
+      user_id: user ? user.id : null
+    });
+    if (error) throw error;
+    document.querySelector("#rp-overlay form").hidden = true;
+    document.getElementById("rp-done").hidden = false;
+    setTimeout(closeReportModal, 2500);
+  } catch (ex) {
+    err.hidden = false;
+    err.textContent = t("au_err_generic") + yayoErrMsg(ex);
+  }
+  btn.disabled = false;
+  return false;
+}
 
 // ── Real-time chat (Supabase Realtime) ──
 // Subscribe to new messages in ONE conversation. Returns an unsubscribe fn.
