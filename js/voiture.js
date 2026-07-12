@@ -396,7 +396,8 @@ async function openChat() {
       addBubble("them", tr[0] || m.content);
     });
   } catch (e) {
-    addBubble("yayo", t("chat_soon"));
+    console.error("[Yayo] openChat failed:", e);
+    addBubble("yayo", t("chat_soon") + " (" + yayoErrMsg(e) + ")");
   }
 }
 
@@ -448,7 +449,7 @@ async function sendMsg(e) {
     yayoNotifyMessage(CONVO.id);
   } catch (err) {
     bubble.classList.add("chat-failed");
-    addBubble("yayo", t("chat_send_fail"));
+    addBubble("yayo", t("chat_send_fail") + " (" + yayoErrMsg(err) + ")");
     console.error("[Yayo] message send failed:", err);
   }
   return false;

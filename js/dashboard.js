@@ -799,7 +799,7 @@ async function dashSend(e) {
       yayoNotifyMessage(CUR_CONVO.id);
     } catch (err) {
       bubble.classList.add("chat-failed");
-      addMsg(false, t("chat_send_fail"));
+      addMsg(false, t("chat_send_fail") + " (" + yayoErrMsg(err) + ")");
       console.error("[Yayo] message send failed:", err);
     }
   }

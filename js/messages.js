@@ -157,7 +157,7 @@ async function mxSend(e) {
     yayoNotifyMessage(MX_CUR.id);
   } catch (err) {
     bubble.classList.add("chat-failed");
-    mxBubble(false, t("chat_send_fail"));
+    mxBubble(false, t("chat_send_fail") + " (" + yayoErrMsg(err) + ")");
     console.error("[Yayo] message send failed:", err);
   }
   return false;

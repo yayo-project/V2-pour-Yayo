@@ -650,8 +650,11 @@ begin
   if exists (select 1 from users where id = uid) then return; end if;
   select email, phone into em, ph from auth.users where id = uid;
 
+  -- ANY row holding this identifier blocks us — even one already marked
+  -- claimed (the first-generation claim RPC set claimed_at without freeing
+  -- the identifier, which left those users permanently unable to chat).
   select u.id into legacy_id from users u
-    where u.claimed_at is null and (
+    where u.id <> uid and (
       (em is not null and em <> '' and lower(trim(u.identifier)) = lower(em))
       or (ph is not null and ph <> ''
           and regexp_replace(coalesce(u.identifier, ''), '\D', '', 'g') <> ''
@@ -661,7 +664,8 @@ begin
 
   if legacy_id is not null then
     -- free the identifier, keep the old row traceable in admin
-    update users set identifier = identifier || ' (ancien compte)', claimed_at = now()
+    update users set identifier = identifier || ' (ancien compte)',
+      claimed_at = coalesce(claimed_at, now())
       where id = legacy_id;
   end if;
 
