@@ -705,14 +705,16 @@ create trigger yayo_touch_convo after insert on public.messages
 
 -- backfill existing conversations once
 update public.conversations c set
-  last_message = left(coalesce(m.content, ''), 120),
-  last_message_at = m.created_at,
-  last_sender = m.sender_id
-from lateral (
-  select content, created_at, sender_id from public.messages
-  where conversation_id = c.id order by created_at desc limit 1
-) m
-where c.last_message_at is null;
+  last_message = left(coalesce(sub.content, ''), 120),
+  last_message_at = sub.created_at,
+  last_sender = sub.sender_id
+from (
+  select distinct on (conversation_id)
+    conversation_id, content, created_at, sender_id
+  from public.messages
+  order by conversation_id, created_at desc
+) sub
+where sub.conversation_id = c.id and c.last_message_at is null;
 
 -- ═══════════════════════════════════════════════════════════
 -- 24) REVIEWS — only real contacts can review. A buyer may
