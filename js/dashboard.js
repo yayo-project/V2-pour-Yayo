@@ -680,6 +680,21 @@ async function conditionReport() {
   }
 }
 
+// LIVE: new buyer message → badge + list update instantly, even a brand-new
+// conversation appears without any refresh.
+window.yayoOnNewMessage = async (m) => {
+  try {
+    if (DEMO || DEMO_AG || DEMO_ADMIN) return;
+    if (typeof CONVOS === "undefined" || !Array.isArray(CONVOS)) return;
+    if (CUR_CONVO && String(CUR_CONVO.id) === String(m.conversation_id)) return; // open thread paints it
+    const known = CONVOS.find(x => String(x.id) === String(m.conversation_id));
+    if (known) UNREAD[m.conversation_id] = (UNREAD[m.conversation_id] || 0) + 1;
+    else await loadConvos();
+    renderConvoList();
+    renderStats();
+  } catch (e) { /* badge poll still covers it */ }
+};
+
 async function openConvo(id) {
   CUR_CONVO = CONVOS.find(c => String(c.id) === String(id));
   if (!CUR_CONVO) return;
@@ -699,40 +714,57 @@ async function openConvo(id) {
 
   if (CUR_CONVO.msgs === null) {
     try {
-      const { data } = await yayoSB().from("messages")
-        .select("sender_id, content, created_at")
-        .eq("conversation_id", CUR_CONVO.id).order("created_at", { ascending: true }).limit(200);
-      CUR_CONVO.msgs = (data || []).map(m => ({ me: USER && m.sender_id === USER.id, text: m.content }));
+      const data = DEMO || DEMO_AG ? [] : await yayoLoadMessages(CUR_CONVO.id, 200);
+      CUR_CONVO.msgs = data.map(m => ({ me: USER && m.sender_id === USER.id, text: m.content, img: m.image_url }));
     } catch (e) { CUR_CONVO.msgs = []; }
   }
   // Two-way translation: incoming buyer messages shown in the dealer's language
-  const incoming = CUR_CONVO.msgs.filter(m => !m.me);
+  const incoming = CUR_CONVO.msgs.filter(m => !m.me && !m.img);
   if (incoming.length) {
     const translated = await yayoTranslate(incoming.map(m => m.text), YAYO_LANG);
     incoming.forEach((m, i) => { m.display = translated[i]; });
   }
-  CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.me ? m.text : (m.display || m.text)));
+  CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.me ? m.text : (m.display || m.text), m.img));
 
   // Live: buyer messages appear instantly (translated), no refresh
   if (!DEMO && !DEMO_AG && USER) {
     if (window.__dashLiveOff) window.__dashLiveOff();
     window.__dashLiveOff = yayoLiveMessages(CUR_CONVO.id, USER.id, async m => {
-      const tr = await yayoTranslate([m.content], YAYO_LANG);
-      const text = tr[0] || m.content;
-      CUR_CONVO.msgs.push({ me: false, text: m.content, display: text });
-      addMsg(false, text);
+      let text = m.content;
+      if (!m.image_url) {
+        const tr = await yayoTranslate([m.content], YAYO_LANG);
+        text = tr[0] || m.content;
+      }
+      CUR_CONVO.msgs.push({ me: false, text: m.content, display: text, img: m.image_url });
+      addMsg(false, text, m.image_url);
       try { yayoSB().rpc("yayo_mark_read", { cid: CUR_CONVO.id }).then(() => {}, () => {}); } catch (e) {}
     });
   }
 }
 
-function addMsg(me, text) {
+function addMsg(me, text, img) {
   const box = document.getElementById("msg-box");
   const b = document.createElement("div");
   b.className = "chat-b " + (me ? "chat-me" : "chat-them");
-  b.textContent = text;
+  yayoFillBubble(b, text, img);
   box.appendChild(b);
   box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+// 📷 dealer/agency sends a photo (buyer asked for more pictures)
+async function dashSendPhoto(files) {
+  const f = files && files[0];
+  document.getElementById("msg-photo").value = "";
+  if (!f || !CUR_CONVO || DEMO || DEMO_AG) return;
+  const b = addMsg(true, t("chat_photo_sending"));
+  try {
+    const url = await yayoSendChatPhoto(CUR_CONVO.id, f);
+    yayoFillBubble(b, "", url);
+    CUR_CONVO.msgs.push({ me: true, text: "📷", img: url });
+  } catch (e) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+  }
 }
 
 async function dashSend(e) {

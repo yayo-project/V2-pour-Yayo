@@ -114,10 +114,11 @@ gtag('config', 'G-NR2LTEVKET');
             <button class="btn btn-ghost-dark ct-toggle" id="ct-btn" onclick="toggleTransport()" data-i18n="ct_btn">🚢 Choisir le transport</button>
             <div id="ct-panel" hidden>
               <h3 class="ct-h" data-i18n="ct_h">Agences de transport vérifiées</h3>
+              <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
               <div id="ct-list"></div>
             </div>
           </div>
-          <p class="cost-note" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
+          <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
         </div>
 
         <div class="vd-card">
@@ -148,6 +149,8 @@ gtag('config', 'G-NR2LTEVKET');
           <div class="chat-box" id="chat-box"></div>
           <form class="chat-form" onsubmit="return sendMsg(event)">
             <input id="chat-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
+            <button type="button" class="chat-photo-btn" onclick="document.getElementById('chat-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
+            <input id="chat-photo" type="file" accept="image/*" hidden onchange="sendChatPhoto(this.files)">
             <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
           </form>
           <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>

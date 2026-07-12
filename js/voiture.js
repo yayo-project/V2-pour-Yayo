@@ -47,7 +47,7 @@ async function loadCar() {
           condition: data.condition || "",
           color: data.color || "",
           body: data.body || "",
-          price: data.price,
+          price: Number(data.price) || 0,
           photo_url: data.photo_url,
           photos: yayoPhotoList(data.photos),
           description: data.description || "",
@@ -203,7 +203,7 @@ function renderBreakdown() {
     return;
   }
   const route = CHOSEN && routeFor(CHOSEN, CUR);
-  const ship = route ? route.price : d.ship;
+  const ship = Number(route ? route.price : d.ship) || 0;
   const shipLbl = route
     ? `${t("ct_price_lbl")}<span class="ct-src">${escapeHtml(CHOSEN.name)}</span>`
     : t("bd_ship2");
@@ -378,22 +378,20 @@ async function openChat() {
     }
     CONVO = convo;
     if (!CONVO) throw new Error("no convo");
-    const { data: msgs } = await sb.from("messages")
-      .select("sender_id, content, created_at")
-      .eq("conversation_id", CONVO.id).order("created_at", { ascending: true }).limit(100);
+    const list = await yayoLoadMessages(CONVO.id, 100);
     // Two-way translation: the dealer's replies arrive in the buyer's language.
-    // From the buyer's side it is simply the dealer replying.
-    const list = msgs || [];
-    const theirs = list.filter(m => m.sender_id !== user.id);
+    // From the buyer's side it is simply the dealer replying. (Photos pass as-is.)
+    const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url);
     if (theirs.length) {
       const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
-    list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content));
+    list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url));
     if (!list.length) addBubble("yayo", t("chat_start"));
     // Live: the dealer's replies appear instantly, translated, no refresh
     if (window.__vdLiveOff) window.__vdLiveOff();
     window.__vdLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
+      if (m.image_url) { addBubble("them", "", m.image_url); return; }
       const tr = await yayoTranslate([m.content], YAYO_LANG);
       addBubble("them", tr[0] || m.content);
     });
@@ -402,13 +400,32 @@ async function openChat() {
   }
 }
 
-function addBubble(who, text) {
+function addBubble(who, text, img) {
   const box = document.getElementById("chat-box");
   const b = document.createElement("div");
   b.className = "chat-b chat-" + who;
-  b.textContent = text;
+  yayoFillBubble(b, text, img);
   box.appendChild(b);
   box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+// 📷 send a photo in the chat (e.g. buyer asks for more pictures)
+async function sendChatPhoto(files) {
+  const f = files && files[0];
+  document.getElementById("chat-photo").value = "";
+  if (!f) return;
+  if (String(CAR.id).startsWith("demo") || !CONVO) {
+    setTimeout(() => addBubble("yayo", t("chat_demo_reply")), 600);
+    return;
+  }
+  const b = addBubble("me", t("chat_photo_sending"));
+  try {
+    const url = await yayoSendChatPhoto(CONVO.id, f);
+    yayoFillBubble(b, "", url);
+  } catch (e) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+  }
 }
 
 async function sendMsg(e) {

@@ -214,6 +214,7 @@ fr: {
   rp_msg: "Décrivez le problème", rp_msg_ph: "Expliquez ce qui ne va pas…", rp_contact: "Votre email (facultatif — pour vous répondre)", rp_contact_ph: "vous@exemple.com",
   rp_send: "Envoyer le signalement", rp_done: "Merci ! Votre signalement est bien reçu.",
   f_terms: "Conditions & Confidentialité",
+  chat_photo_btn: "Envoyer une photo", chat_photo_sending: "📷 Envoi de la photo…", chat_photo_fail: "La photo n'a pas pu être envoyée. Réessayez.",
   ad_search_ph: "Rechercher par nom ou email…", ad_user_search_ph: "Rechercher un email…",
   ad_f_all: "Tous", ad_f_verified: "Vérifiés", ad_f_pending: "En attente", ad_f_suspended: "Suspendus",
   ad_st_suspended: "Suspendu", ad_st_hidden: "Masquée", ad_st_banned: "Banni", ad_st_ok: "Actif",
@@ -570,6 +571,7 @@ en: {
   rp_msg: "Describe the problem", rp_msg_ph: "Tell us what's wrong…", rp_contact: "Your email (optional — so we can reply)", rp_contact_ph: "you@example.com",
   rp_send: "Send report", rp_done: "Thank you! Your report has been received.",
   f_terms: "Terms & Privacy",
+  chat_photo_btn: "Send a photo", chat_photo_sending: "📷 Sending photo…", chat_photo_fail: "The photo could not be sent. Please try again.",
   ad_search_ph: "Search by name or email…", ad_user_search_ph: "Search an email…",
   ad_f_all: "All", ad_f_verified: "Verified", ad_f_pending: "Pending", ad_f_suspended: "Suspended",
   ad_st_suspended: "Suspended", ad_st_hidden: "Hidden", ad_st_banned: "Banned", ad_st_ok: "Active",
@@ -910,6 +912,7 @@ ar: {
   rp_msg: "صف المشكلة", rp_msg_ph: "اشرح ما الخطأ…", rp_contact: "بريدك الإلكتروني (اختياري — للرد عليك)", rp_contact_ph: "you@example.com",
   rp_send: "إرسال البلاغ", rp_done: "شكراً! تم استلام بلاغك.",
   f_terms: "الشروط والخصوصية",
+  chat_photo_btn: "إرسال صورة", chat_photo_sending: "📷 جارٍ إرسال الصورة…", chat_photo_fail: "تعذّر إرسال الصورة. حاول مجدداً.",
   ad_search_ph: "ابحث بالاسم أو البريد…", ad_user_search_ph: "ابحث عن بريد إلكتروني…",
   ad_f_all: "الكل", ad_f_verified: "موثّق", ad_f_pending: "قيد الانتظار", ad_f_suspended: "موقوف",
   ad_st_suspended: "موقوف", ad_st_hidden: "مخفي", ad_st_banned: "محظور", ad_st_ok: "نشط",
@@ -1070,6 +1073,7 @@ function applyI18n(root) {
   (root || document).querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
   (root || document).querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
   (root || document).querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  (root || document).querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); });
 }
 
 function setLang(lang) {

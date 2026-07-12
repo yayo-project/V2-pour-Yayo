@@ -67,39 +67,56 @@ async function mxOpen(id) {
 
   if (MX_CUR.msgs === null) {
     try {
-      const { data } = await yayoSB().from("messages")
-        .select("sender_id, content, created_at")
-        .eq("conversation_id", MX_CUR.id).order("created_at", { ascending: true }).limit(200);
-      MX_CUR.msgs = (data || []).map(m => ({ me: m.sender_id === MX_USER.id, text: m.content }));
+      const data = await yayoLoadMessages(MX_CUR.id, 200);
+      MX_CUR.msgs = data.map(m => ({ me: m.sender_id === MX_USER.id, text: m.content, img: m.image_url }));
     } catch (e) { MX_CUR.msgs = []; }
     // Replies arrive in the buyer's language — it is simply the business replying
-    const theirs = MX_CUR.msgs.filter(m => !m.me);
+    const theirs = MX_CUR.msgs.filter(m => !m.me && !m.img);
     if (theirs.length) {
       const tr = await yayoTranslate(theirs.map(m => m.text), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
   }
-  MX_CUR.msgs.forEach(m => mxBubble(m.me, m.me ? m.text : (m.display || m.text)));
+  MX_CUR.msgs.forEach(m => mxBubble(m.me, m.me ? m.text : (m.display || m.text), m.img));
   if (!MX_CUR.msgs.length) mxBubble(false, t("chat_start"));
 
   // Live: new replies pop in instantly (translated), no refresh needed
   if (window.__mxLiveOff) window.__mxLiveOff();
   window.__mxLiveOff = yayoLiveMessages(MX_CUR.id, MX_USER.id, async m => {
-    const tr = await yayoTranslate([m.content], YAYO_LANG);
-    const text = tr[0] || m.content;
-    MX_CUR.msgs.push({ me: false, text: m.content, display: text });
-    mxBubble(false, text);
+    let text = m.content;
+    if (!m.image_url) {
+      const tr = await yayoTranslate([m.content], YAYO_LANG);
+      text = tr[0] || m.content;
+    }
+    MX_CUR.msgs.push({ me: false, text: m.content, display: text, img: m.image_url });
+    mxBubble(false, text, m.image_url);
     try { yayoSB().rpc("yayo_mark_read", { cid: MX_CUR.id }).then(() => {}, () => {}); } catch (e) {}
   });
 }
 
-function mxBubble(me, text) {
+function mxBubble(me, text, img) {
   const box = document.getElementById("mx-box");
   const b = document.createElement("div");
   b.className = "chat-b " + (me ? "chat-me" : "chat-them");
-  b.textContent = text;
+  yayoFillBubble(b, text, img);
   box.appendChild(b);
   box.scrollTop = box.scrollHeight;
+  return b;
+}
+
+// 📷 buyer sends a photo in the conversation
+async function mxSendPhoto(files) {
+  const f = files && files[0];
+  document.getElementById("mx-photo").value = "";
+  if (!f || !MX_CUR) return;
+  const b = mxBubble(true, t("chat_photo_sending"));
+  try {
+    const url = await yayoSendChatPhoto(MX_CUR.id, f);
+    yayoFillBubble(b, "", url);
+    MX_CUR.msgs.push({ me: true, text: "📷", img: url });
+  } catch (e) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+  }
 }
 
 async function mxSend(e) {
@@ -116,6 +133,15 @@ async function mxSend(e) {
   } catch (err) { /* shown locally; will sync on next load */ }
   return false;
 }
+
+// LIVE: a message in another conversation bumps its badge instantly; a brand
+// new conversation makes the whole list rebuild — no refresh needed.
+window.yayoOnNewMessage = (m) => {
+  if (MX_CUR && String(MX_CUR.id) === String(m.conversation_id)) return; // open thread paints it live already
+  const c = MX_CONVOS.find(x => String(x.id) === String(m.conversation_id));
+  if (c) { MX_UNREAD[c.id] = (MX_UNREAD[c.id] || 0) + 1; mxRenderList(); }
+  else mxInit();
+};
 
 window.onLangChange = () => { mxRenderList(); };
 mxInit();

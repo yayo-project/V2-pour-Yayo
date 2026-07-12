@@ -525,6 +525,12 @@ body.no-scroll{overflow:hidden}
 .rp-close:hover{background:#DFE6EE}
 .rp-done{color:#1B9E77;font-weight:700;text-align:center;margin:14px 0 4px}
 [dir="rtl"] .rp-close{right:auto;left:12px}
+/* Bold estimation warning under the landed price / transport chooser */
+.cost-note-strong{font-weight:800;color:var(--ink,#0A2540);background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:10px 14px;font-size:13.5px;line-height:1.55;margin:12px 0 0}
+/* Photos in chat */
+.chat-photo-btn{border:1px solid #DFE6EE;background:#fff;border-radius:10px;padding:0 12px;font-size:17px;cursor:pointer;transition:.15s;flex:0 0 auto}
+.chat-photo-btn:hover{border-color:var(--teal-bright,#1FD8C9)}
+.chat-img{max-width:220px;max-height:220px;border-radius:10px;display:block}
 /* Legal page (conditions.html) */
 .legal{max-width:760px;padding-top:36px;padding-bottom:56px}
 .legal h1{color:var(--ink,#0A2540);font-size:26px;margin:0 0 6px}

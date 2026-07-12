@@ -86,6 +86,8 @@ gtag('config', 'G-NR2LTEVKET');
             <div class="chat-box" id="mx-box"></div>
             <form class="chat-form" onsubmit="return mxSend(event)">
               <input id="mx-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
+              <button type="button" class="chat-photo-btn" onclick="document.getElementById('mx-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
+              <input id="mx-photo" type="file" accept="image/*" hidden onchange="mxSendPhoto(this.files)">
               <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
             </form>
             <p class="cost-note" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>

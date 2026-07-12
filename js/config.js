@@ -47,6 +47,10 @@ function yayoCustoms(price, ship, destKey) {
   const d = YAYO_CONFIG.DESTINATIONS[destKey];
   if (!d || !d.customs) return { duty: 0, extra: 0, vat: 0, total: 0, c: null };
   const c = d.customs;
+  // numeric DB columns arrive as strings — "6000" + 3200 would glue digits
+  // ("60003200") instead of adding. Force real numbers, always.
+  price = Number(price) || 0;
+  ship = Number(ship) || 0;
   const cif = price + ship;
   const duty = cif * c.duty;
   const extra = cif * c.extra;
@@ -57,8 +61,9 @@ function yayoCustoms(price, ship, destKey) {
 // Full landed total for a destination (optionally with a real agency price)
 function yayoLandedTotal(price, destKey, shipOverride) {
   const d = YAYO_CONFIG.DESTINATIONS[destKey];
+  price = Number(price) || 0;
   if (!d || destKey === "dubai") return price;
-  const ship = (shipOverride != null) ? shipOverride : d.ship;
+  const ship = Number((shipOverride != null) ? shipOverride : d.ship) || 0;
   return price + ship + yayoCustoms(price, ship, destKey).total + d.fees;
 }
 

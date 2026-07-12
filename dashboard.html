@@ -617,6 +617,8 @@ gtag('config', 'G-NR2LTEVKET');
               </div>
               <form class="chat-form" onsubmit="return dashSend(event)">
                 <input id="msg-input" type="text" data-i18n-ph="d_reply_ph" placeholder="Votre réponse…" autocomplete="off" maxlength="1000">
+                <button type="button" class="chat-photo-btn" onclick="document.getElementById('msg-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
+                <input id="msg-photo" type="file" accept="image/*" hidden onchange="dashSendPhoto(this.files)">
                 <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
               </form>
             </div>

@@ -319,6 +319,50 @@ function yayoNotifyMessage(convoId) {
   } catch (e) { /* offline/local — chat works regardless */ }
 }
 
+// ── Photos in chat (shared by all 4 chat surfaces) ──
+// Upload the picked photo to Storage, then post it as a chat message.
+async function yayoSendChatPhoto(convoId, file) {
+  if (!file || !file.type.startsWith("image/")) throw new Error("image only");
+  const user = await yayoUser();
+  if (!user) throw new Error("not signed in");
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = "chat/" + convoId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 6) + "." + ext;
+  const { error } = await yayoSB().storage.from("car-photos").upload(path, file, { contentType: file.type });
+  if (error) throw error;
+  const url = yayoSB().storage.from("car-photos").getPublicUrl(path).data.publicUrl;
+  const { error: e2 } = await yayoSB().from("messages")
+    .insert({ conversation_id: convoId, sender_id: user.id, content: "📷", image_url: url });
+  if (e2) throw e2;
+  yayoNotifyMessage(convoId);
+  return url;
+}
+
+// Load a conversation's messages incl. photos; falls back gracefully while
+// the image_url column (setup.sql §21) isn't created yet.
+async function yayoLoadMessages(convoId, limit) {
+  const sb = yayoSB();
+  const q = cols => sb.from("messages").select(cols)
+    .eq("conversation_id", convoId).order("created_at", { ascending: true }).limit(limit || 200);
+  let r = await q("sender_id, content, created_at, image_url");
+  if (r.error) r = await q("sender_id, content, created_at");
+  return r.data || [];
+}
+
+// Fill a chat bubble: photo (clickable, opens full size) or plain text.
+function yayoFillBubble(el, text, img) {
+  if (img) {
+    el.textContent = "";
+    const a = document.createElement("a");
+    a.href = img; a.target = "_blank"; a.rel = "noopener";
+    const im = document.createElement("img");
+    im.src = img; im.className = "chat-img"; im.loading = "lazy"; im.alt = "photo";
+    a.appendChild(im);
+    el.appendChild(a);
+  } else {
+    el.textContent = text;
+  }
+}
+
 // ── Real-time chat (Supabase Realtime) ──
 // Subscribe to new messages in ONE conversation. Returns an unsubscribe fn.
 // onMsg receives the raw message row (only messages from OTHER people —
@@ -373,5 +417,19 @@ async function initUnreadBadge() {
   await refresh();
   setInterval(refresh, 60000);
   window.yayoRefreshUnread = refresh;
+
+  // LIVE: any new message in one of MY conversations (RLS filters server-side)
+  // updates the ✉ badge instantly on every page — no refresh needed. Pages
+  // with an inbox can also hook window.yayoOnNewMessage to update their list.
+  try {
+    yayoSB().channel("live-unread")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+        const m = payload.new;
+        if (!m || m.sender_id === user.id) return;
+        refresh();
+        if (typeof window.yayoOnNewMessage === "function") window.yayoOnNewMessage(m);
+      })
+      .subscribe();
+  } catch (e) { /* badge still refreshes every 60s */ }
 }
 document.addEventListener("DOMContentLoaded", initUnreadBadge);

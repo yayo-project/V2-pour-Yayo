@@ -622,3 +622,10 @@ grant execute on function public.yayo_claim_legacy() to authenticated;
 -- stamped by the Netlify function (service role).
 -- ═══════════════════════════════════════════════════════════
 alter table public.conversations add column if not exists last_notified_at timestamptz;
+
+-- ═══════════════════════════════════════════════════════════
+-- 21) PHOTOS IN CHAT — a message can carry a photo (dealer
+-- sends extra pictures when the buyer asks). Stored in the
+-- public car-photos bucket under chat/<conversation>/.
+-- ═══════════════════════════════════════════════════════════
+alter table public.messages add column if not exists image_url text;
