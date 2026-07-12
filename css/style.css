@@ -227,7 +227,19 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .search-shell{flex-direction:column}
   .search-btn{padding:14px}
   .lang{display:none}
-  .footer-in{grid-template-columns:1fr}
+  .footer-in{grid-template-columns:1fr;padding:34px 0 20px;gap:26px}
+  /* topbar: breathing room for the ✉ ♥ ⎋ icons next to the burger */
+  .topbar-in{gap:8px}
+  .topbar-right{gap:2px}
+  .fav-link,.msg-link,.logout-link{padding:8px 7px}
+  .logo-img{height:30px}
+  /* footer: centered, clean, nothing cut */
+  .footer .footer-brand .logo-img{height:28px}
+  .footer-brand p{max-width:none}
+  .footer-bottom{flex-direction:column;align-items:center;text-align:center;gap:8px;padding:16px 0 24px}
+  /* destination pills: smooth swipe, last pill never flush against the edge */
+  .dest-in{-webkit-overflow-scrolling:touch}
+  .dest-in::after{content:'';flex:0 0 10px}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 

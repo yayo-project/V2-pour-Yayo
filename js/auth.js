@@ -161,6 +161,7 @@ async function initAuthNav() {
       a.className = "fav-link";
       a.textContent = "♥";
       a.title = t("nav_fav");
+      a.setAttribute("data-i18n-title", "nav_fav");
       el.parentNode.insertBefore(a, el);
     }
     // "Déconnexion" right after the account chip — on every page
@@ -169,6 +170,7 @@ async function initAuthNav() {
       o.href = "#";
       o.className = "logout-link";
       o.title = t("logout");
+      o.setAttribute("data-i18n-title", "logout");
       o.setAttribute("aria-label", t("logout"));
       o.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>';
       o.addEventListener("click", (ev) => { ev.preventDefault(); yayoNavLogout(); });
@@ -176,13 +178,15 @@ async function initAuthNav() {
     }
   });
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
-    el.innerHTML = "<b>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
+    // data-i18n on every injected label so the language switch re-translates
+    // them like the rest of the menu (they used to stay in French).
+    el.innerHTML = "<b data-i18n='d_title'>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
     el.href = "dashboard.html";
     if (!el.parentNode.querySelector("[data-fav-nav]")) {
       const a = document.createElement("a");
       a.href = "favoris.html";
       a.setAttribute("data-fav-nav", "1");
-      a.innerHTML = "<b>♥ " + t("nav_fav") + "</b> <span>" + t("fav_p") + "</span>";
+      a.innerHTML = "<b>♥ <span data-i18n='nav_fav'>" + t("nav_fav") + "</span></b> <span data-i18n='fav_p'>" + t("fav_p") + "</span>";
       el.parentNode.insertBefore(a, el);
     }
     // "Déconnexion" entry at the end of the mobile menu
@@ -190,7 +194,7 @@ async function initAuthNav() {
       const o = document.createElement("a");
       o.href = "#";
       o.setAttribute("data-logout-nav", "1");
-      o.innerHTML = "<b>" + t("logout") + "</b> <span>" + t("logout_sub") + "</span>";
+      o.innerHTML = "<b data-i18n='logout'>" + t("logout") + "</b> <span data-i18n='logout_sub'>" + t("logout_sub") + "</span>";
       o.addEventListener("click", (ev) => { ev.preventDefault(); yayoNavLogout(); });
       el.parentNode.insertBefore(o, el.nextSibling);
     }
@@ -411,6 +415,7 @@ async function initUnreadBadge() {
         a.className = "msg-link";
         a.href = target;
         a.title = t("msgs_h");
+        a.setAttribute("data-i18n-title", "msgs_h");
         a.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg><b class="msg-count" hidden></b>';
         el.parentNode.insertBefore(a, el.parentNode.querySelector(".fav-link") || el);
       }
