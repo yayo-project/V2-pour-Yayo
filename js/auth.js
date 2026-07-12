@@ -108,9 +108,15 @@ async function yayoNavLogout() {
   if (confirm(t("logout_confirm"))) await yayoSignOut();
 }
 
-// Make sure the logged-in auth user has a row in the legacy users table
-// (conversations/favorites point there via foreign keys).
+// Make sure the logged-in auth user has a row in the users table
+// (conversations/favorites point there via foreign keys). The RPC also takes
+// over an old-Yayo row holding the same email/phone — without it, returning
+// users could NEVER chat (identifier conflict → no row → FK failure).
 async function yayoEnsureUserRow(user) {
+  try {
+    const { error } = await yayoSB().rpc("yayo_ensure_user");
+    if (!error) return;
+  } catch (e) { /* RPC not deployed yet — fall through */ }
   try {
     await yayoSB().from("users").upsert(
       { id: user.id, identifier: user.email, login_type: "supabase", role: "user" },

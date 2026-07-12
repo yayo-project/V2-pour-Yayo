@@ -531,6 +531,12 @@ body.no-scroll{overflow:hidden}
 .chat-photo-btn{border:1px solid #DFE6EE;background:#fff;border-radius:10px;padding:0 12px;font-size:17px;cursor:pointer;transition:.15s;flex:0 0 auto}
 .chat-photo-btn:hover{border-color:var(--teal-bright,#1FD8C9)}
 .chat-img{max-width:220px;max-height:220px;border-radius:10px;display:block}
+.chat-failed{opacity:.55;border:1px dashed #E5484D}
+/* Inbox previews (WhatsApp-style) */
+.convo-prev{display:block;color:#7A8CA5;font-size:12.5px;font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.dash-convo.unread .convo-prev{color:var(--ink,#0A2540);font-weight:600}
+.convo-time{float:right;color:#7A8CA5;font-size:11px;font-weight:400;font-style:normal;margin-left:8px}
+[dir="rtl"] .convo-time{float:left;margin-left:0;margin-right:8px}
 /* Legal page (conditions.html) */
 .legal{max-width:760px;padding-top:36px;padding-bottom:56px}
 .legal h1{color:var(--ink,#0A2540);font-size:26px;margin:0 0 6px}

@@ -222,14 +222,20 @@ async function loadConvos() {
   try {
     const field = DEALER ? "dealer_id" : "agency_id";
     const bizId = DEALER ? DEALER.id : AGENCY.id;
-    const { data } = await yayoSB().from("conversations")
+    let r = await yayoSB().from("conversations")
+      .select("id, car_name, user_id, created_at, last_message, last_message_at, last_sender")
+      .eq(field, bizId).order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
+    if (r.error) r = await yayoSB().from("conversations")
       .select("id, car_name, user_id, created_at")
       .eq(field, bizId).order("created_at", { ascending: false }).limit(50);
-    CONVOS = (data || []).map(c => ({
+    CONVOS = (r.data || []).map(c => ({
       id: c.id,
       car_name: c.car_name || "—",
       buyer: t("d_buyer"),
       created_at: c.created_at, // for the 30-day trend chart
+      last: c.last_message || "",
+      lastAt: c.last_message_at || null,
+      lastMine: USER && c.last_sender === USER.id,
       msgs: null // loaded on open
     }));
   } catch (e) { CONVOS = []; }
@@ -571,9 +577,14 @@ function renderConvoList() {
   if (!CONVOS.length) { el.innerHTML = `<p class="dash-empty">${t("d_no_convos")}</p>`; return; }
   el.innerHTML = CONVOS.map(c => {
     const n = UNREAD[c.id] || 0;
+    const time = c.lastAt ? (new Date(c.lastAt).toDateString() === new Date().toDateString()
+      ? new Date(c.lastAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+      : new Date(c.lastAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })) : "";
+    const prev = c.last ? ((c.lastMine ? t("convo_you") + " " : "") + (c.last === "📷" ? t("chat_photo_lbl") : c.last)) : "";
     return `
     <button class="dash-convo${CUR_CONVO && CUR_CONVO.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="openConvo('${c.id}')">
-      <b>${escapeHtml(c.car_name)}</b><span>${escapeHtml(c.buyer)}</span>
+      <b>${escapeHtml(c.car_name)} <em class="convo-time">${time}</em></b><span>${escapeHtml(c.buyer)}</span>
+      ${prev ? `<span class="convo-prev">${escapeHtml(prev).slice(0, 70)}</span>` : ""}
       ${n ? `<i class="unread-dot">${n}</i>` : ""}
     </button>`;
   }).join("");
@@ -686,10 +697,16 @@ window.yayoOnNewMessage = async (m) => {
   try {
     if (DEMO || DEMO_AG || DEMO_ADMIN) return;
     if (typeof CONVOS === "undefined" || !Array.isArray(CONVOS)) return;
-    if (CUR_CONVO && String(CUR_CONVO.id) === String(m.conversation_id)) return; // open thread paints it
     const known = CONVOS.find(x => String(x.id) === String(m.conversation_id));
-    if (known) UNREAD[m.conversation_id] = (UNREAD[m.conversation_id] || 0) + 1;
-    else await loadConvos();
+    if (known) {
+      known.last = m.image_url ? "📷" : (m.content || "");
+      known.lastAt = m.created_at;
+      known.lastMine = false;
+      CONVOS.sort((a, b) => new Date(b.lastAt || b.created_at || 0) - new Date(a.lastAt || a.created_at || 0));
+      if (!(CUR_CONVO && String(CUR_CONVO.id) === String(m.conversation_id))) {
+        UNREAD[m.conversation_id] = (UNREAD[m.conversation_id] || 0) + 1; // open thread reads itself
+      }
+    } else await loadConvos();
     renderConvoList();
     renderStats();
   } catch (e) { /* badge poll still covers it */ }
@@ -773,13 +790,18 @@ async function dashSend(e) {
   const text = input.value.trim();
   if (!text || !CUR_CONVO) return false;
   input.value = "";
-  addMsg(true, text);
+  const bubble = addMsg(true, text);
   CUR_CONVO.msgs.push({ me: true, text });
   if (!DEMO && !DEMO_AG) {
     try {
-      await yayoSB().from("messages").insert({ conversation_id: CUR_CONVO.id, sender_id: USER.id, content: text });
+      const { error } = await yayoSB().from("messages").insert({ conversation_id: CUR_CONVO.id, sender_id: USER.id, content: text });
+      if (error) throw error;
       yayoNotifyMessage(CUR_CONVO.id);
-    } catch (err) { /* shown locally; will sync on next load */ }
+    } catch (err) {
+      bubble.classList.add("chat-failed");
+      addMsg(false, t("chat_send_fail"));
+      console.error("[Yayo] message send failed:", err);
+    }
   }
   return false;
 }

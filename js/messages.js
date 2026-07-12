@@ -19,14 +19,23 @@ async function mxInit() {
   document.getElementById("mx-loading").hidden = true;
   if (!MX_USER) { document.getElementById("mx-login").hidden = false; return; }
   try {
-    const { data } = await yayoSB().from("conversations")
-      .select("id, car_name, dealer_id, agency_id, created_at, dealers(name, logo_url), shipping_agencies(name, logo_url)")
+    // WhatsApp model: last message + time live ON the conversation (trigger-
+    // maintained), so the inbox is one query sorted by activity.
+    const base = "id, car_name, dealer_id, agency_id, created_at, dealers(name, logo_url), shipping_agencies(name, logo_url)";
+    let r = await yayoSB().from("conversations")
+      .select(base + ", last_message, last_message_at, last_sender")
+      .eq("user_id", MX_USER.id)
+      .order("last_message_at", { ascending: false, nullsFirst: false }).limit(100);
+    if (r.error) r = await yayoSB().from("conversations").select(base)
       .eq("user_id", MX_USER.id).order("created_at", { ascending: false }).limit(100);
-    MX_CONVOS = (data || []).map(c => ({
+    MX_CONVOS = (r.data || []).map(c => ({
       id: c.id,
       car_name: c.car_name || "—",
       who: (c.dealers && c.dealers.name) || (c.shipping_agencies && c.shipping_agencies.name) || "Yayo",
       logo: (c.dealers && c.dealers.logo_url) || (c.shipping_agencies && c.shipping_agencies.logo_url) || null,
+      last: c.last_message || "",
+      lastAt: c.last_message_at || c.created_at,
+      lastMine: c.last_sender === MX_USER.id,
       msgs: null
     }));
   } catch (e) { MX_CONVOS = []; }
@@ -40,12 +49,27 @@ async function mxInit() {
   mxRenderList();
 }
 
+// "14:32" today, "12/07" before — like every messaging app
+function mxTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
+function mxPreview(c) {
+  if (!c.last) return "";
+  const txt = c.last === "📷" ? t("chat_photo_lbl") : c.last;
+  return (c.lastMine ? t("convo_you") + " " : "") + txt;
+}
 function mxRenderList() {
   document.getElementById("mx-list").innerHTML = MX_CONVOS.map(c => {
     const n = MX_UNREAD[c.id] || 0;
     return `
     <button class="dash-convo${MX_CUR && MX_CUR.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="mxOpen('${c.id}')">
-      <b>${mxEsc(c.who)}</b><span>${mxEsc(c.car_name)}</span>
+      <b>${mxEsc(c.who)} <em class="convo-time">${mxTime(c.lastAt)}</em></b>
+      <span>${mxEsc(c.car_name)}</span>
+      ${c.last ? `<span class="convo-prev">${mxEsc(mxPreview(c)).slice(0, 70)}</span>` : ""}
       ${n ? `<i class="unread-dot">${n}</i>` : ""}
     </button>`;
   }).join("");
@@ -125,22 +149,34 @@ async function mxSend(e) {
   const text = input.value.trim();
   if (!text || !MX_CUR) return false;
   input.value = "";
-  mxBubble(true, text);
+  const bubble = mxBubble(true, text);
   MX_CUR.msgs.push({ me: true, text });
   try {
-    await yayoSB().from("messages").insert({ conversation_id: MX_CUR.id, sender_id: MX_USER.id, content: text });
+    const { error } = await yayoSB().from("messages").insert({ conversation_id: MX_CUR.id, sender_id: MX_USER.id, content: text });
+    if (error) throw error;
     yayoNotifyMessage(MX_CUR.id);
-  } catch (err) { /* shown locally; will sync on next load */ }
+  } catch (err) {
+    bubble.classList.add("chat-failed");
+    mxBubble(false, t("chat_send_fail"));
+    console.error("[Yayo] message send failed:", err);
+  }
   return false;
 }
 
 // LIVE: a message in another conversation bumps its badge instantly; a brand
 // new conversation makes the whole list rebuild — no refresh needed.
 window.yayoOnNewMessage = (m) => {
-  if (MX_CUR && String(MX_CUR.id) === String(m.conversation_id)) return; // open thread paints it live already
   const c = MX_CONVOS.find(x => String(x.id) === String(m.conversation_id));
-  if (c) { MX_UNREAD[c.id] = (MX_UNREAD[c.id] || 0) + 1; mxRenderList(); }
-  else mxInit();
+  if (c) {
+    c.last = m.image_url ? "📷" : (m.content || "");
+    c.lastAt = m.created_at;
+    c.lastMine = false;
+    MX_CONVOS.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
+    if (!(MX_CUR && String(MX_CUR.id) === String(m.conversation_id))) {
+      MX_UNREAD[c.id] = (MX_UNREAD[c.id] || 0) + 1; // open thread paints + reads itself
+    }
+    mxRenderList();
+  } else mxInit(); // brand-new conversation → rebuild the list
 };
 
 window.onLangChange = () => { mxRenderList(); };

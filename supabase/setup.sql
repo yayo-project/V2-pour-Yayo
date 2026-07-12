@@ -629,3 +629,112 @@ alter table public.conversations add column if not exists last_notified_at times
 -- public car-photos bucket under chat/<conversation>/.
 -- ═══════════════════════════════════════════════════════════
 alter table public.messages add column if not exists image_url text;
+
+-- ═══════════════════════════════════════════════════════════
+-- 22) ENSURE USER ROW + LEGACY TAKEOVER (root fix)
+-- messages/conversations point at public.users(id). Old-Yayo
+-- accounts already occupy their email/phone identifier, so a
+-- returning user could never get a row (unique conflict) and
+-- every chat write failed silently. This RPC, called at login
+-- and before chatting: creates the caller's row, and if a
+-- legacy row holds the same email/phone, frees it and moves
+-- its favorites/conversations to the new account.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.yayo_ensure_user()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  uid uuid := auth.uid();
+  em text; ph text; legacy_id uuid;
+begin
+  if uid is null then return; end if;
+  if exists (select 1 from users where id = uid) then return; end if;
+  select email, phone into em, ph from auth.users where id = uid;
+
+  select u.id into legacy_id from users u
+    where u.claimed_at is null and (
+      (em is not null and em <> '' and lower(trim(u.identifier)) = lower(em))
+      or (ph is not null and ph <> ''
+          and regexp_replace(coalesce(u.identifier, ''), '\D', '', 'g') <> ''
+          and regexp_replace(coalesce(u.identifier, ''), '\D', '', 'g')
+            = regexp_replace(ph, '\D', '', 'g'))
+    ) limit 1;
+
+  if legacy_id is not null then
+    -- free the identifier, keep the old row traceable in admin
+    update users set identifier = identifier || ' (ancien compte)', claimed_at = now()
+      where id = legacy_id;
+  end if;
+
+  begin
+    insert into users (id, identifier, login_type, role)
+      values (uid, coalesce(em, ph, uid::text), 'supabase', 'user');
+  exception when unique_violation then null; end;
+
+  if legacy_id is not null then
+    begin update favorites set user_id = uid where user_id = legacy_id;
+    exception when others then null; end;
+    begin update conversations set user_id = uid where user_id = legacy_id;
+    exception when others then null; end;
+  end if;
+end $$;
+grant execute on function public.yayo_ensure_user() to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 23) INBOX MODEL (WhatsApp-style) — every conversation keeps
+-- its last message + time, maintained by a trigger, so inboxes
+-- show previews and sort by activity with ONE query. A future
+-- voice note only adds a column; the model doesn't change.
+-- ═══════════════════════════════════════════════════════════
+alter table public.conversations add column if not exists last_message text;
+alter table public.conversations add column if not exists last_message_at timestamptz;
+alter table public.conversations add column if not exists last_sender uuid;
+
+create or replace function public.yayo_touch_convo()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  update conversations set
+    last_message = left(coalesce(new.content, ''), 120),
+    last_message_at = new.created_at,
+    last_sender = new.sender_id
+  where id = new.conversation_id;
+  return new;
+end $$;
+drop trigger if exists yayo_touch_convo on public.messages;
+create trigger yayo_touch_convo after insert on public.messages
+  for each row execute function public.yayo_touch_convo();
+
+-- backfill existing conversations once
+update public.conversations c set
+  last_message = left(coalesce(m.content, ''), 120),
+  last_message_at = m.created_at,
+  last_sender = m.sender_id
+from lateral (
+  select content, created_at, sender_id from public.messages
+  where conversation_id = c.id order by created_at desc limit 1
+) m
+where c.last_message_at is null;
+
+-- ═══════════════════════════════════════════════════════════
+-- 24) REVIEWS — only real contacts can review. A buyer may
+-- review a dealer/agency ONLY if they have a conversation with
+-- them (enforced in the database, not just hidden in the UI).
+-- ═══════════════════════════════════════════════════════════
+do $$ declare p record;
+begin
+  for p in select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'reviews' and cmd = 'INSERT'
+  loop
+    execute format('drop policy %I on public.reviews', p.policyname);
+  end loop;
+end $$;
+create policy reviews_insert_contacted on public.reviews
+  for insert to authenticated with check (
+    user_id = auth.uid() and (
+      (subject_type = 'dealer' and exists (
+        select 1 from conversations c
+        where c.user_id = auth.uid() and c.dealer_id::text = subject_id::text))
+      or (subject_type = 'agency' and exists (
+        select 1 from conversations c
+        where c.user_id = auth.uid() and c.agency_id::text = subject_id::text))
+    )
+  );

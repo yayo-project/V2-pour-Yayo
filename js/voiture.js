@@ -434,16 +434,23 @@ async function sendMsg(e) {
   const text = input.value.trim();
   if (!text) return false;
   input.value = "";
-  addBubble("me", text);
-  if (String(CAR.id).startsWith("demo") || !CONVO) {
+  const bubble = addBubble("me", text);
+  if (String(CAR.id).startsWith("demo")) {
     setTimeout(() => addBubble("yayo", t("chat_demo_reply")), 600);
     return false;
   }
+  // Real car: NEVER pretend a failed message was sent — say it clearly.
   try {
+    if (!CONVO) throw new Error("no conversation");
     const user = await yayoUser();
-    await yayoSB().from("messages").insert({ conversation_id: CONVO.id, sender_id: user.id, content: text });
+    const { error } = await yayoSB().from("messages").insert({ conversation_id: CONVO.id, sender_id: user.id, content: text });
+    if (error) throw error;
     yayoNotifyMessage(CONVO.id);
-  } catch (err) { /* bubble already shown; sync will retry next load */ }
+  } catch (err) {
+    bubble.classList.add("chat-failed");
+    addBubble("yayo", t("chat_send_fail"));
+    console.error("[Yayo] message send failed:", err);
+  }
   return false;
 }
 
