@@ -511,6 +511,9 @@ body.no-scroll{overflow:hidden}
 .bell-link{background:none;border:0;cursor:pointer;color:#B8C7DA;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
 .bell-link:hover{color:#fff}
 .bell-link.on{color:var(--teal-bright,#1FD8C9)}
+/* Toast — feedback for bell taps & co, works inside installed PWAs */
+.yayo-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(16px);background:#0A2540;color:#fff;border:1px solid rgba(31,216,201,.5);border-radius:12px;padding:12px 20px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(7,27,51,.45);opacity:0;pointer-events:none;transition:.25s;z-index:2000;max-width:88vw;text-align:center}
+.yayo-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* Car photo gallery (voiture.html) */
 .vd-photo{position:relative}
 .vd-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(10,37,64,.55);color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;z-index:2}

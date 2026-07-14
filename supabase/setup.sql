@@ -405,6 +405,7 @@ begin
       '       l.created_at, null::timestamptz, coalesce(l.banned, false) ' ||
       'from public.users l ' ||
       'where l.identifier is not null ' ||
+      '  and l.claimed_at is null ' ||     -- reconnected old accounts merged into an Auth login: never show twice
       '  and (l.identifier like ''%@%'' or l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'') ' ||
       '  and not exists (select 1 from auth.users a where a.id = l.id ' ||
       '        or lower(coalesce(a.email,'''')) = lower(l.identifier) ' ||
@@ -423,6 +424,7 @@ begin
         '       null::timestamptz, null::timestamptz, false ' ||
         'from public.users l ' ||
         'where l.identifier is not null ' ||
+        '  and l.identifier not like ''%(ancien compte)%'' ' ||
         '  and (l.identifier like ''%@%'' or l.identifier ~ ''^\+?[0-9][0-9 ()./-]{5,}$'') ' ||
         '  and ($1 = '''' or l.identifier ilike ''%'' || $1 || ''%'' ' ||
         '       or ($2 <> '''' and regexp_replace(l.identifier, ''\D'', '''', ''g'') like ''%'' || $2 || ''%'')) ' ||

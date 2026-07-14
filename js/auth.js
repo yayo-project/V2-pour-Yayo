@@ -151,9 +151,14 @@ async function initAuthNav() {
       yayoSB().rpc("yayo_claim_legacy").then(() => {}, () => {});
     }
   } catch (e) { /* non-blocking */ }
+  // Buyers have no dashboard — their account chip opens their messages.
+  // Only dealers, agencies and admins get dashboard.html.
+  const role = (user.user_metadata && user.user_metadata.role) || "";
+  const isBiz = role === "dealer" || role === "agency" || role === "admin";
+  const accountHome = isBiz ? "dashboard.html" : "messages.html";
   document.querySelectorAll("[data-auth='login']").forEach(el => {
     el.textContent = name.length > 14 ? name.slice(0, 13) + "…" : name;
-    el.href = "dashboard.html";
+    el.href = accountHome;
     // "Mes favoris" heart next to the account chip
     if (!el.parentNode.querySelector(".fav-link")) {
       const a = document.createElement("a");
@@ -180,8 +185,9 @@ async function initAuthNav() {
   document.querySelectorAll("[data-auth='login-mobile']").forEach(el => {
     // data-i18n on every injected label so the language switch re-translates
     // them like the rest of the menu (they used to stay in French).
-    el.innerHTML = "<b data-i18n='d_title'>" + t("d_title") + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
-    el.href = "dashboard.html";
+    const chipKey = isBiz ? "d_title" : "acct_title";
+    el.innerHTML = "<b data-i18n='" + chipKey + "'>" + t(chipKey) + "</b> <span>" + name.replace(/</g, "&lt;") + "</span>";
+    el.href = accountHome;
     if (!el.parentNode.querySelector("[data-fav-nav]")) {
       const a = document.createElement("a");
       a.href = "favoris.html";
@@ -386,6 +392,22 @@ function pushSupported() {
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
+// Small toast at the bottom of the screen — clear feedback on every bell tap
+// (alerts get blocked or lost inside installed PWAs; this never does).
+function yayoToast(msg) {
+  let el = document.getElementById("yayo-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "yayo-toast";
+    el.className = "yayo-toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove("show"), 4000);
+}
+
 async function yayoEnablePush(silent) {
   if (!pushSupported() || !YAYO_CONFIG.VAPID_PUBLIC) return false;
   const user = await yayoUser();
@@ -437,10 +459,13 @@ async function initPushBell() {
     b.title = t("push_off");
     b.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>';
     b.addEventListener("click", async () => {
-      if (Notification.permission === "denied") { alert(t("push_blocked")); return; }
+      if (Notification.permission === "denied") { yayoToast(t("push_blocked")); return; }
+      // already active on this device? say so instead of doing nothing
+      if (b.classList.contains("on")) { yayoToast(t("push_already")); return; }
+      yayoToast(t("push_wait"));
       const ok = await yayoEnablePush(false);
       paintBell(ok);
-      if (ok) alert(t("push_done"));
+      yayoToast(t(ok ? "push_done" : "push_fail"));
     });
     el.parentNode.insertBefore(b, el.parentNode.querySelector(".msg-link") || el);
   });

@@ -148,7 +148,8 @@ async function init() {
     DEALER = data || null;
   } catch (e) { DEALER = null; }
 
-  if (!DEALER) { show("dash-buyer"); return; }
+  // Normal buyers have no dashboard — send them to their messages instead.
+  if (!DEALER) { location.href = "messages.html"; return; }
 
   await Promise.all([loadListings(), loadConvos()]);
   enterDealer();
