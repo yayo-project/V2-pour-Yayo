@@ -556,6 +556,30 @@ body.no-scroll{overflow:hidden}
 .dash-convo.unread .convo-prev{color:var(--ink,#0A2540);font-weight:600}
 .convo-time{float:right;color:#7A8CA5;font-size:11px;font-weight:400;font-style:normal;margin-left:8px}
 [dir="rtl"] .convo-time{float:left;margin-left:0;margin-right:8px}
+/* Dealer "getting started" checklist */
+.start-step{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid #DFE6EE;background:#fff;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px;font-weight:600;color:var(--ink,#0A2540);cursor:pointer;transition:.15s}
+.start-step:hover{border-color:var(--teal-bright,#1FD8C9)}
+.start-step.done{opacity:.6;text-decoration:line-through}
+.start-num{width:26px;height:26px;border-radius:50%;background:rgba(31,216,201,.15);color:var(--teal,#0E8B80);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.start-step.done .start-num{background:var(--teal-bright,#1FD8C9);color:#071B33}
+[dir="rtl"] .start-step{text-align:right}
+/* Shipment tracking — agency progress bar + buyer timeline */
+.sh-bar{background:#EEF2F7;border-radius:8px;height:10px;margin-top:12px;overflow:hidden}
+.sh-bar-fill{background:var(--teal-bright,#1FD8C9);height:10px;border-radius:8px;transition:.3s}
+.sv-steps{margin-top:16px;display:flex;flex-direction:column}
+.sv-step{display:flex;gap:14px;align-items:flex-start;padding:9px 0;border-left:2px solid #DFE6EE;margin-left:11px;padding-left:20px;position:relative}
+.sv-step:last-child{border-left-color:transparent}
+.sv-dot{position:absolute;left:-12px;top:8px;width:22px;height:22px;border-radius:50%;background:#EEF2F7;color:#7A8CA5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #DFE6EE}
+.sv-step b{font-size:14px;color:#7A8CA5;font-weight:600}
+.sv-when{display:block;font-size:12px;color:#7A8CA5;margin-top:2px}
+.sv-done .sv-dot{background:var(--teal-bright,#1FD8C9);color:#071B33;border-color:var(--teal-bright,#1FD8C9)}
+.sv-done b{color:var(--ink,#0A2540);font-weight:700}
+.sv-done{border-left-color:var(--teal-bright,#1FD8C9)}
+.sv-now .sv-dot{background:#fff;color:var(--teal,#0E8B80);border-color:var(--teal-bright,#1FD8C9);box-shadow:0 0 0 4px rgba(31,216,201,.2)}
+.sv-now b{color:var(--ink,#0A2540);font-weight:800}
+[dir="rtl"] .sv-step{border-left:0;border-right:2px solid #DFE6EE;margin-left:0;margin-right:11px;padding-left:0;padding-right:20px}
+[dir="rtl"] .sv-dot{left:auto;right:-12px}
+[dir="rtl"] .sv-done{border-right-color:var(--teal-bright,#1FD8C9)}
 /* Legal page (conditions.html) */
 .legal{max-width:760px;padding-top:36px;padding-bottom:56px}
 .legal h1{color:var(--ink,#0A2540);font-size:26px;margin:0 0 6px}

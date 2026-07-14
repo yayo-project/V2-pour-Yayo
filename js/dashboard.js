@@ -155,6 +155,30 @@ async function init() {
   enterDealer();
 }
 
+// "Bien démarrer" — a guided checklist so a fresh dealer never gets lost.
+// Disappears by itself once logo + first car + licence are all done.
+function renderStartChecklist() {
+  const el = document.getElementById("dash-start");
+  if (!el || !DEALER) return;
+  const steps = [
+    { done: !!DEALER.logo_url, key: "st_logo", tab: "profile" },
+    { done: LISTINGS.length > 0, key: "st_car", tab: "listings" },
+    { done: !!DEALER.license_path, key: "st_lic", tab: "profile" }
+  ];
+  if (steps.every(s => s.done)) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+  <div class="vd-card" style="margin-bottom:16px;border-color:rgba(31,216,201,.5)">
+    <h2 class="vd-h">🚀 ${t("st_h")}</h2>
+    <p class="dash-sub" style="margin-top:2px">${t("st_p")}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      ${steps.map((s, i) => `
+      <button type="button" class="start-step${s.done ? " done" : ""}" onclick="showTab('${s.tab}')">
+        <span class="start-num">${s.done ? "✓" : i + 1}</span> ${t(s.key)}
+      </button>`).join("")}
+    </div>
+  </div>`;
+}
+
 function enterDealer() {
   hide("dash-loading");
   show("dash-dealer");
@@ -166,6 +190,7 @@ function enterDealer() {
   licenseState("dealer");
   renderBadge();
   renderPendingBanner("dealer");
+  renderStartChecklist();
   renderStats();
   renderOverview();
   renderDealerCharts();
@@ -541,7 +566,7 @@ async function saveListing(e) {
     }
     if (error) throw error;
     await loadListings();
-    closeForm(); renderListings(); renderStats();
+    closeForm(); renderListings(); renderStats(); renderStartChecklist();
   } catch (err2) {
     err.hidden = false; err.textContent = t("au_err_generic") + (err2.message || err2);
   }
@@ -903,12 +928,134 @@ function renderAgencyOverview() {
 }
 
 function showAgTab(name) {
-  ["ag-overview", "ag-routes", "ag-profile"].forEach(tb => {
+  ["ag-overview", "ag-routes", "ag-ship", "ag-profile"].forEach(tb => {
     document.getElementById("tab-" + tb).hidden = tb !== name;
   });
   // The messages panel is shared with the dealer dashboard
   document.getElementById("tab-messages").hidden = name !== "ag-messages";
   document.querySelectorAll("#dash-agency-app .dash-tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  if (name === "ag-ship") shInit();
+}
+
+// ── Shipment tracking (agency side) — statuses in journey order ──
+const SH_STEPS = ["picked_up", "container", "departed", "at_sea", "arrived", "customs", "ready"];
+let SHIPMENTS = [];
+
+async function shInit() {
+  if (DEMO_AG) {
+    SHIPMENTS = [{ id: "demo-sh", car_name: "Toyota Prado — conteneur MSCU1234567", status: "at_sea", eta: new Date(Date.now() + 18 * 86400000).toISOString().slice(0, 10) }];
+    document.getElementById("sh-convo").innerHTML = "<option>Toyota Prado · demo</option>";
+    shRender();
+    return;
+  }
+  // conversation picker (create form)
+  const sel = document.getElementById("sh-convo");
+  sel.innerHTML = CONVOS.length
+    ? CONVOS.map(c => `<option value="${c.id}">${escapeHtml(c.car_name)} · ${new Date(c.created_at).toLocaleDateString("fr-FR")}</option>`).join("")
+    : `<option value="">${t("sh_no_convo")}</option>`;
+  await shLoad();
+}
+
+async function shLoad() {
+  try {
+    const { data, error } = await yayoSB().from("shipments")
+      .select("*").eq("agency_id", AGENCY.id).order("created_at", { ascending: false }).limit(100);
+    if (error) throw error;
+    SHIPMENTS = data || [];
+  } catch (e) { SHIPMENTS = []; adSqlHint(e); }
+  shRender();
+}
+
+function shRender() {
+  const el = document.getElementById("sh-list");
+  document.getElementById("sh-empty").hidden = !!SHIPMENTS.length;
+  el.innerHTML = SHIPMENTS.map(s => {
+    const idx = SH_STEPS.indexOf(s.status);
+    return `
+    <div class="vd-card" style="margin-bottom:14px;padding:18px 20px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <b>🚢 ${escapeHtml(s.car_name || "—")}</b>
+        <span class="status ${s.status === "ready" ? "active" : "sold"}">${t("sh_st_" + s.status)}</span>
+      </div>
+      <div class="sh-bar"><div class="sh-bar-fill" style="width:${Math.round(((idx + 1) / SH_STEPS.length) * 100)}%"></div></div>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="field">
+          <label data-i18n="sh_status">Étape actuelle</label>
+          <select id="sh-status-${s.id}">
+            ${SH_STEPS.map(st => `<option value="${st}"${st === s.status ? " selected" : ""}>${t("sh_st_" + st)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="sh_eta">Arrivée estimée</label>
+          <input type="date" id="sh-eta-${s.id}" value="${s.eta || ""}">
+        </div>
+        <div class="field field-wide">
+          <label data-i18n="sh_note">Note pour le client (facultatif)</label>
+          <input type="text" id="sh-note-${s.id}" maxlength="200" value="" data-i18n-ph="sh_note_ph" placeholder="Ex : navire MSC Aurora, départ Jebel Ali confirmé">
+        </div>
+      </div>
+      <div class="dash-form-actions">
+        <button type="button" class="btn btn-solid" onclick="shUpdate('${s.id}')" data-i18n="sh_update">Mettre à jour — le client est notifié</button>
+        <span class="ag-saved" id="sh-saved-${s.id}" hidden data-i18n="ag_saved">Enregistré ✓</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function shCreate() {
+  const err = document.getElementById("sh-err");
+  err.hidden = true;
+  const convoId = document.getElementById("sh-convo").value;
+  const car = document.getElementById("sh-car").value.trim();
+  if (!convoId) { err.hidden = false; err.textContent = t("sh_no_convo"); return; }
+  try {
+    const convo = CONVOS.find(c => String(c.id) === String(convoId));
+    const { data: full, error: ce } = await yayoSB().from("conversations")
+      .select("user_id, car_name").eq("id", convoId).single();
+    if (ce) throw ce;
+    const { data, error } = await yayoSB().from("shipments").insert({
+      conversation_id: convoId, agency_id: AGENCY.id, user_id: full.user_id,
+      car_name: car || full.car_name || (convo && convo.car_name) || null
+    }).select("*").single();
+    if (error) throw error;
+    await yayoSB().from("shipment_events").insert({ shipment_id: data.id, status: "picked_up", note: null });
+    yayoNotifyShipment(data.id);
+    document.getElementById("sh-car").value = "";
+    show("sh-created"); setTimeout(() => hide("sh-created"), 2500);
+    await shLoad();
+  } catch (e) {
+    err.hidden = false; err.textContent = t("au_err_generic") + (e.message || e);
+    adSqlHint(e);
+  }
+}
+
+async function shUpdate(id) {
+  const s = SHIPMENTS.find(x => String(x.id) === String(id));
+  if (!s) return;
+  const status = document.getElementById("sh-status-" + id).value;
+  const eta = document.getElementById("sh-eta-" + id).value || null;
+  const note = document.getElementById("sh-note-" + id).value.trim() || null;
+  try {
+    const { error } = await yayoSB().from("shipments")
+      .update({ status, eta, note, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) throw error;
+    await yayoSB().from("shipment_events").insert({ shipment_id: id, status, note });
+    s.status = status; s.eta = eta;
+    yayoNotifyShipment(id);
+    shRender();
+    show("sh-saved-" + id); setTimeout(() => hide("sh-saved-" + id), 2500);
+  } catch (e) { alert(t("au_err_generic") + (e.message || e)); }
+}
+
+// buyer gets a push + email: "votre voiture a avancé"
+function yayoNotifyShipment(shipmentId) {
+  try {
+    fetch("/.netlify/functions/notify-shipment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shipment_id: shipmentId })
+    }).catch(() => {});
+  } catch (e) { /* non-blocking */ }
 }
 
 function cityOptions(sel) {
@@ -1587,6 +1734,8 @@ async function uploadLicense(kind, files) {
     licenseState(kind);
     renderPendingBanner(kind);
     el.textContent = t("lic_saved");
+    if (kind === "dealer") renderStartChecklist();
+    yayoNotifyAdmin("license_upload", biz.name, kind === "dealer" ? "Dealer" : "Agence");
   } catch (e) {
     el.textContent = /column|schema|bucket|not found/i.test(e.message || "") ? t("pf_sql_hint") : t("up_fail") + " (" + (e.message || e) + ")";
   }

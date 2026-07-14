@@ -222,6 +222,21 @@ fr: {
   push_wait: "Activation des notifications…", push_already: "🔔 Notifications déjà activées sur cet appareil ✓",
   push_fail: "Impossible d'activer les notifications sur cet appareil. Installez Yayo sur l'écran d'accueil puis réessayez.",
   acct_title: "Mon compte",
+  sh_tab: "🚢 Expéditions", sh_new_h: "Nouvelle expédition", sh_new_p: "Créez le suivi depuis la conversation du client : il verra chaque étape en direct et sera notifié à chaque mise à jour.",
+  sh_convo: "Conversation du client", sh_car: "Voiture / référence", sh_car_ph: "Ex : Toyota Prado blanc — conteneur MSCU1234567",
+  sh_create: "Créer le suivi", sh_none: "Aucune expédition en cours.", sh_no_convo: "Aucune conversation client — le client doit d'abord vous écrire.",
+  sh_status: "Étape actuelle", sh_eta: "Arrivée estimée", sh_note: "Note pour le client (facultatif)", sh_note_ph: "Ex : navire MSC Aurora, départ Jebel Ali confirmé",
+  sh_update: "Mettre à jour — le client est notifié",
+  sh_st_picked_up: "Voiture récupérée à Dubai", sh_st_container: "Chargée dans le conteneur", sh_st_departed: "Navire parti de Dubai",
+  sh_st_at_sea: "En mer", sh_st_arrived: "Arrivée au port", sh_st_customs: "Dédouanement en cours", sh_st_ready: "Prête à récupérer ✓",
+  sv_h: "🚢 Suivi de mes expéditions", sv_p: "Votre voiture, étape par étape, de Dubai jusqu'à chez vous.",
+  sv_login_h: "Connectez-vous", sv_login_p: "Votre suivi d'expédition est lié à votre compte Yayo.",
+  sv_none_h: "Aucune expédition pour l'instant", sv_none_p: "Dès que votre agence crée le suivi de votre voiture, il apparaît ici — et vous êtes notifié à chaque étape.",
+  sv_eta: "Arrivée estimée", sv_eta_est: "estimation de l'agence",
+  st_h: "Bien démarrer sur Yayo", st_p: "3 étapes et votre vitrine est prête pour les acheteurs.",
+  st_logo: "Ajoutez votre logo — les acheteurs font confiance à un vrai visage",
+  st_car: "Publiez votre première voiture (2 minutes, photos du téléphone)",
+  st_lic: "Envoyez votre licence commerciale pour le badge Vérifié Yayo",
   rv_need_contact: "Seuls les acheteurs qui ont contacté ce vendeur peuvent laisser un avis.",
   ad_search_ph: "Rechercher par nom ou email…", ad_user_search_ph: "Rechercher un email…",
   ad_f_all: "Tous", ad_f_verified: "Vérifiés", ad_f_pending: "En attente", ad_f_suspended: "Suspendus",
@@ -586,6 +601,21 @@ en: {
   push_wait: "Turning on notifications…", push_already: "🔔 Notifications already on for this device ✓",
   push_fail: "Could not enable notifications on this device. Install Yayo to your home screen, then try again.",
   acct_title: "My account",
+  sh_tab: "🚢 Shipments", sh_new_h: "New shipment", sh_new_p: "Create the tracker from the client's conversation: they see every step live and get notified on each update.",
+  sh_convo: "Client conversation", sh_car: "Car / reference", sh_car_ph: "E.g. White Toyota Prado — container MSCU1234567",
+  sh_create: "Create tracker", sh_none: "No shipments in progress.", sh_no_convo: "No client conversation yet — the client must message you first.",
+  sh_status: "Current step", sh_eta: "Estimated arrival", sh_note: "Note for the client (optional)", sh_note_ph: "E.g. vessel MSC Aurora, Jebel Ali departure confirmed",
+  sh_update: "Update — the client gets notified",
+  sh_st_picked_up: "Picked up in Dubai", sh_st_container: "Loaded in container", sh_st_departed: "Vessel departed Dubai",
+  sh_st_at_sea: "At sea", sh_st_arrived: "Arrived at port", sh_st_customs: "Customs clearance", sh_st_ready: "Ready for collection ✓",
+  sv_h: "🚢 My shipment tracking", sv_p: "Your car, step by step, from Dubai to your door.",
+  sv_login_h: "Sign in", sv_login_p: "Your shipment tracking is linked to your Yayo account.",
+  sv_none_h: "No shipments yet", sv_none_p: "As soon as your agency creates your car's tracker, it appears here — and you're notified at every step.",
+  sv_eta: "Estimated arrival", sv_eta_est: "agency estimate",
+  st_h: "Get started on Yayo", st_p: "3 steps and your showroom is ready for buyers.",
+  st_logo: "Add your logo — buyers trust a real face",
+  st_car: "Publish your first car (2 minutes, phone photos)",
+  st_lic: "Upload your trade licence for the Vérifié Yayo badge",
   chat_send_fail: "⚠️ Message not sent. Check your connection and try again.", chat_photo_lbl: "📷 Photo", convo_you: "You:",
   rv_need_contact: "Only buyers who have contacted this seller can leave a review.",
   ad_search_ph: "Search by name or email…", ad_user_search_ph: "Search an email…",
@@ -935,6 +965,21 @@ ar: {
   push_wait: "جارٍ تفعيل الإشعارات…", push_already: "🔔 الإشعارات مفعّلة بالفعل على هذا الجهاز ✓",
   push_fail: "تعذّر تفعيل الإشعارات على هذا الجهاز. ثبّت يايو على الشاشة الرئيسية ثم حاول مجدداً.",
   acct_title: "حسابي",
+  sh_tab: "🚢 الشحنات", sh_new_h: "شحنة جديدة", sh_new_p: "أنشئ التتبع من محادثة العميل: سيرى كل خطوة مباشرة ويتلقى إشعاراً عند كل تحديث.",
+  sh_convo: "محادثة العميل", sh_car: "السيارة / المرجع", sh_car_ph: "مثال: تويوتا برادو بيضاء — حاوية MSCU1234567",
+  sh_create: "إنشاء التتبع", sh_none: "لا شحنات جارية.", sh_no_convo: "لا توجد محادثة عميل بعد — يجب أن يراسلك العميل أولاً.",
+  sh_status: "الخطوة الحالية", sh_eta: "الوصول المتوقع", sh_note: "ملاحظة للعميل (اختياري)", sh_note_ph: "مثال: السفينة MSC Aurora، تأكد الانطلاق من جبل علي",
+  sh_update: "تحديث — يُشعَر العميل",
+  sh_st_picked_up: "تم استلام السيارة في دبي", sh_st_container: "تم التحميل في الحاوية", sh_st_departed: "غادرت السفينة دبي",
+  sh_st_at_sea: "في البحر", sh_st_arrived: "وصلت إلى الميناء", sh_st_customs: "التخليص الجمركي", sh_st_ready: "جاهزة للاستلام ✓",
+  sv_h: "🚢 تتبع شحناتي", sv_p: "سيارتك، خطوة بخطوة، من دبي إلى بابك.",
+  sv_login_h: "سجّل الدخول", sv_login_p: "تتبع شحنتك مرتبط بحسابك في يايو.",
+  sv_none_h: "لا شحنات بعد", sv_none_p: "بمجرد أن تنشئ وكالتك تتبع سيارتك، سيظهر هنا — وستُشعَر عند كل خطوة.",
+  sv_eta: "الوصول المتوقع", sv_eta_est: "تقدير الوكالة",
+  st_h: "ابدأ بشكل صحيح على يايو", st_p: "3 خطوات وتصبح واجهتك جاهزة للمشترين.",
+  st_logo: "أضف شعارك — المشترون يثقون بوجه حقيقي",
+  st_car: "انشر سيارتك الأولى (دقيقتان، صور من الهاتف)",
+  st_lic: "أرسل رخصتك التجارية للحصول على شارة موثّق يايو",
   chat_send_fail: "⚠️ لم تُرسل الرسالة. تحقق من اتصالك وحاول مجدداً.", chat_photo_lbl: "📷 صورة", convo_you: "أنت:",
   rv_need_contact: "فقط المشترون الذين تواصلوا مع هذا البائع يمكنهم كتابة تقييم.",
   ad_search_ph: "ابحث بالاسم أو البريد…", ad_user_search_ph: "ابحث عن بريد إلكتروني…",
@@ -1082,7 +1127,15 @@ ar: {
 }
 };
 
-let YAYO_LANG = localStorage.getItem("yayo_lang") || "fr";
+// ?lang=en / ?lang=ar in any URL forces that language (and remembers it) —
+// lets the dealer flyer QR open vendre.html directly in English or Arabic.
+let YAYO_LANG = (function () {
+  try {
+    const p = new URLSearchParams(location.search).get("lang");
+    if (p && I18N[p]) { localStorage.setItem("yayo_lang", p); return p; }
+  } catch (e) { /* very old browser */ }
+  return localStorage.getItem("yayo_lang") || "fr";
+})();
 if (!I18N[YAYO_LANG]) YAYO_LANG = "fr";
 
 function t(key) {

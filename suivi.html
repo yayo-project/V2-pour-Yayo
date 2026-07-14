@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi de mon expédition — Yayo</title>
+<meta name="description" content="Suivez votre voiture de Dubai jusqu'à chez vous, étape par étape.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NR2LTEVKET"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-NR2LTEVKET');
+</script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<main class="wrap" style="max-width:760px;padding-top:32px;padding-bottom:60px">
+  <h1 style="color:var(--ink);font-size:26px;margin-bottom:6px" data-i18n="sv_h">🚢 Suivi de mes expéditions</h1>
+  <p class="dash-sub" data-i18n="sv_p">Votre voiture, étape par étape, de Dubai jusqu'à chez vous.</p>
+
+  <div id="sv-loading" class="vd-loading" data-i18n="vd_loading" style="margin-top:24px">Chargement…</div>
+  <div id="sv-login" class="mkt-empty" hidden>
+    <div class="mkt-empty-ico">🔒</div>
+    <h3 data-i18n="sv_login_h">Connectez-vous</h3>
+    <p data-i18n="sv_login_p">Votre suivi d'expédition est lié à votre compte Yayo.</p>
+    <a class="btn btn-solid" href="connexion.html?next=suivi.html" data-i18n="connexion">Connexion</a>
+  </div>
+  <div id="sv-empty" class="mkt-empty" hidden>
+    <div class="mkt-empty-ico">🚢</div>
+    <h3 data-i18n="sv_none_h">Aucune expédition pour l'instant</h3>
+    <p data-i18n="sv_none_p">Dès que votre agence crée le suivi de votre voiture, il apparaît ici — et vous êtes notifié à chaque étape.</p>
+    <a class="btn btn-solid" href="acheter.html" data-i18n="nf_btn">Voir toutes les voitures</a>
+  </div>
+  <div id="sv-list" style="margin-top:22px"></div>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-bottom">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/auth.js"></script>
+<script>
+function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
+function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+const SV_STEPS = ["picked_up", "container", "departed", "at_sea", "arrived", "customs", "ready"];
+
+async function svInit() {
+  const user = await yayoUser();
+  document.getElementById("sv-loading").hidden = true;
+  if (!user) { document.getElementById("sv-login").hidden = false; return; }
+  let ships = [];
+  try {
+    const { data, error } = await yayoSB().from("shipments")
+      .select("*, shipping_agencies(name)")
+      .eq("user_id", user.id).order("created_at", { ascending: false });
+    if (error) throw error;
+    ships = data || [];
+  } catch (e) { ships = []; }
+  if (!ships.length) { document.getElementById("sv-empty").hidden = false; return; }
+
+  // events for all shipments in one query
+  let events = [];
+  try {
+    const { data } = await yayoSB().from("shipment_events")
+      .select("shipment_id, status, note, created_at")
+      .in("shipment_id", ships.map(s => s.id)).order("created_at");
+    events = data || [];
+  } catch (e) { events = []; }
+
+  const fmtD = iso => new Date(iso).toLocaleDateString(YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "short" });
+  document.getElementById("sv-list").innerHTML = ships.map(s => {
+    const idx = SV_STEPS.indexOf(s.status);
+    const evByStatus = {};
+    events.filter(e => e.shipment_id === s.id).forEach(e => { evByStatus[e.status] = e; });
+    return `
+    <div class="vd-card" style="margin-bottom:18px;padding:22px 24px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <b style="font-size:17px;color:var(--ink)">🚗 ${esc(s.car_name || "—")}</b>
+        <span class="dash-sub" style="margin:0">${esc((s.shipping_agencies && s.shipping_agencies.name) || "")}</span>
+      </div>
+      ${s.eta ? `<p class="dash-sub" style="margin:4px 0 0">📅 ${t("sv_eta")} : <b style="color:var(--ink)">${fmtD(s.eta)}</b> <span style="color:#7A8CA5">(${t("sv_eta_est")})</span></p>` : ""}
+      <div class="sv-steps">
+        ${SV_STEPS.map((st, i) => {
+          const ev = evByStatus[st];
+          const state = i < idx ? "done" : i === idx ? "now" : "next";
+          return `
+          <div class="sv-step sv-${state}">
+            <span class="sv-dot">${i < idx ? "✓" : i === idx ? "●" : ""}</span>
+            <div>
+              <b>${t("sh_st_" + st)}</b>
+              ${ev ? `<span class="sv-when">${fmtD(ev.created_at)}${ev.note ? " · " + esc(ev.note) : ""}</span>` : ""}
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  }).join("");
+}
+window.onLangChange = svInit;
+svInit();
+</script>
+</body>
+</html>

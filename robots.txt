@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard.html
+Disallow: /messages.html
+Disallow: /favoris.html
+Disallow: /suivi.html
+
+Sitemap: https://yayo.digital/sitemap.xml

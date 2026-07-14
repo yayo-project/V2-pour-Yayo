@@ -311,6 +311,8 @@ async function sendReport(e) {
       user_id: user ? user.id : null
     });
     if (error) throw error;
+    yayoNotifyAdmin("new_report", document.getElementById("rp-kind").value,
+      document.getElementById("rp-msg").value.trim().slice(0, 120));
     document.querySelector("#rp-overlay form").hidden = true;
     document.getElementById("rp-done").hidden = false;
     setTimeout(closeReportModal, 2500);
@@ -333,6 +335,17 @@ function yayoNotifyMessage(convoId) {
       body: JSON.stringify({ conversation_id: convoId })
     }).catch(() => {});
   } catch (e) { /* offline/local — chat works regardless */ }
+}
+
+// ── Founder alert (fire-and-forget) — "a dealer just registered" etc. ──
+function yayoNotifyAdmin(kind, name, detail) {
+  try {
+    fetch("/.netlify/functions/notify-admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, name: name || "", detail: detail || "" })
+    }).catch(() => {});
+  } catch (e) { /* never blocks the user */ }
 }
 
 // ── Photos in chat (shared by all 4 chat surfaces) ──

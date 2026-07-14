@@ -773,3 +773,60 @@ create policy push_own_select on public.push_subscriptions
 drop policy if exists push_own_delete on public.push_subscriptions;
 create policy push_own_delete on public.push_subscriptions
   for delete to authenticated using (user_id = auth.uid());
+
+-- ═══════════════════════════════════════════════════════════
+-- 26) SHIPMENT TRACKING — the agency updates each step; the
+-- buyer follows a live timeline (suivi.html). Statuses:
+-- picked_up → container → departed → at_sea → arrived →
+-- customs → ready. Every change is kept in shipment_events.
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.shipments (
+  id uuid primary key default gen_random_uuid(),
+  conversation_id uuid,
+  agency_id uuid not null,
+  user_id uuid not null,
+  car_name text,
+  status text not null default 'picked_up'
+    check (status in ('picked_up','container','departed','at_sea','arrived','customs','ready')),
+  eta date,
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.shipment_events (
+  id bigint generated always as identity primary key,
+  shipment_id uuid not null references public.shipments(id) on delete cascade,
+  status text not null,
+  note text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.shipments enable row level security;
+alter table public.shipment_events enable row level security;
+
+-- the agency (matched by its account email) manages its own shipments
+drop policy if exists ship_agency_all on public.shipments;
+create policy ship_agency_all on public.shipments
+  for all to authenticated
+  using (agency_id in (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email',''))))
+  with check (agency_id in (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email',''))));
+-- the buyer sees their own shipments
+drop policy if exists ship_buyer_read on public.shipments;
+create policy ship_buyer_read on public.shipments
+  for select to authenticated using (user_id = auth.uid());
+
+drop policy if exists shipev_agency_all on public.shipment_events;
+create policy shipev_agency_all on public.shipment_events
+  for all to authenticated
+  using (shipment_id in (select s.id from shipments s where s.agency_id in
+        (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))))
+  with check (shipment_id in (select s.id from shipments s where s.agency_id in
+        (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))));
+drop policy if exists shipev_buyer_read on public.shipment_events;
+create policy shipev_buyer_read on public.shipment_events
+  for select to authenticated
+  using (shipment_id in (select s.id from shipments s where s.user_id = auth.uid()));

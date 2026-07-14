@@ -89,8 +89,34 @@ gtag('config', 'G-NR2LTEVKET');
         <button class="on" data-tab="ag-overview" onclick="showAgTab('ag-overview')" data-i18n="ag_tab_overview">Aperçu</button>
         <button data-tab="ag-routes" onclick="showAgTab('ag-routes')" data-i18n="ag_tab_routes">Mes routes</button>
         <button data-tab="ag-messages" onclick="showAgTab('ag-messages')" data-i18n="d_tab_messages">Messages</button>
+        <button data-tab="ag-ship" onclick="showAgTab('ag-ship')" data-i18n="sh_tab">🚢 Expéditions</button>
         <button data-tab="ag-profile" onclick="showAgTab('ag-profile')" data-i18n="ag_tab_profile">Profil</button>
       </div>
+
+      <!-- Shipment tracking (phase E) -->
+      <section id="tab-ag-ship" hidden>
+        <div class="vd-card" style="margin-bottom:16px">
+          <h2 class="vd-h" data-i18n="sh_new_h">Nouvelle expédition</h2>
+          <p class="dash-sub" data-i18n="sh_new_p">Créez le suivi depuis la conversation du client : il verra chaque étape en direct et sera notifié à chaque mise à jour.</p>
+          <div class="form-grid" style="margin-top:10px">
+            <div class="field">
+              <label for="sh-convo" data-i18n="sh_convo">Conversation du client</label>
+              <select id="sh-convo"></select>
+            </div>
+            <div class="field">
+              <label for="sh-car" data-i18n="sh_car">Voiture / référence</label>
+              <input id="sh-car" type="text" maxlength="80" data-i18n-ph="sh_car_ph" placeholder="Ex : Toyota Prado blanc — conteneur MSCU1234567">
+            </div>
+          </div>
+          <div class="dash-form-actions">
+            <button type="button" class="btn btn-solid" onclick="shCreate()" data-i18n="sh_create">Créer le suivi</button>
+            <span class="ag-saved" id="sh-created" hidden data-i18n="ag_saved">Enregistré ✓</span>
+          </div>
+          <p class="auth-error" id="sh-err" hidden></p>
+        </div>
+        <div id="sh-list"></div>
+        <p class="dash-empty" id="sh-empty" hidden data-i18n="sh_none">Aucune expédition en cours.</p>
+      </section>
 
       <section id="tab-ag-overview">
         <div class="dash-stats">
@@ -474,6 +500,7 @@ gtag('config', 'G-NR2LTEVKET');
 
       <!-- Overview -->
       <section id="tab-overview">
+        <div id="dash-start"></div>
         <div class="dash-stats">
           <div class="dash-stat"><span class="num" id="stat-active">0</span><span class="lbl" data-i18n="d_stat_active">Annonces en ligne</span></div>
           <div class="dash-stat"><span class="num" id="stat-sold">0</span><span class="lbl" data-i18n="d_stat_sold">Vendues</span></div>

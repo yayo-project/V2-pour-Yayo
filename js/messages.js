@@ -47,6 +47,23 @@ async function mxInit() {
   if (!MX_CONVOS.length) { document.getElementById("mx-empty").hidden = false; return; }
   document.getElementById("mx-app").hidden = false;
   mxRenderList();
+  mxShipLink();
+}
+
+// "🚢 Suivi de vos expéditions" button appears once the buyer has a shipment
+async function mxShipLink() {
+  try {
+    const { data } = await yayoSB().from("shipments").select("id").eq("user_id", MX_USER.id).limit(1);
+    if (!data || !data.length || document.getElementById("mx-ship-link")) return;
+    const a = document.createElement("a");
+    a.id = "mx-ship-link";
+    a.href = "suivi.html";
+    a.className = "btn btn-ghost-dark";
+    a.style.cssText = "display:inline-block;margin-bottom:14px";
+    a.textContent = "🚢 " + t("sv_h").replace("🚢 ", "");
+    const app = document.getElementById("mx-app");
+    app.parentNode.insertBefore(a, app);
+  } catch (e) { /* table not created yet */ }
 }
 
 // "14:32" today, "12/07" before — like every messaging app
