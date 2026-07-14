@@ -36,6 +36,10 @@ const YAYO_CONFIG = {
   // tab back on connexion.html; all the code stays in place.
   SMS_LOGIN: false,
 
+  // Web Push (PWA notifications). Public half of the VAPID key pair — safe
+  // in client code; the private half lives only in Netlify env vars.
+  VAPID_PUBLIC: "BHsW9an46eaujKERDv9B2532rlE17WYtoXt13qlxHhNYWUjhzVlEcrI2Jta3qxOKB7XOHLaboe8LGgpTjamXBaI",
+
   // Google Analytics 4 — the gtag snippet in each page's <head> uses this same ID.
   GA4_ID: "G-NR2LTEVKET"
 };

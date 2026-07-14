@@ -373,6 +373,85 @@ function yayoFillBubble(el, text, img) {
   }
 }
 
+// ── PWA push notifications (bell in the topbar) ──
+// The buyer/dealer installs Yayo, taps the bell once, and from then on their
+// phone buzzes on every new message — even with the app closed.
+function b64ToUint8(base64) {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const raw = atob((base64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function pushSupported() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+async function yayoEnablePush(silent) {
+  if (!pushSupported() || !YAYO_CONFIG.VAPID_PUBLIC) return false;
+  const user = await yayoUser();
+  if (!user) return false;
+  try {
+    let perm = Notification.permission;
+    if (perm === "default" && !silent) perm = await Notification.requestPermission();
+    if (perm !== "granted") return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      if (silent) return false; // never prompt/subscribe silently
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToUint8(YAYO_CONFIG.VAPID_PUBLIC)
+      });
+    }
+    const j = sub.toJSON();
+    await yayoSB().from("push_subscriptions").upsert({
+      user_id: user.id,
+      email: user.email || null,
+      endpoint: j.endpoint,
+      p256dh: j.keys.p256dh,
+      auth: j.keys.auth
+    }, { onConflict: "endpoint" });
+    return true;
+  } catch (e) {
+    console.error("[Yayo] push enable failed:", e);
+    return false;
+  }
+}
+
+function paintBell(on) {
+  document.querySelectorAll(".bell-link").forEach(b => {
+    b.classList.toggle("on", !!on);
+    b.title = t(on ? "push_on" : "push_off");
+  });
+}
+
+async function initPushBell() {
+  const user = await yayoUser();
+  if (!user || !pushSupported() || !YAYO_CONFIG.VAPID_PUBLIC) return;
+  document.querySelectorAll("[data-auth='login']").forEach(el => {
+    if (el.parentNode.querySelector(".bell-link")) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "bell-link";
+    b.title = t("push_off");
+    b.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>';
+    b.addEventListener("click", async () => {
+      if (Notification.permission === "denied") { alert(t("push_blocked")); return; }
+      const ok = await yayoEnablePush(false);
+      paintBell(ok);
+      if (ok) alert(t("push_done"));
+    });
+    el.parentNode.insertBefore(b, el.parentNode.querySelector(".msg-link") || el);
+  });
+  // already enabled on this device? light the bell + refresh the stored sub
+  if (Notification.permission === "granted") {
+    const ok = await yayoEnablePush(true);
+    paintBell(ok);
+  }
+}
+document.addEventListener("DOMContentLoaded", initPushBell);
+
 // ── Real-time chat (Supabase Realtime) ──
 // Subscribe to new messages in ONE conversation. Returns an unsubscribe fn.
 // onMsg receives the raw message row (only messages from OTHER people —

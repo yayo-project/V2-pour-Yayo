@@ -744,3 +744,30 @@ create policy reviews_insert_contacted on public.reviews
         where c.user_id = auth.uid() and c.agency_id::text = subject_id::text))
     )
   );
+
+-- ═══════════════════════════════════════════════════════════
+-- 25) PUSH NOTIFICATIONS (PWA) — a phone that installed Yayo
+-- buzzes when a message arrives, even with the app closed.
+-- One row per device the user enabled notifications on.
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  email text,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists push_subs_email_idx on public.push_subscriptions (lower(email));
+
+alter table public.push_subscriptions enable row level security;
+drop policy if exists push_own_insert on public.push_subscriptions;
+create policy push_own_insert on public.push_subscriptions
+  for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists push_own_select on public.push_subscriptions;
+create policy push_own_select on public.push_subscriptions
+  for select to authenticated using (user_id = auth.uid());
+drop policy if exists push_own_delete on public.push_subscriptions;
+create policy push_own_delete on public.push_subscriptions
+  for delete to authenticated using (user_id = auth.uid());

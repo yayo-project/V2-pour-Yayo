@@ -3,7 +3,7 @@
 // Everything same-origin: network first (always fresh after a deploy),
 // cache fallback when offline. Never touches Supabase or Netlify Functions.
 // ═══════════════════════════════════════════════
-const CACHE = "yayo-v19";
+const CACHE = "yayo-v20";
 const CORE = [
   "index.html", "acheter.html", "voiture.html", "comment.html", "agence.html",
   "vendre.html", "expedier.html", "connexion.html", "favoris.html", "messages.html",
@@ -26,6 +26,40 @@ self.addEventListener("activate", (e) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
+  );
+});
+
+// ── PUSH NOTIFICATIONS (installed PWA) ──
+// The phone buzzes and rings even when Yayo is closed. The payload carries
+// no message content — just "you have a new message" + where to open it.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = {}; }
+  const title = d.title || "Yayo";
+  const opts = {
+    body: d.body || "Nouveau message sur Yayo",
+    icon: "assets/icon-192.png",
+    badge: "assets/icon-192.png",
+    vibrate: [200, 100, 200],          // buzz pattern (Android)
+    tag: d.tag || "yayo-message",      // a 2nd message replaces, never spams
+    renotify: true,                    // …but still buzzes again
+    requireInteraction: false,
+    data: { url: d.url || "messages.html" }
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+// Tapping the notification opens the conversation (focus the tab if already open)
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || "messages.html";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.includes(target) && "focus" in c) return c.focus();
+      }
+      return self.clients.openWindow(target);
+    })
   );
 });
 

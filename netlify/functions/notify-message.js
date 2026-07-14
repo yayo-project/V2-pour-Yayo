@@ -4,9 +4,50 @@
 // throttles to one email per conversation per 30 minutes, and sends a short
 // trilingual (FR/EN/AR) notification with NO message content — just a link.
 // Env vars required: BREVO_API_KEY, SUPABASE_SERVICE_KEY.
+const webpush = require("web-push");
 const SB_URL = "https://wkjxdkeqffsjarjxlsyh.supabase.co";
 const SITE = "https://yayo.digital";
 const THROTTLE_MIN = 30;
+
+// Buzz every device the recipient enabled notifications on. No message content
+// in the payload — just "you have a new message" and where to open it.
+// Dead subscriptions (uninstalled app, expired) are cleaned up automatically.
+async function sendPush(sb, toEmail, car, link) {
+  const pub = process.env.VAPID_PUBLIC;
+  const priv = process.env.VAPID_PRIVATE;
+  if (!pub || !priv) return 0;
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:contact@yayo.digital", pub, priv);
+
+  let subs = [];
+  try {
+    subs = await sb(`/rest/v1/push_subscriptions?email=eq.${encodeURIComponent(toEmail)}&select=endpoint,p256dh,auth`);
+  } catch (e) { return 0; }
+  if (!subs || !subs.length) return 0;
+
+  const payload = JSON.stringify({
+    title: "Yayo 💬",
+    body: car ? `Nouveau message — ${car}` : "Vous avez un nouveau message",
+    url: link,
+    tag: "yayo-msg"
+  });
+
+  let sent = 0;
+  await Promise.all(subs.map(async (s) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+        payload
+      );
+      sent++;
+    } catch (err) {
+      // 404/410 = the device unsubscribed or the app was removed → drop the row
+      if (err && (err.statusCode === 404 || err.statusCode === 410)) {
+        try { await sb(`/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(s.endpoint)}`, { method: "DELETE" }); } catch (e) {}
+      }
+    }
+  }));
+  return sent;
+}
 
 exports.handler = async (event) => {
   const headers = {
@@ -26,7 +67,9 @@ exports.handler = async (event) => {
 
   const svc = process.env.SUPABASE_SERVICE_KEY;
   const brevo = process.env.BREVO_API_KEY;
-  if (!svc || !brevo) return { statusCode: 200, headers, body: '{"skipped":"keys not configured"}' };
+  // The service key is required to look anything up. Brevo is optional:
+  // without it push still fires, only the email is skipped.
+  if (!svc) return { statusCode: 200, headers, body: '{"skipped":"SUPABASE_SERVICE_KEY not set"}' };
 
   const sbHeaders = { apikey: svc, Authorization: "Bearer " + svc, "Content-Type": "application/json" };
   const sb = async (path, opts) => {
@@ -40,9 +83,10 @@ exports.handler = async (event) => {
     const convos = await sb(`/rest/v1/conversations?id=eq.${convoId}&select=id,user_id,dealer_id,agency_id,car_name,last_notified_at`);
     const c = convos && convos[0];
     if (!c) return { statusCode: 200, headers, body: '{"skipped":"no conversation"}' };
-    if (c.last_notified_at && Date.now() - new Date(c.last_notified_at).getTime() < THROTTLE_MIN * 60000) {
-      return { statusCode: 200, headers, body: '{"skipped":"throttled"}' };
-    }
+    // Push is instant on EVERY message. Only the email is throttled, so a fast
+    // back-and-forth buzzes the phone but never floods the inbox.
+    const emailAllowed = !(c.last_notified_at &&
+      Date.now() - new Date(c.last_notified_at).getTime() < THROTTLE_MIN * 60000);
 
     // 2. Who wrote last → notify the OTHER party
     const msgs = await sb(`/rest/v1/messages?conversation_id=eq.${convoId}&select=sender_id&order=created_at.desc&limit=1`);
@@ -65,14 +109,21 @@ exports.handler = async (event) => {
     }
     if (!toEmail) return { statusCode: 200, headers, body: '{"skipped":"no recipient email"}' };
 
-    // 3. Mark notified BEFORE sending (a crash can miss one email, never spam)
+    const car = (c.car_name || "").slice(0, 60);
+    const pushed = await sendPush(sb, toEmail, car, link);
+
+    // Email only (push already went out): stop here if throttled or no Brevo key
+    if (!emailAllowed || !brevo) {
+      return { statusCode: 200, headers, body: JSON.stringify({ pushed, email: !brevo ? "no BREVO_API_KEY" : "throttled" }) };
+    }
+
+    // Mark notified BEFORE sending (a crash can miss one email, never spam)
     await sb(`/rest/v1/conversations?id=eq.${convoId}`, {
       method: "PATCH",
       body: JSON.stringify({ last_notified_at: new Date().toISOString() })
     });
 
-    // 4. Short trilingual notification — no message content, just the link
-    const car = (c.car_name || "").slice(0, 60);
+    // Short trilingual notification — no message content, just the link
     const btn = (label) =>
       `<p style="text-align:center;margin:0 0 20px"><a href="${link}" style="display:inline-block;background:#1FD8C9;color:#0A2540;font-weight:800;font-size:15px;padding:12px 30px;border-radius:12px;text-decoration:none">${label}</a></p>`;
     const html = `
@@ -118,7 +169,7 @@ exports.handler = async (event) => {
       })
     });
     if (!send.ok) throw new Error("brevo " + send.status);
-    return { statusCode: 200, headers, body: '{"sent":true}' };
+    return { statusCode: 200, headers, body: JSON.stringify({ email: "sent", pushed }) };
   } catch (e) {
     // Notifications must never break the chat — report softly
     return { statusCode: 200, headers, body: JSON.stringify({ skipped: String(e.message || e) }) };

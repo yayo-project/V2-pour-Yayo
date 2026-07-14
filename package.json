@@ -1,0 +1,9 @@
+{
+  "name": "yayo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yayo — Dubai to Africa car marketplace. Netlify Functions dependencies only; the site itself is vanilla HTML/CSS/JS.",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

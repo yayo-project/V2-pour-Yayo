@@ -507,6 +507,10 @@ body.no-scroll{overflow:hidden}
 .fav-link:hover{color:var(--teal-bright)}
 .logout-link{color:#B8C7DA;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
 .logout-link:hover{color:#FF8F8F}
+/* Push-notification bell */
+.bell-link{background:none;border:0;cursor:pointer;color:#B8C7DA;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
+.bell-link:hover{color:#fff}
+.bell-link.on{color:var(--teal-bright,#1FD8C9)}
 /* Car photo gallery (voiture.html) */
 .vd-photo{position:relative}
 .vd-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:0;background:rgba(10,37,64,.55);color:#fff;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;z-index:2}
