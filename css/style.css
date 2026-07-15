@@ -49,7 +49,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .btn-solid:hover{background:var(--teal-dark);transform:translateY(-1px)}
 .burger{display:none;width:42px;height:42px;border-radius:10px;align-items:center;justify-content:center;color:#fff}
 .burger:hover{background:rgba(255,255,255,.08)}
-.mobile-menu{display:none;position:fixed;inset:66px 0 auto 0;background:var(--dark-2);border-bottom:1px solid rgba(31,216,201,.15);z-index:199;padding:12px 20px 20px;box-shadow:var(--sh-lg)}
+.mobile-menu{display:none;position:fixed;inset:66px 0 auto 0;background:var(--dark-2);border-bottom:1px solid rgba(31,216,201,.15);z-index:199;padding:12px 20px 20px;box-shadow:var(--sh-lg);max-height:calc(100vh - 66px);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .mobile-menu.open{display:block}
 .mobile-menu a{display:flex;align-items:center;justify-content:space-between;padding:15px 6px;font-size:16px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
 .mobile-menu a:last-child{border-bottom:none}
@@ -223,16 +223,35 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .cost-section{grid-template-columns:1fr}
   .footer-in{grid-template-columns:1fr 1fr}
 }
+@media(max-width:640px){
+  /* Comfortable thumbs: every button is a real 44px+ tap target */
+  .btn{padding:13px 22px;font-size:14.5px;min-height:44px}
+  /* Footer redesigned as clean tappable cards (was a wall of grey text) */
+  .footer-in{grid-template-columns:1fr;padding:28px 0 14px;gap:14px}
+  .footer-brand{text-align:center;padding-bottom:6px}
+  .footer-brand .logo{display:inline-block}
+  .footer-brand p{margin:10px auto 0;max-width:320px;font-size:13px}
+  .footer-in>div:not(.footer-brand){background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 18px 6px}
+  .footer h4{color:var(--teal-bright);font-size:11.5px;margin-bottom:4px}
+  .footer-in a{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px;font-size:14px;color:#C7D4E2;border-bottom:1px solid rgba(255,255,255,.07)}
+  .footer-in a:last-child{border-bottom:0}
+  .footer-in a::after{content:'›';color:var(--teal-bright);font-size:17px;font-weight:700;flex:none}
+  [dir="rtl"] .footer-in a::after{content:'‹'}
+}
 @media(max-width:560px){
   .search-shell{flex-direction:column}
   .search-btn{padding:14px}
   .lang{display:none}
-  .footer-in{grid-template-columns:1fr;padding:34px 0 20px;gap:26px}
   /* topbar: breathing room for the ✉ ♥ ⎋ icons next to the burger */
   .topbar-in{gap:8px}
   .topbar-right{gap:2px}
-  .fav-link,.msg-link,.logout-link{padding:8px 7px}
-  .logo-img{height:30px}
+  .fav-link,.msg-link,.logout-link,.bell-link{padding:9px 7px}
+  .topbar .logo-img{height:30px}
+  /* links people must be able to tap with a thumb */
+  .sec-link{padding:10px 0;display:inline-flex;align-items:center}
+  .footer-bottom .report-link{padding:10px 8px}
+  .rv-login,.auth-switch a,.auth-note a{display:inline-block;padding:6px 0}
+  .legal a{display:inline-block;padding:6px 2px}
   /* footer: centered, clean, nothing cut */
   .footer .footer-brand .logo-img{height:28px}
   .footer-brand p{max-width:none}
@@ -695,6 +714,7 @@ body.no-scroll{overflow:hidden}
 .msg-link{position:relative;color:#fff;line-height:1;padding:8px 10px;border-radius:10px;transition:.15s;display:inline-flex;align-items:center}
 .msg-link:hover{color:var(--teal-bright)}
 .msg-count{position:absolute;top:2px;right:2px;background:#E5484D;color:#fff;font-size:10px;font-weight:800;min-width:16px;height:16px;border-radius:16px;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
+.msg-count[hidden]{display:none}
 .dash-convo{position:relative}
 .dash-convo.unread b{font-weight:800;color:var(--ink)}
 .unread-dot{position:absolute;top:10px;right:10px;background:#E5484D;color:#fff;font-size:10.5px;font-weight:800;min-width:18px;height:18px;border-radius:18px;display:flex;align-items:center;justify-content:center;padding:0 5px;font-style:normal}
