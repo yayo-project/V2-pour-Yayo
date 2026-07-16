@@ -3,9 +3,9 @@
 // Everything same-origin: network first (always fresh after a deploy),
 // cache fallback when offline. Never touches Supabase or Netlify Functions.
 // ═══════════════════════════════════════════════
-const CACHE = "yayo-v26";
+const CACHE = "yayo-v27";
 const CORE = [
-  "index.html", "acheter.html", "voiture.html", "comment.html", "agence.html",
+  "index.html", "acheter.html", "voiture.html", "comment.html", "agence.html", "agences.html",
   "vendre.html", "expedier.html", "connexion.html", "favoris.html", "messages.html",
   "css/style.css", "js/config.js", "js/analytics.js", "js/i18n.js", "js/demo.js", "js/auth.js",
   "js/app.js", "js/marketplace.js", "js/voiture.js", "js/agence.js", "js/charts.js",

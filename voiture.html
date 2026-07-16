@@ -125,15 +125,17 @@ gtag('config', 'G-NR2LTEVKET');
         <div class="vd-card">
           <h2 class="vd-h"><svg class="h-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg> <span data-i18n="landed_h">Prix total rendu chez vous</span></h2>
           <div class="fpills vd-cities" id="vd-cities"></div>
-          <div id="vd-breakdown"></div>
-          <div id="ct-zone" hidden>
-            <button class="btn btn-ghost-dark ct-toggle" id="ct-btn" onclick="toggleTransport()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg> <span data-i18n="ct_btn">Choisir le transport</span></button>
-            <div id="ct-panel" hidden>
-              <h3 class="ct-h" data-i18n="ct_h">Agences de transport vérifiées</h3>
-              <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
-              <div id="ct-list"></div>
-            </div>
-          </div>
+          <div id="vd-total-line"></div>
+          <button type="button" class="bd-toggle" id="bd-toggle" onclick="toggleBreakdown()" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M8 15v3M12 10v8M16 6v12"/></svg>
+            <span id="bd-toggle-txt"></span>
+            <svg class="bd-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div id="vd-breakdown" hidden></div>
+          <a class="btn btn-solid btn-block ct-go" id="ct-btn-link" href="agences.html" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg>
+            <span id="ct-btn-txt" data-i18n="ct_btn">Choisir l'agence d'export</span>
+          </a>
           <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
         </div>
 

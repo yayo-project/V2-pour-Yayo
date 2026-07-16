@@ -26,7 +26,7 @@ function bodyOf(c) {
   return "SUV";
 }
 
-function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function fmt(n) { return yayoFmt(n); }
 function landedTotal(price, key) { return yayoLandedTotal(price, key); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function brandOf(c) { const w = (c.car_name || "").split(" ")[0]; return BRANDS.find(b => b.toLowerCase() === w.toLowerCase()) || w; }

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Choisissez votre agence d'export — Yayo</title>
+<meta name="description" content="Comparez les agences d'export vérifiées Dubai → Afrique : vrais prix, délais, avis d'acheteurs. Yayo ne fixe jamais les prix du transport.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NR2LTEVKET"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-NR2LTEVKET');
+</script>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<!-- App boot screen: paints instantly (inline style), removed by config.js -->
+<div id="yayo-boot" aria-hidden="true"><img src="assets/logo-teal.png" alt=""><span class="yb-dots"><i></i><i></i><i></i></span></div>
+<style>#yayo-boot{position:fixed;inset:0;z-index:9999;background:#0A2540;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s}#yayo-boot.off{opacity:0;pointer-events:none}#yayo-boot img{height:42px;width:auto}#yayo-boot .yb-dots{display:flex;gap:7px}#yayo-boot .yb-dots i{width:8px;height:8px;border-radius:50%;background:#1FD8C9;animation:ybb 1s ease-in-out infinite}#yayo-boot .yb-dots i:nth-child(2){animation-delay:.15s}#yayo-boot .yb-dots i:nth-child(3){animation-delay:.3s}@keyframes ybb{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}</style>
+
+<!-- ═══ TOPBAR ═══ -->
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a href="index.html" class="logo" aria-label="Yayo"><img src="assets/logo-teal.png" alt="Yayo" class="logo-img"></a>
+    <nav class="nav">
+      <a href="acheter.html" data-i18n="nav_acheter">Acheter</a>
+      <a href="vendre.html" data-i18n="nav_vendre">Vendre</a>
+      <a href="expedier.html" data-i18n="nav_expedier">Expédier</a>
+      <a href="comment.html" data-i18n="nav_comment">Comment ça marche</a>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+      <a href="connexion.html" class="btn btn-ghost" data-auth="login" data-i18n="connexion">Connexion</a>
+      <button class="burger" onclick="toggleMenu()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mmenu">
+  <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
+  <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
+  <a href="connexion.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
+  <div class="lang"><button class="on">FR</button><button>EN</button><button>AR</button></div>
+</div>
+
+<main class="fav-grid-page">
+  <div class="wrap" style="max-width:760px">
+    <a id="agl-back" class="sec-link" href="acheter.html" hidden style="margin-bottom:14px;display:inline-flex">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <span data-i18n="agl_back">Retour à la voiture</span>
+    </a>
+    <div class="sec-head" style="margin-bottom:10px">
+      <div>
+        <h2 data-i18n="agl_h">Choisissez votre agence d'export</h2>
+        <p style="font-size:13.5px;color:var(--ink-3);max-width:560px" data-i18n="agl_p">Des agences vérifiées, leurs vrais prix — Yayo ne fixe jamais les prix du transport. Comparez et discutez avec elles avant de choisir.</p>
+      </div>
+    </div>
+    <p id="agl-car" class="agl-car" hidden></p>
+    <div class="fpills vd-cities" id="agl-cities" style="margin:12px 0 18px"></div>
+
+    <div id="agl-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+    <div id="agl-list"></div>
+    <div id="agl-empty" class="mkt-empty" hidden>
+      <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg></div>
+      <h3 data-i18n="ct_none">Aucune agence vérifiée sur cette route pour l'instant — le transport affiché est une estimation.</h3>
+    </div>
+  </div>
+</main>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="wrap footer-bottom" style="border-top:none">
+    <span>© 2026 Yayo · yayo.digital</span>
+    <span>Dubai 🇦🇪 → Afrique 🌍</span>
+  </div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/reviews.js"></script>
+<script>
+function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
+function fmt(n) { return yayoFmt(n); }
+function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+const DEST = YAYO_CONFIG.DESTINATIONS;
+const P = new URLSearchParams(location.search);
+const CAR_ID = P.get("car") || "";
+let CUR = (P.get("city") && DEST[P.get("city")] && P.get("city") !== "dubai") ? P.get("city") : YAYO_CONFIG.DEFAULT_DEST;
+let AGENCIES = [];
+let AG_RV = {};
+
+function routeFor(a, city) { return (a.routes || []).find(r => r.city === city && r.price > 0); }
+
+async function aglInit() {
+  // back link + car context
+  if (CAR_ID) {
+    const back = document.getElementById("agl-back");
+    back.hidden = false;
+    back.href = "voiture.html?id=" + encodeURIComponent(CAR_ID);
+    let car = null;
+    if (CAR_ID.startsWith("demo")) car = window.YAYO_DEMO.find(c => c.id === CAR_ID);
+    else {
+      try {
+        const { data } = await yayoSB().from("listings").select("car_name").eq("id", CAR_ID).maybeSingle();
+        car = data;
+      } catch (e) {}
+    }
+    if (car) {
+      const el = document.getElementById("agl-car");
+      el.hidden = false;
+      el.innerHTML = `${t("agl_for")} <b>${esc(car.car_name)}</b> · Dubai → <b id="agl-city-name">${DEST[CUR].name}</b>`;
+    }
+  }
+  renderCities();
+  await loadAgencies();
+  document.getElementById("agl-loading").hidden = true;
+  renderList();
+}
+
+function renderCities() {
+  const el = document.getElementById("agl-cities");
+  el.innerHTML = Object.keys(DEST).filter(k => k !== "dubai").map(k =>
+    `<button type="button" class="${k === CUR ? "on" : ""}" data-k="${k}">${DEST[k].flag} ${DEST[k].name}</button>`).join("");
+  el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    CUR = b.dataset.k;
+    el.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    const cn = document.getElementById("agl-city-name");
+    if (cn) cn.textContent = DEST[CUR].name;
+    renderList();
+  }));
+}
+
+async function loadAgencies() {
+  // demo cars keep their clearly-labeled demo agencies; real cars = real ones
+  if (CAR_ID.startsWith("demo")) { AGENCIES = window.YAYO_DEMO_AGENCIES; return; }
+  try {
+    const { data } = await yayoSB().from("shipping_agencies")
+      .select("*").eq("verified", true).limit(30);
+    AGENCIES = (data || []).filter(a => !a.suspended).map(a => {
+      let d = a.routes;
+      if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
+      const routes = Array.isArray(d) ? d : (d && Array.isArray(d.routes) ? d.routes : []);
+      const meta = (d && !Array.isArray(d) && typeof d === "object") ? d : {};
+      return { id: a.id, name: a.name, logo_url: a.logo_url || null, routes, meta };
+    }).filter(a => a.routes.length);
+    if (AGENCIES.length) {
+      const { data: rv } = await yayoSB().from("reviews")
+        .select("subject_id, rating").eq("subject_type", "agency")
+        .in("subject_id", AGENCIES.map(a => a.id));
+      AG_RV = {};
+      (rv || []).forEach(r => {
+        const s = AG_RV[r.subject_id] || { sum: 0, count: 0 };
+        s.sum += r.rating; s.count++;
+        AG_RV[r.subject_id] = s;
+      });
+      Object.keys(AG_RV).forEach(k => { AG_RV[k] = { avg: AG_RV[k].sum / AG_RV[k].count, count: AG_RV[k].count }; });
+    }
+  } catch (e) { AGENCIES = []; }
+}
+
+function renderList() {
+  const list = document.getElementById("agl-list");
+  const empty = document.getElementById("agl-empty");
+  const avail = AGENCIES.filter(a => routeFor(a, CUR));
+  empty.hidden = avail.length > 0;
+  list.innerHTML = avail.map(a => {
+    const r = routeFor(a, CUR);
+    const rv = AG_RV[a.id];
+    const office = a.meta && a.meta.offices && a.meta.offices[CUR];
+    const profileHref = `agence.html?id=${encodeURIComponent(a.id)}&car=${encodeURIComponent(CAR_ID)}&city=${CUR}`;
+    const chooseHref = `voiture.html?id=${encodeURIComponent(CAR_ID)}&agency=${encodeURIComponent(a.id)}&city=${CUR}`;
+    return `
+    <div class="ct-agency agl-card">
+      <div class="ct-agency-top">
+        <div class="ct-agency-info">
+          ${yayoAvatarHtml(a.name, a.logo_url)}
+          <b>${esc(a.name)}</b>
+          ${yayoVPill(t("ag_verified"), true)}
+        </div>
+        ${rv ? `<span class="rv-mini">${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> (${rv.count})</span>` : `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`}
+      </div>
+      ${r.promise ? `<p class="ct-promise">« ${esc(r.promise)} »</p>` : ""}
+      <p class="ct-meta"><b>${fmt(r.price)}</b>${r.days ? " · " + r.days + " " + t("ct_days") : ""}${office ? ` · <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ` + esc(office) : ""}</p>
+      <div class="ct-actions">
+        <a class="btn btn-ghost-dark" href="${profileHref}">${t("ct_profile")}</a>
+        ${CAR_ID ? `<a class="btn btn-solid" href="${chooseHref}" onclick="if(typeof yayoTrack==='function')yayoTrack('choose_agency',{agency:'${esc(a.name)}'})">${t("agl_choose")}</a>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+window.onLangChange = () => { renderCities(); renderList(); };
+aglInit();
+</script>
+</body>
+</html>

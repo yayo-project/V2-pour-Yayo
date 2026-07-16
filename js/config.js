@@ -49,6 +49,12 @@ const YAYO_CONFIG = {
   GA4_ID: "G-NR2LTEVKET"
 };
 
+// Shared money formatter. The thousands separator is a NON-BREAKING space
+// ( ) so "$3 200" can never wrap into "$3" / "200" on a narrow phone.
+function yayoFmt(n) {
+  return "$" + Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[   ]/g, " ");
+}
+
 // ── Customs estimation (published formulas, per country) ──
 // Returns every line of the estimate so pages can show a real breakdown.
 // base = CIF (car price + freight) — what customs offices actually tax.

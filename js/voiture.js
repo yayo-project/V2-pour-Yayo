@@ -16,7 +16,7 @@ const CAR_ID = new URLSearchParams(location.search).get("id") || "";
 const DEMO_AGENCIES = window.YAYO_DEMO_AGENCIES;
 let AG_RV = {}; // agency id → {avg, count} from real reviews
 
-function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function fmt(n) { return yayoFmt(n); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 
@@ -204,12 +204,26 @@ function renderCities() {
 
 function renderBreakdown() {
   const box = document.getElementById("vd-breakdown");
+  const totalLine = document.getElementById("vd-total-line");
+  const toggle = document.getElementById("bd-toggle");
+  const goBtn = document.getElementById("ct-btn-link");
   const d = DEST[CUR];
   if (CUR === "dubai") {
-    box.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
+    totalLine.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
+    box.innerHTML = "";
+    box.hidden = true;
+    toggle.hidden = true;
+    goBtn.hidden = true;
     updateTeasers(0, "");
     return;
   }
+  toggle.hidden = false;
+  goBtn.hidden = false;
+  goBtn.href = `agences.html?car=${encodeURIComponent(CAR.id)}&city=${CUR}`;
+  document.getElementById("bd-toggle-txt").textContent = t(box.hidden ? "bd_show_est" : "bd_hide_est");
+  document.getElementById("ct-btn-txt").innerHTML = CHOSEN
+    ? `${yayoVBadge()} ${escapeHtml(CHOSEN.name)} · ${t("agl_change")}`
+    : t("ct_btn");
   const route = CHOSEN && routeFor(CHOSEN, CUR);
   const ship = Number(route ? route.price : d.ship) || 0;
   const shipLbl = route
@@ -224,6 +238,9 @@ function renderBreakdown() {
   // Two clearly separated blocks so no buyer ever thinks the TOTAL goes to the
   // dealer: (1) car price = the only money for the seller, (2) fees paid
   // separately to the agency / government / port.
+  // The total is ALWAYS visible (Yayo's promise); the detailed estimate
+  // opens on demand via the "Voir l'estimation d'export" button.
+  totalLine.innerHTML = `<div class="cost-total"><span>${t("bd_total2")} — ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>`;
   box.innerHTML = `
     <div class="pay-block pay-dealer">
       <div class="pay-head">${icoCar} ${t("bd_pay_dealer")}</div>
@@ -239,9 +256,15 @@ function renderBreakdown() {
       <div class="cost-line"><span>${t("bd_fees2")}</span><b>${fmt(d.fees)}</b></div>
       <div class="pay-sub">${t("bd_customs_note")}</div>
     </div>
-    <div class="cost-total"><span>${t("bd_total2")} — ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>
     <p class="pay-explain">${t("bd_explain")}</p>`;
   updateTeasers(total, d.name);
+}
+
+function toggleBreakdown() {
+  const box = document.getElementById("vd-breakdown");
+  box.hidden = !box.hidden;
+  document.getElementById("bd-toggle-txt").textContent = t(box.hidden ? "bd_show_est" : "bd_hide_est");
+  document.getElementById("bd-toggle").classList.toggle("open", !box.hidden);
 }
 
 // The Dubai price is what goes to the dealer; the landed total lives in its
@@ -262,8 +285,10 @@ function updateTeasers(total, cityName) {
 }
 
 function goBreakdown() {
-  const el = document.getElementById("vd-breakdown");
-  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const box = document.getElementById("vd-breakdown");
+  if (box && box.hidden && CUR !== "dubai") toggleBreakdown();
+  const el = document.getElementById("vd-total-line");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 // ── Choisir le transport (phase 8) ──
@@ -301,51 +326,15 @@ async function loadAgencies() {
   renderTransport();
 }
 
-function toggleTransport() {
-  const p = document.getElementById("ct-panel");
-  p.hidden = !p.hidden;
-}
-
-function renderTransport() {
-  const zone = document.getElementById("ct-zone");
-  if (!CAR || CUR === "dubai") { zone.hidden = true; return; }
-  zone.hidden = false;
-  const list = document.getElementById("ct-list");
-  const avail = AGENCIES.filter(a => routeFor(a, CUR));
-  if (!avail.length) {
-    list.innerHTML = `<p class="ct-none">${t("ct_none")}</p>`;
-    return;
-  }
-  list.innerHTML = avail.map(a => {
-    const r = routeFor(a, CUR);
-    const on = CHOSEN && CHOSEN.id === a.id;
-    const rv = AG_RV[a.id];
-    const office = a.meta && a.meta.offices && a.meta.offices[CUR];
-    return `
-    <div class="ct-agency${on ? " on" : ""}">
-      <div class="ct-agency-top">
-        <div class="ct-agency-info">
-          <b>${escapeHtml(a.name)}</b>
-          ${yayoVPill(t("ag_verified"), true)}
-        </div>
-        ${rv ? `<span class="rv-mini">${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> (${rv.count})</span>` : `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`}
-      </div>
-      ${r.promise ? `<p class="ct-promise">« ${escapeHtml(r.promise)} »</p>` : ""}
-      <p class="ct-meta"><b>${fmt(r.price)}</b>${r.days ? " · " + r.days + " " + t("ct_days") : ""}${office ? " · 📍 " + escapeHtml(office) : ""}</p>
-      <div class="ct-actions">
-        <a class="btn btn-ghost-dark" href="agence.html?id=${encodeURIComponent(a.id)}&car=${encodeURIComponent(CAR_ID)}&city=${CUR}">${t("ct_profile")}</a>
-        <button type="button" class="btn ${on ? "btn-solid" : "btn-ghost-dark"}" onclick="chooseAgency('${a.id}')">${on ? t("ct_chosen") : t("ct_choose")}</button>
-      </div>
-    </div>`;
-  }).join("") + (CHOSEN ? `<button type="button" class="ct-clear" onclick="clearAgency()">${t("ct_est")}</button>` : "");
-}
+// The agency choice now happens on its own page (agences.html) — clearer on
+// mobile than an inline accordion. This just keeps the button state fresh.
+function renderTransport() { /* button text/href handled in renderBreakdown */ }
 
 function chooseAgency(id) {
   CHOSEN = AGENCIES.find(a => String(a.id) === String(id)) || null;
   renderBreakdown();
-  renderTransport();
 }
-function clearAgency() { CHOSEN = null; renderBreakdown(); renderTransport(); }
+function clearAgency() { CHOSEN = null; renderBreakdown(); }
 
 // ── Dealer rating + reviews (real reviews only) ──
 async function renderDealerReviews() {
@@ -547,7 +536,18 @@ async function sendMsg(e) {
 window.onLangChange = () => { if (CAR) render(); };
 
 loadCar().then(async () => {
-  loadAgencies();
+  const P = new URLSearchParams(location.search);
+  // Coming back from agences.html: same city + chosen agency pre-applied
+  if (CAR && P.get("city") && DEST[P.get("city")] && P.get("city") !== CUR) {
+    CUR = P.get("city");
+    renderCities();
+    renderBreakdown();
+  }
+  await loadAgencies();
+  if (CAR && P.get("agency")) {
+    CHOSEN = AGENCIES.find(a => String(a.id) === String(P.get("agency"))) || null;
+    if (CHOSEN) { renderBreakdown(); goBreakdown(); }
+  }
   if (CAR) yayoLoadVerdicts([CAR], updateAiBadge);
   // &chat=1 (e.g. "Contacter" from Mes favoris): open the chat directly,
   // but only for signed-in users — never bounce a visitor to login unasked.

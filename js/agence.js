@@ -11,7 +11,7 @@ const FROM_CAR = P.get("car") || "";
 let AG = null;
 let CONVO = null;
 
-function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function fmt(n) { return yayoFmt(n); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 const isDemo = () => AG_ID.startsWith("ag-demo");
@@ -102,6 +102,17 @@ async function render() {
     document.getElementById("ap-rv-mini").innerHTML = `<span class="rv-mini rv-mini-none">${t("rv_none_short")}</span>`;
   }
   renderReviewsWidget("ap-reviews", "agency", AG.id);
+
+  // Coming from a car: one tap selects this agency and returns to the car
+  // with its REAL price applied to the landed cost.
+  const city = P.get("city");
+  if (FROM_CAR && city) {
+    const choose = document.getElementById("ap-choose");
+    if (choose) {
+      choose.hidden = false;
+      choose.href = `voiture.html?id=${encodeURIComponent(FROM_CAR)}&agency=${encodeURIComponent(AG.id)}&city=${encodeURIComponent(city)}`;
+    }
+  }
 }
 
 // ── In-app chat with the agency (same two-way translation as dealers) ──

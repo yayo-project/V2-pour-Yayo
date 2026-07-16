@@ -99,7 +99,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/fav.js"></script>
 <script>
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
-function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function fmt(n) { return yayoFmt(n); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 const DEST = YAYO_CONFIG.DESTINATIONS;
 let FAV_CARS = [];

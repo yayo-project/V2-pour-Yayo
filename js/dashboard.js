@@ -27,7 +27,7 @@ let PHOTOS = [];      // listing form photos: {url} saved | {file, preview} new
 let D_LOGO = null, D_GAL = [];   // dealer logo + showroom photos
 let A_LOGO = null, A_GAL = [];   // agency logo + operation photos
 
-function fmt(n) { return "$" + Math.round(n).toLocaleString("fr-FR").replace(/ /g, " "); }
+function fmt(n) { return yayoFmt(n); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 function show(id) { document.getElementById(id).hidden = false; }

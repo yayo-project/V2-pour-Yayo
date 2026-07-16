@@ -927,3 +927,24 @@ body.no-scroll{overflow:hidden}
 
 /* Inbox: demo conversation tag */
 .convo-demo{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;background:#FFF6E5;color:#8A6116;border-radius:50px;padding:2px 8px;vertical-align:1px}
+
+/* ═══ EXPORT ESTIMATE (collapsed) + AGENCY PAGE ═══ */
+/* amounts never wrap into two lines (backs up the nbsp in yayoFmt) */
+.cost-line b,.cost-total .val,.landed-val,.arr-price,.bud-amount{white-space:nowrap}
+.cost-line span{padding-right:10px}
+[dir="rtl"] .cost-line span{padding-right:0;padding-left:10px}
+
+.bd-toggle{display:flex;align-items:center;gap:9px;width:100%;margin-top:12px;background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;transition:.15s;min-height:46px}
+.bd-toggle:hover{border-color:var(--teal)}
+.bd-toggle svg:first-child{color:var(--teal-dark);flex-shrink:0}
+.bd-toggle .bd-chev{margin-left:auto;transition:transform .2s;color:var(--ink-3)}
+[dir="rtl"] .bd-toggle .bd-chev{margin-left:0;margin-right:auto}
+.bd-toggle.open .bd-chev{transform:rotate(180deg)}
+#vd-breakdown{margin-top:12px}
+#vd-total-line{margin-top:6px}
+.ct-go{margin-top:12px;min-height:48px}
+.ct-go .vseal{width:15px;height:15px;vertical-align:-3px}
+
+.agl-card{margin-bottom:14px;background:var(--card);box-shadow:var(--sh)}
+.agl-card .ct-actions .btn{min-height:44px;flex:1;justify-content:center}
+.agl-car{font-size:13.5px;color:var(--ink-2);background:var(--teal-tint);border-radius:10px;padding:10px 14px;margin-top:4px}
