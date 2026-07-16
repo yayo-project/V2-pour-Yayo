@@ -207,6 +207,7 @@ function renderBreakdown() {
   const d = DEST[CUR];
   if (CUR === "dubai") {
     box.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
+    updateTeasers(0, "");
     return;
   }
   const route = CHOSEN && routeFor(CHOSEN, CUR);
@@ -240,6 +241,29 @@ function renderBreakdown() {
     </div>
     <div class="cost-total"><span>${t("bd_total2")} — ${d.name}</span><span class="val">≈ ${fmt(total)}</span></div>
     <p class="pay-explain">${t("bd_explain")}</p>`;
+  updateTeasers(total, d.name);
+}
+
+// The Dubai price is what goes to the dealer; the landed total lives in its
+// own card lower down. These two tappable teasers (under the price + in the
+// sticky bar) carry the buyer straight to the breakdown so the numbers are
+// never confused — and the breakdown is where the agencies are chosen.
+function updateTeasers(total, cityName) {
+  const tz = document.getElementById("vd-teaser");
+  const st = document.getElementById("vd-sticky-landed");
+  if (CUR === "dubai" || !total) {
+    if (tz) tz.hidden = true;
+    if (st) st.hidden = true;
+    return;
+  }
+  const html = `${t("rendu2")} ${cityName} <b>≈ ${fmt(total)}</b> · <u>${t("bd_see")}</u>`;
+  if (tz) { tz.hidden = false; tz.innerHTML = html; }
+  if (st) { st.hidden = false; st.innerHTML = `≈ ${fmt(total)} ${escapeHtml(cityName)}`; }
+}
+
+function goBreakdown() {
+  const el = document.getElementById("vd-breakdown");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ── Choisir le transport (phase 8) ──
@@ -416,6 +440,11 @@ async function openChat() {
   if (typeof yayoTrack === "function") yayoTrack("contact_dealer", { car: CAR && CAR.car_name });
 
   if (String(CAR.id).startsWith("demo")) {
+    // Demo cars: the conversation lives on this device (localStorage) so the
+    // inbox behaves like the real thing — the buyer sees who they contacted
+    // and can send follow-ups, exactly like on a real listing.
+    const dc = yayoDemoConvo(CAR.id);
+    if (dc && dc.msgs.length) dc.msgs.forEach(m => addBubble(m.me ? "me" : "them", m.text));
     addBubble("yayo", t("chat_demo"));
     return;
   }
@@ -492,7 +521,11 @@ async function sendMsg(e) {
   input.value = "";
   const bubble = addBubble("me", text);
   if (String(CAR.id).startsWith("demo")) {
-    setTimeout(() => addBubble("yayo", t("chat_demo_reply")), 600);
+    yayoDemoConvoPush(CAR, { me: true, text });
+    setTimeout(() => {
+      addBubble("yayo", t("chat_demo_reply"));
+      yayoDemoConvoPush(CAR, { me: false, text: t("chat_demo_reply") });
+    }, 600);
     return false;
   }
   // Real car: NEVER pretend a failed message was sent — say it clearly.
@@ -513,7 +546,13 @@ async function sendMsg(e) {
 // Re-render the page when the language changes (skip until the car is loaded)
 window.onLangChange = () => { if (CAR) render(); };
 
-loadCar().then(() => {
+loadCar().then(async () => {
   loadAgencies();
   if (CAR) yayoLoadVerdicts([CAR], updateAiBadge);
+  // &chat=1 (e.g. "Contacter" from Mes favoris): open the chat directly,
+  // but only for signed-in users — never bounce a visitor to login unasked.
+  if (CAR && new URLSearchParams(location.search).get("chat") === "1") {
+    const u = await yayoUser();
+    if (u) openChat();
+  }
 });

@@ -124,12 +124,43 @@ function yayoVBand(sub) {
   return `<div class="vband"><div class="vband-tx"><b>${t("vband_t")} ${yayoVBadge()}</b><span>${sub || ""}</span></div>${yayoVBadge("xl")}</div>`;
 }
 
+// ── Demo conversations (pre-launch): chats on demo cars live on this device
+// so the buyer inbox behaves exactly like the real thing — you see who you
+// contacted and can follow up, even before real dealers reply. ──
+function yayoDemoConvos() {
+  try { return JSON.parse(localStorage.getItem("yayo-demo-convos") || "[]"); } catch (e) { return []; }
+}
+function yayoDemoConvo(carId) {
+  return yayoDemoConvos().find(c => c.carId === carId) || null;
+}
+function yayoDemoConvoPush(car, msg) {
+  const all = yayoDemoConvos();
+  let c = all.find(x => x.carId === car.id);
+  if (!c) {
+    c = { id: "demo-convo-" + car.id, carId: car.id, car_name: car.car_name,
+          who: (car.dealer && car.dealer.name) || "Dealer Yayo", msgs: [] };
+    all.push(c);
+  }
+  c.msgs.push({ me: !!msg.me, text: msg.text, at: new Date().toISOString() });
+  c.lastAt = new Date().toISOString();
+  try { localStorage.setItem("yayo-demo-convos", JSON.stringify(all.slice(-20))); } catch (e) {}
+}
+
 // photos column arrives as jsonb array, or as a JSON string — normalize
 function yayoPhotoList(x) {
   if (Array.isArray(x)) return x.filter(u => typeof u === "string");
   if (typeof x === "string") { try { const a = JSON.parse(x); return Array.isArray(a) ? a.filter(u => typeof u === "string") : []; } catch (e) { return []; } }
   return [];
 }
+
+// Boot screen: config.js is the first script at the end of body, so by the
+// time it runs, the page's CSS is loaded — fade the navy splash away.
+(function () {
+  const b = document.getElementById("yayo-boot");
+  if (!b) return;
+  b.classList.add("off");
+  setTimeout(() => b.remove(), 450);
+})();
 
 // PWA: register the service worker (config.js is loaded on every page)
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {

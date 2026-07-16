@@ -40,16 +40,23 @@ async function renderReviewsWidget(elId, type, id) {
   const rv = isDemo ? { list: [], avg: 0, count: 0 } : await yayoReviews(type, id);
   const user = await yayoUser();
 
-  // Real reviews only: the form appears ONLY for buyers who have actually
-  // contacted this dealer/agency (a conversation exists). Enforced in the
-  // database too (setup.sql §24) — hiding the form is not the protection.
+  // Real reviews only: the form appears ONLY for VERIFIED BUYERS —
+  // dealer: this dealer marked a car "Vendu" to this buyer (listings.sold_to);
+  // agency: this agency shipped a car for this buyer (shipments row).
+  // Enforced in the database too (setup.sql §27) — hiding the form is not
+  // the protection. Anyone else sees WHY they can't review (trust signal).
   let canReview = false;
   if (user && !isDemo) {
     try {
-      const field = type === "dealer" ? "dealer_id" : "agency_id";
-      const { data } = await yayoSB().from("conversations")
-        .select("id").eq(field, id).eq("user_id", user.id).limit(1);
-      canReview = !!(data && data.length);
+      if (type === "dealer") {
+        const { data, error } = await yayoSB().from("listings")
+          .select("id").eq("dealer_id", id).eq("sold_to", user.id).limit(1);
+        canReview = !error && !!(data && data.length);
+      } else {
+        const { data, error } = await yayoSB().from("shipments")
+          .select("id").eq("agency_id", id).eq("user_id", user.id).limit(1);
+        canReview = !error && !!(data && data.length);
+      }
     } catch (e) { canReview = false; }
   }
 
@@ -64,6 +71,7 @@ async function renderReviewsWidget(elId, type, id) {
 
   const formHtml = (user && !isDemo && canReview) ? `
     <form class="rv-form" onsubmit="return submitReview(event, '${type}', '${id}', '${elId}')">
+      <span class="rv-vbuyer">${yayoVBadge()} ${t("rv_vbuyer")}</span>
       <div class="rv-pick" id="${elId}-stars">
         ${[1, 2, 3, 4, 5].map(n => `<button type="button" data-n="${n}" onclick="pickStar('${elId}', ${n})">★</button>`).join("")}
       </div>
@@ -71,7 +79,7 @@ async function renderReviewsWidget(elId, type, id) {
       <button type="submit" class="btn btn-solid">${t("rv_send")}</button>
       <p class="auth-error" id="${elId}-err" hidden></p>
     </form>`
-    : (isDemo ? "" : `<p class="rv-login">${t(user ? "rv_need_contact" : "rv_login")}</p>`);
+    : (isDemo ? "" : `<p class="rv-login">${t("rv_need_buy")}</p>`);
 
   el.innerHTML = `
     <div class="rv-summary">${rv.count ? `${starsHtml(rv.avg)} <b>${rv.avg.toFixed(1)}</b> · ${rv.count} ${t("rv_count")}` : t("rv_none_short")}</div>

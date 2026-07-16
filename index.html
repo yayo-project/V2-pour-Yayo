@@ -29,6 +29,9 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<!-- App boot screen: paints instantly (inline style), removed by config.js -->
+<div id="yayo-boot" aria-hidden="true"><img src="assets/logo-teal.png" alt=""><span class="yb-dots"><i></i><i></i><i></i></span></div>
+<style>#yayo-boot{position:fixed;inset:0;z-index:9999;background:#0A2540;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s}#yayo-boot.off{opacity:0;pointer-events:none}#yayo-boot img{height:42px;width:auto}#yayo-boot .yb-dots{display:flex;gap:7px}#yayo-boot .yb-dots i{width:8px;height:8px;border-radius:50%;background:#1FD8C9;animation:ybb 1s ease-in-out infinite}#yayo-boot .yb-dots i:nth-child(2){animation-delay:.15s}#yayo-boot .yb-dots i:nth-child(3){animation-delay:.3s}@keyframes ybb{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}</style>
 
 <!-- ═══ TOPBAR ═══ -->
 <header class="topbar">

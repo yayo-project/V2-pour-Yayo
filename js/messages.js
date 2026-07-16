@@ -44,6 +44,19 @@ async function mxInit() {
     (data || []).forEach(r => { MX_UNREAD[r.conversation_id] = Number(r.unread || 0); });
   } catch (e) { /* setup.sql §12 not run yet */ }
 
+  // Demo-car chats from this device show up too (clearly tagged), so anyone
+  // who contacted a demo dealer finds the conversation and can follow up.
+  yayoDemoConvos().forEach(dc => {
+    MX_CONVOS.push({
+      id: dc.id, demo: true, carId: dc.carId,
+      car_name: dc.car_name, who: dc.who, logo: null,
+      last: dc.msgs.length ? dc.msgs[dc.msgs.length - 1].text : "",
+      lastAt: dc.lastAt, lastMine: dc.msgs.length ? dc.msgs[dc.msgs.length - 1].me : false,
+      msgs: dc.msgs.map(m => ({ me: m.me, text: m.text }))
+    });
+  });
+  MX_CONVOS.sort((a, b) => new Date(b.lastAt || 0) - new Date(a.lastAt || 0));
+
   if (!MX_CONVOS.length) { document.getElementById("mx-empty").hidden = false; return; }
   document.getElementById("mx-app").hidden = false;
   mxRenderList();
@@ -84,7 +97,7 @@ function mxRenderList() {
     const n = MX_UNREAD[c.id] || 0;
     return `
     <button class="dash-convo${MX_CUR && MX_CUR.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="mxOpen('${c.id}')">
-      <b>${mxEsc(c.who)} <em class="convo-time">${mxTime(c.lastAt)}</em></b>
+      <b>${mxEsc(c.who)}${c.demo ? ` <span class="convo-demo">${t("convo_demo")}</span>` : ""} <em class="convo-time">${mxTime(c.lastAt)}</em></b>
       <span>${mxEsc(c.car_name)}</span>
       ${c.last ? `<span class="convo-prev">${mxEsc(mxPreview(c)).slice(0, 70)}</span>` : ""}
       ${n ? `<i class="unread-dot">${n}</i>` : ""}
@@ -105,6 +118,12 @@ async function mxOpen(id) {
   document.getElementById("mx-title").textContent = MX_CUR.who + " · " + MX_CUR.car_name;
   const box = document.getElementById("mx-box");
   box.innerHTML = "";
+
+  if (MX_CUR.demo) {
+    MX_CUR.msgs.forEach(m => mxBubble(m.me, m.text));
+    mxBubble(false, t("chat_demo"));
+    return;
+  }
 
   if (MX_CUR.msgs === null) {
     try {
@@ -150,6 +169,7 @@ async function mxSendPhoto(files) {
   const f = files && files[0];
   document.getElementById("mx-photo").value = "";
   if (!f || !MX_CUR) return;
+  if (MX_CUR.demo) { setTimeout(() => mxBubble(false, t("chat_demo_reply")), 500); return; }
   const b = mxBubble(true, t("chat_photo_sending"));
   try {
     const url = await yayoSendChatPhoto(MX_CUR.id, f);
@@ -168,6 +188,17 @@ async function mxSend(e) {
   input.value = "";
   const bubble = mxBubble(true, text);
   MX_CUR.msgs.push({ me: true, text });
+  if (MX_CUR.demo) {
+    const car = { id: MX_CUR.carId, car_name: MX_CUR.car_name, dealer: { name: MX_CUR.who } };
+    yayoDemoConvoPush(car, { me: true, text });
+    setTimeout(() => {
+      mxBubble(false, t("chat_demo_reply"));
+      yayoDemoConvoPush(car, { me: false, text: t("chat_demo_reply") });
+    }, 600);
+    MX_CUR.last = text; MX_CUR.lastAt = new Date().toISOString(); MX_CUR.lastMine = true;
+    mxRenderList();
+    return false;
+  }
   try {
     const { error } = await yayoSB().from("messages").insert({ conversation_id: MX_CUR.id, sender_id: MX_USER.id, content: text });
     if (error) throw error;

@@ -830,3 +830,33 @@ drop policy if exists shipev_buyer_read on public.shipment_events;
 create policy shipev_buyer_read on public.shipment_events
   for select to authenticated
   using (shipment_id in (select s.id from shipments s where s.user_id = auth.uid()));
+
+-- ═══════════════════════════════════════════════════════════
+-- 27) REVIEWS v2 — VERIFIED BUYERS ONLY. A review is allowed
+-- only after a real purchase through Yayo, not just a chat:
+--   dealer  → the dealer marked one of his cars "Vendu" to
+--             this buyer (listings.sold_to)
+--   agency  → the agency created a shipment for this buyer
+-- Replaces the §24 contact-based policy.
+-- ═══════════════════════════════════════════════════════════
+alter table public.listings add column if not exists sold_to uuid;
+
+do $$ declare p record;
+begin
+  for p in select policyname from pg_policies
+    where schemaname = 'public' and tablename = 'reviews' and cmd = 'INSERT'
+  loop
+    execute format('drop policy %I on public.reviews', p.policyname);
+  end loop;
+end $$;
+create policy reviews_insert_buyers on public.reviews
+  for insert to authenticated with check (
+    user_id = auth.uid() and (
+      (subject_type = 'dealer' and exists (
+        select 1 from listings l
+        where l.sold_to = auth.uid() and l.dealer_id::text = subject_id::text))
+      or (subject_type = 'agency' and exists (
+        select 1 from shipments s
+        where s.user_id = auth.uid() and s.agency_id::text = subject_id::text))
+    )
+  );

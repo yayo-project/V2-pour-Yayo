@@ -23,6 +23,9 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<!-- App boot screen: paints instantly (inline style), removed by config.js -->
+<div id="yayo-boot" aria-hidden="true"><img src="assets/logo-teal.png" alt=""><span class="yb-dots"><i></i><i></i><i></i></span></div>
+<style>#yayo-boot{position:fixed;inset:0;z-index:9999;background:#0A2540;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s}#yayo-boot.off{opacity:0;pointer-events:none}#yayo-boot img{height:42px;width:auto}#yayo-boot .yb-dots{display:flex;gap:7px}#yayo-boot .yb-dots i{width:8px;height:8px;border-radius:50%;background:#1FD8C9;animation:ybb 1s ease-in-out infinite}#yayo-boot .yb-dots i:nth-child(2){animation-delay:.15s}#yayo-boot .yb-dots i:nth-child(3){animation-delay:.3s}@keyframes ybb{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}</style>
 
 <!-- ═══ TOPBAR ═══ -->
 <header class="topbar">
@@ -151,15 +154,40 @@ function renderFavs() {
         <span class="car-price-lbl">${t("a_dubai")}</span>
       </div>
       <div class="landed">
-        <span class="landed-lbl">🚢 ${t("rendu2")} ${dst.name}</span>
-        <span class="landed-val">≈ ${fmt(c.price + dst.ship + c.price * dst.duty + dst.fees)}</span>
+        <span class="landed-lbl">${t("rendu2")} ${dst.name}</span>
+        <span class="landed-val">≈ ${fmt(yayoLandedTotal(c.price, YAYO_CONFIG.DEFAULT_DEST))}</span>
       </div>
       <div class="car-dealer">
         ${c.dealer ? escapeHtml(c.dealer.name) + (c.dealer.verified ? " " + yayoVBadge() : "") + " · Dubai" : ""}
       </div>
+      <div class="fav-actions">
+        <a class="btn btn-solid" href="voiture.html?id=${encodeURIComponent(c.id)}&chat=1" onclick="event.stopPropagation()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          ${t("contact_btn")}
+        </a>
+        <button type="button" class="btn btn-ghost-dark fav-remove" onclick="removeFav(event, '${encodeURIComponent(c.id)}')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+          ${t("fav_remove")}
+        </button>
+      </div>
     </div>
   </div>`).join("");
   markFavHearts(document);
+}
+
+// Remove from favorites: deletes the row and slides the card away
+async function removeFav(e, encId) {
+  e.stopPropagation();
+  const id = decodeURIComponent(encId);
+  const card = e.currentTarget.closest(".car-card");
+  if (card) { card.classList.add("fav-out"); }
+  FAV_CARS = FAV_CARS.filter(c => String(c.id) !== String(id));
+  setTimeout(() => renderFavs(), 260);
+  try {
+    const user = await yayoUser();
+    await yayoSB().from("favorites").delete()
+      .eq("user_id", user.id).eq("type", "car").eq("market", String(id));
+  } catch (err) { /* card already gone locally; next load re-syncs */ }
 }
 
 window.onLangChange = () => renderFavs();

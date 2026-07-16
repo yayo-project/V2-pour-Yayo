@@ -583,7 +583,64 @@ async function patchListing(id, patch) {
     Object.assign(l, patch); renderListings(); renderStats();
   } catch (e) { alert(t("au_err_generic") + (e.message || e)); }
 }
-function markSold(id) { patchListing(id, { sold: true, active: false }); }
+// "Vendu" asks WHO bought it (optional): linking the buyer unlocks their
+// right to leave a review (verified buyers only — listings.sold_to, §27).
+async function markSold(id) {
+  if (DEMO) { patchListing(id, { sold: true, active: false }); return; }
+  const l = findListing(id);
+  let convos = [];
+  try {
+    const { data } = await yayoSB().from("conversations")
+      .select("id, user_id, car_name, last_message, last_message_at, created_at")
+      .eq("dealer_id", DEALER.id)
+      .order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
+    convos = data || [];
+  } catch (e) { convos = []; }
+  // conversations about THIS car first — that's almost always the buyer
+  const nm = ((l && l.car_name) || "").toLowerCase();
+  convos.sort((a, b) => ((b.car_name || "").toLowerCase() === nm ? 1 : 0) - ((a.car_name || "").toLowerCase() === nm ? 1 : 0));
+
+  if (!convos.length) { patchListing(id, { sold: true, active: false }); return; }
+
+  const old = document.getElementById("sold-modal");
+  if (old) old.remove();
+  const esc = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const div = document.createElement("div");
+  div.id = "sold-modal";
+  div.className = "sold-modal";
+  div.innerHTML = `
+    <div class="sold-box">
+      <h3>${t("sold_pick_h")}</h3>
+      <p>${t("sold_pick_p")}</p>
+      <div class="sold-list">
+        ${convos.slice(0, 12).map(c => `
+        <button type="button" onclick="soldTo('${id}','${c.user_id}')">
+          <b>${esc(c.car_name || "—")}</b>
+          <span>${esc((c.last_message || "").slice(0, 60)) || t("sold_pick_convo")}</span>
+        </button>`).join("")}
+      </div>
+      <button type="button" class="sold-other" onclick="soldTo('${id}','')">${t("sold_pick_none")}</button>
+      <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+async function soldTo(id, userId) {
+  const m = document.getElementById("sold-modal");
+  if (m) m.remove();
+  const patch = { sold: true, active: false };
+  if (userId) {
+    try { // sold_to column exists after setup.sql §27 — fall back cleanly before
+      const { error } = await yayoSB().from("listings")
+        .update({ ...patch, sold_to: userId }).eq("id", id).eq("dealer_id", DEALER.id);
+      if (error) throw error;
+      const l = findListing(id);
+      if (l) { Object.assign(l, patch); renderListings(); renderStats(); }
+      return;
+    } catch (e) { /* column missing → plain sold below */ }
+  }
+  patchListing(id, patch);
+}
 function toggleActive(id) { const l = findListing(id); if (l) patchListing(id, { active: !l.active }); }
 
 async function delListing(id) {
