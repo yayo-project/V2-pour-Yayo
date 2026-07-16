@@ -58,7 +58,8 @@ async function loadCars() {
         photos: yayoPhotoList(l.photos),
         dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified), logo_url: (l.dealers && l.dealers.logo_url) || null }
       }));
-      if (ALL.length < 6) ALL = ALL.concat(DEMO_CARS.slice(0, 12 - ALL.length));
+      // same demo padding as the landing page (16) so budget-row counts match
+      if (ALL.length < 16) ALL = ALL.concat(DEMO_CARS.slice(0, 16 - ALL.length));
     } else {
       ALL = DEMO_CARS;
     }

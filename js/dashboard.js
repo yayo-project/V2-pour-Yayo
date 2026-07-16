@@ -1752,4 +1752,21 @@ window.onLangChange = () => {
   if (!document.getElementById("dash-admin").hidden) adminEnter();
 };
 
+// ── Mobile card tables: copy each column header onto its cells (data-th)
+// so the ≤700px CSS can show "Prix / Vues / Statut" labels inside the cards.
+// Rows are re-rendered via innerHTML all the time → re-stamp on any change.
+function stampTableLabels() {
+  document.querySelectorAll(".dash-table").forEach(tb => {
+    const ths = [...tb.querySelectorAll("thead th")].map(th => th.textContent.trim());
+    tb.querySelectorAll("tbody tr").forEach(tr => {
+      [...tr.children].forEach((td, i) => {
+        if (ths[i] && td.getAttribute("data-th") !== ths[i]) td.setAttribute("data-th", ths[i]);
+      });
+    });
+  });
+}
+new MutationObserver(() => stampTableLabels())
+  .observe(document.body, { childList: true, subtree: true });
+stampTableLabels();
+
 init();

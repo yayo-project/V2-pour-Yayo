@@ -31,6 +31,11 @@ const YAYO_CONFIG = {
   DEFAULT_DEST: "kinshasa",
   FEATURED_LIMIT: 6,
 
+  // Real Al Aweer market photos for the landing hero. Empty = hero stays
+  // text-only. Drop files in assets/hero/ then list them here, e.g.
+  // ["assets/hero/aweer-1.jpg", "assets/hero/aweer-2.jpg", "assets/hero/aweer-3.jpg"]
+  HERO_PHOTOS: [],
+
   // Phone login (SMS one-time code). OFF until SMS credits are funded
   // (Brevo SMS hook — queue item #5). Flip to true to bring the phone
   // tab back on connexion.html; all the code stays in place.
