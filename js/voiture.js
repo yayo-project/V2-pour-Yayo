@@ -116,7 +116,14 @@ function render() {
   renderCities();
   renderBreakdown();
   renderTransport();
-  renderSimilar();
+  loadSimilar();
+
+  // Sticky mobile bar: price + contact always within thumb's reach
+  const sticky = document.getElementById("vd-sticky");
+  if (sticky) {
+    document.getElementById("vd-sticky-price").textContent = fmt(CAR.price);
+    sticky.hidden = false;
+  }
 }
 
 // ── Photo gallery: all photos browsable big (arrows + swipe + thumbnails) ──
@@ -211,17 +218,19 @@ function renderBreakdown() {
   const cx = yayoCustoms(CAR.price, ship, CUR);
   const total = CAR.price + ship + cx.total + d.fees;
   const pct = r => (r * 100).toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " %";
+  const icoCar = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M5 11l1.6-4.2A2 2 0 018.5 5.5h7a2 2 0 011.9 1.3L19 11M4 11h16a1 1 0 011 1v4a1 1 0 01-1 1h-1M4 11a1 1 0 00-1 1v4a1 1 0 001 1h1M9.3 17h5.4"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/></svg>';
+  const icoShip = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg>';
   // Two clearly separated blocks so no buyer ever thinks the TOTAL goes to the
   // dealer: (1) car price = the only money for the seller, (2) fees paid
   // separately to the agency / government / port.
   box.innerHTML = `
     <div class="pay-block pay-dealer">
-      <div class="pay-head">🚗 ${t("bd_pay_dealer")}</div>
+      <div class="pay-head">${icoCar} ${t("bd_pay_dealer")}</div>
       <div class="cost-line"><span>${t("bd_pay_dealer_line")}</span><b>${fmt(CAR.price)}</b></div>
       <div class="pay-sub">${t("bd_pay_dealer_note")}</div>
     </div>
     <div class="pay-block">
-      <div class="pay-head">🚢 ${t("bd_fees_h")}</div>
+      <div class="pay-head">${icoShip} ${t("bd_fees_h")}</div>
       <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
       <div class="cost-line"><span>${t("bd_duty3")} (${pct(cx.c.duty)})</span><b>${fmt(cx.duty)}</b></div>
       ${cx.extra ? `<div class="cost-line"><span>${t("bd_levies")} (${pct(cx.c.extra)})</span><b>${fmt(cx.extra)}</b></div>` : ""}
@@ -328,23 +337,67 @@ async function renderDealerReviews() {
   renderReviewsWidget("vd-reviews", "dealer", CAR.dealer_id || CAR.id);
 }
 
-function renderSimilar() {
-  const pool = window.YAYO_DEMO.filter(c => c.id !== CAR.id && (c.body === CAR.body || c.car_name.split(" ")[0] === CAR.car_name.split(" ")[0])).slice(0, 3);
+// "Voitures similaires" — real listings first (same make preferred, verified
+// dealers only); the demo pool is only the pre-launch fallback.
+async function loadSimilar() {
+  let pool = [];
+  if (!String(CAR.id).startsWith("demo")) {
+    try {
+      const { data } = await yayoSB().from("listings")
+        .select("id, car_name, price, mileage, fuel, year, photo_url, photos, make, dealers!inner(verified, suspended)")
+        .eq("active", true).eq("hidden", false)
+        .eq("dealers.verified", true).eq("dealers.suspended", false)
+        .neq("id", CAR.id).limit(9);
+      const firstWord = (CAR.car_name || "").split(" ")[0].toLowerCase();
+      pool = (data || [])
+        .map(l => ({
+          id: l.id, car_name: l.car_name, price: Number(l.price) || 0,
+          mileage: l.mileage, fuel: l.fuel || "", year: l.year,
+          photo_url: l.photo_url, photos: yayoPhotoList(l.photos), verified: true
+        }))
+        .sort((a, b) => {
+          const am = a.car_name.toLowerCase().startsWith(firstWord) ? 0 : 1;
+          const bm = b.car_name.toLowerCase().startsWith(firstWord) ? 0 : 1;
+          return am - bm;
+        })
+        .slice(0, 3);
+    } catch (e) { pool = []; }
+  }
+  if (!pool.length) {
+    pool = window.YAYO_DEMO.filter(c => c.id !== CAR.id && (c.body === CAR.body || c.car_name.split(" ")[0] === CAR.car_name.split(" ")[0])).slice(0, 3);
+  }
   if (!pool.length) return;
   document.getElementById("vd-similar-sec").hidden = false;
-  const dst = DEST[YAYO_CONFIG.DEFAULT_DEST];
   document.getElementById("vd-similar").innerHTML = pool.map(c => `
   <div class="car-card" onclick="location.href='voiture.html?id=${c.id}'">
     <div class="car-img">
-      <img src="${c.photo_url}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
-      <span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>
+      <img src="${escapeHtml(c.photo_url || "")}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
+      ${c.verified ? `<span class="card-vseal">${yayoVBadge()}</span>` : ""}
+      ${c.photos && c.photos.length > 1 ? `<span class="card-pcount"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> ${c.photos.length}</span>` : ""}
+      ${c.ai ? `<span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>` : ""}
     </div>
     <div class="car-body">
       <div class="car-title">${escapeHtml(c.car_name)}</div>
-      <div class="car-meta">${c.mileage.toLocaleString("fr-FR")} km · ${escapeHtml(tFuel(c.fuel))}</div>
+      <div class="car-chips">${c.year ? `<span>${c.year}</span>` : ""}${c.mileage ? `<span>${Number(c.mileage).toLocaleString("fr-FR")} km</span>` : ""}${c.fuel ? `<span>${escapeHtml(tFuel(c.fuel))}</span>` : ""}</div>
       <div class="car-price-row"><span class="car-price">${fmt(c.price)}</span><span class="car-price-lbl">${t("a_dubai")}</span></div>
     </div>
   </div>`).join("");
+}
+
+// WhatsApp share — the viral channel in this market. Prefilled message with
+// the car, its Dubai price and the landed price for the selected city.
+function shareCar() {
+  if (!CAR) return;
+  const key = CUR === "dubai" ? YAYO_CONFIG.DEFAULT_DEST : CUR;
+  const text = t("share_txt")
+    .replace("{car}", CAR.car_name)
+    .replace("{price}", fmt(CAR.price))
+    .replace("{city}", DEST[key].name)
+    .replace("{landed}", fmt(yayoLandedTotal(CAR.price, key)));
+  const url = "https://yayo.digital/voiture.html?id=" + encodeURIComponent(CAR.id);
+  const full = text + " " + url;
+  if (navigator.share) { navigator.share({ text: full }).catch(() => {}); return; }
+  window.open("https://wa.me/?text=" + encodeURIComponent(full), "_blank", "noopener");
 }
 
 // ── In-app chat (phase 5) ──
@@ -357,6 +410,8 @@ async function openChat() {
   const panel = document.getElementById("vd-chat");
   panel.hidden = false;
   document.getElementById("vd-contact").style.display = "none";
+  const sticky = document.getElementById("vd-sticky");
+  if (sticky) sticky.hidden = true; // chat open = the bar has done its job
   panel.scrollIntoView({ behavior: "smooth", block: "center" });
   if (typeof yayoTrack === "function") yayoTrack("contact_dealer", { car: CAR && CAR.car_name });
 

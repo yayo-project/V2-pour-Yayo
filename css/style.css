@@ -93,9 +93,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* ── BRANDS ── */
 .brands{padding:36px 0 8px}
 .brands-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:12px}
-.brand{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 8px;text-align:center;font-size:13px;font-weight:700;color:var(--ink-2);transition:.18s;cursor:pointer;box-shadow:var(--sh)}
+.brand{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 8px;text-align:center;font-size:13.5px;font-weight:800;letter-spacing:1.5px;color:var(--ink-2);transition:.18s;cursor:pointer;box-shadow:var(--sh);display:flex;align-items:center;justify-content:center;min-height:58px}
 .brand:hover{border-color:var(--teal-bright);color:var(--teal);box-shadow:var(--sh);transform:translateY(-2px)}
-.brand span{display:block;font-size:20px;margin-bottom:5px}
+.brand:active{transform:scale(.97)}
 
 /* ── SECTIONS ── */
 .section{padding:52px 0}
@@ -312,6 +312,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .mkt-count{font-size:13.5px;color:var(--ink-3);font-weight:600;margin-bottom:14px}
 .mkt-empty{background:var(--card);border:1px dashed var(--line);border-radius:var(--radius);padding:60px 24px;text-align:center;box-shadow:var(--sh)}
 .mkt-empty-ico{font-size:44px;margin-bottom:12px;opacity:.55}
+.mkt-empty-ico svg{width:52px;height:52px;stroke:var(--teal);opacity:.9}
 .mkt-empty h3{font-size:17px;font-weight:800;margin-bottom:6px}
 .mkt-empty p{font-size:13.5px;color:var(--ink-3);margin-bottom:18px}
 
@@ -575,6 +576,33 @@ body.no-scroll{overflow:hidden}
 .dash-convo.unread .convo-prev{color:var(--ink,#0A2540);font-weight:600}
 .convo-time{float:right;color:#7A8CA5;font-size:11px;font-weight:400;font-style:normal;margin-left:8px}
 [dir="rtl"] .convo-time{float:left;margin-left:0;margin-right:8px}
+/* Premium pass: card overlays, chips, skeletons, sticky bar, share */
+.h-ico{width:17px;height:17px;vertical-align:-3px;color:var(--teal)}
+.car-card:active{transform:scale(.985)}
+.card-vseal{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.94);border-radius:20px;padding:3px 8px 3px 5px;display:flex;align-items:center;gap:4px;box-shadow:0 2px 8px rgba(10,37,64,.18)}
+.card-vseal .vseal{width:15px;height:15px;display:block}
+[dir="rtl"] .card-vseal{left:auto;right:10px}
+.card-pcount{position:absolute;bottom:10px;right:10px;background:rgba(7,27,51,.72);color:#fff;font-size:11px;font-weight:700;border-radius:14px;padding:3px 9px;display:flex;align-items:center;gap:5px}
+[dir="rtl"] .card-pcount{right:auto;left:10px}
+.car-chips{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 2px}
+.car-chips span{background:var(--bg-soft,#F4F7FB);border:1px solid var(--line);border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--ink-2)}
+@keyframes skel{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.skel{background:linear-gradient(90deg,#EAEFF5 25%,#F7FAFD 40%,#EAEFF5 60%);background-size:200% 100%;animation:skel 1.3s linear infinite;border-radius:10px}
+.skel-card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--sh)}
+.skel-card .skel-img{height:170px;border-radius:0}
+.skel-card .skel-body{padding:14px}
+.skel-line{height:13px;margin-bottom:9px}
+.vd-skel{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;padding:10px 0}
+@media(max-width:900px){.vd-skel{grid-template-columns:1fr}}
+.btn-wa{background:#22C15E;color:#fff;margin-top:10px}
+.btn-wa:hover{background:#1CAD53;transform:translateY(-1px)}
+.vd-sticky{position:fixed;left:0;right:0;bottom:0;z-index:180;background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 24px rgba(10,37,64,.12);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:none;align-items:center;justify-content:space-between;gap:14px}
+.vd-sticky-price b{font-size:19px;font-weight:900;color:var(--ink);display:block;line-height:1.1}
+.vd-sticky-price span{font-size:11px;color:var(--ink-3)}
+@media(max-width:900px){
+  .vd-sticky:not([hidden]){display:flex}
+  .vd-page .wrap{padding-bottom:84px}
+}
 /* Dealer "getting started" checklist */
 .start-step{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid #DFE6EE;background:#fff;border-radius:12px;padding:12px 14px;font:inherit;font-size:14px;font-weight:600;color:var(--ink,#0A2540);cursor:pointer;transition:.15s}
 .start-step:hover{border-color:var(--teal-bright,#1FD8C9)}

@@ -71,6 +71,16 @@ function yayoLandedTotal(price, destKey, shipOverride) {
   return price + ship + yayoCustoms(price, ship, destKey).total + d.fees;
 }
 
+// Skeleton shimmer cards shown while real listings load (premium loading feel)
+function yayoSkelCards(n) {
+  return Array.from({ length: n }, () => `
+  <div class="skel-card"><div class="skel skel-img"></div><div class="skel-body">
+    <div class="skel skel-line" style="width:72%"></div>
+    <div class="skel skel-line" style="width:46%"></div>
+    <div class="skel skel-line" style="width:58%;margin-bottom:0"></div>
+  </div></div>`).join("");
+}
+
 // Business avatar: logo image if uploaded, otherwise clean initials circle.
 // Used for dealers (car cards, detail page) and agencies (profile).
 function yayoAvatarHtml(name, logoUrl, lg) {

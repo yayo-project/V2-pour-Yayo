@@ -11,6 +11,12 @@
 <link rel="icon" type="image/png" href="assets/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0A2540">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Yayo">
+<meta property="og:title" content="Yayo — Votre voiture, de Dubai à chez vous">
+<meta property="og:description" content="Dealers vérifiés à Dubai, prix total transparent livré dans votre ville, livraison suivie. 100% gratuit pour les acheteurs.">
+<meta property="og:image" content="https://yayo.digital/assets/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-NR2LTEVKET"></script>
 <script>
@@ -62,10 +68,16 @@ gtag('config', 'G-NR2LTEVKET');
       <b id="crumb-name">…</b>
     </nav>
 
-    <div id="vd-loading" class="vd-loading" data-i18n="vd_loading">Chargement de la voiture…</div>
+    <div id="vd-loading" class="vd-skel">
+      <div><div class="skel" style="height:320px;border-radius:14px"></div>
+        <div class="skel skel-line" style="width:60%;height:16px;margin-top:16px"></div>
+        <div class="skel skel-line" style="width:40%"></div></div>
+      <div><div class="skel" style="height:120px;border-radius:14px"></div>
+        <div class="skel" style="height:220px;border-radius:14px;margin-top:16px"></div></div>
+    </div>
 
     <div id="vd-notfound" class="mkt-empty" hidden>
-      <div class="mkt-empty-ico">🚗</div>
+      <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.6-4.2A2 2 0 018.5 5.5h7a2 2 0 011.9 1.3L19 11M4 11h16a1 1 0 011 1v4a1 1 0 01-1 1h-1M4 11a1 1 0 00-1 1v4a1 1 0 001 1h1M9.3 17h5.4"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/></svg></div>
       <h3 data-i18n="nf_h">Annonce introuvable</h3>
       <p data-i18n="nf_p">Cette voiture a peut-être été vendue. Découvrez celles qui sont disponibles.</p>
       <a class="btn btn-solid" href="acheter.html" data-i18n="nf_btn">Voir toutes les voitures</a>
@@ -107,11 +119,11 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
 
         <div class="vd-card">
-          <h2 class="vd-h" data-i18n="landed_h">🚢 Prix total rendu chez vous</h2>
+          <h2 class="vd-h"><svg class="h-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg> <span data-i18n="landed_h">Prix total rendu chez vous</span></h2>
           <div class="fpills vd-cities" id="vd-cities"></div>
           <div id="vd-breakdown"></div>
           <div id="ct-zone" hidden>
-            <button class="btn btn-ghost-dark ct-toggle" id="ct-btn" onclick="toggleTransport()" data-i18n="ct_btn">🚢 Choisir le transport</button>
+            <button class="btn btn-ghost-dark ct-toggle" id="ct-btn" onclick="toggleTransport()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg> <span data-i18n="ct_btn">Choisir le transport</span></button>
             <div id="ct-panel" hidden>
               <h3 class="ct-h" data-i18n="ct_h">Agences de transport vérifiées</h3>
               <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
@@ -133,7 +145,8 @@ gtag('config', 'G-NR2LTEVKET');
           </div>
           <div id="vd-trust"></div>
           <div class="vd-mini-gal" id="vd-dealer-gal" hidden></div>
-          <button class="btn btn-solid btn-block" id="vd-contact" onclick="openChat()" data-i18n="contact_btn">💬 Contacter le dealer</button>
+          <button class="btn btn-solid btn-block" id="vd-contact" onclick="openChat()"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg> <span data-i18n="contact_btn">Contacter le dealer</span></button>
+          <button class="btn btn-wa btn-block" onclick="shareCar()"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2a9.9 9.9 0 00-8.4 15.16L2 22l4.98-1.6A9.94 9.94 0 1012.04 2zm0 18.14a8.2 8.2 0 01-4.2-1.15l-.3-.18-2.96.95.96-2.88-.2-.3a8.22 8.22 0 1114.9-4.64 8.24 8.24 0 01-8.2 8.2zm4.5-6.14c-.25-.12-1.46-.72-1.68-.8s-.4-.13-.56.12-.64.8-.78.97-.29.19-.54.06a6.7 6.7 0 01-1.97-1.21 7.4 7.4 0 01-1.36-1.7c-.14-.24-.02-.37.11-.5s.24-.28.37-.43a1.7 1.7 0 00.24-.41.46.46 0 00-.02-.43c-.06-.13-.56-1.35-.77-1.85s-.4-.42-.56-.43h-.48a.92.92 0 00-.67.31 2.8 2.8 0 00-.87 2.07 4.86 4.86 0 001.02 2.58 11.1 11.1 0 004.26 3.76 14.5 14.5 0 001.42.53 3.42 3.42 0 001.57.1 2.57 2.57 0 001.68-1.19 2.08 2.08 0 00.14-1.18c-.06-.11-.22-.17-.47-.29z"/></svg> <span data-i18n="share_btn">Partager sur WhatsApp</span></button>
           <p class="vd-free" data-i18n="contact_free">Gratuit · réponse en général sous quelques heures</p>
         </div>
 
@@ -144,7 +157,7 @@ gtag('config', 'G-NR2LTEVKET');
 
         <!-- Chat panel (in-app, phase 5) -->
         <div class="vd-card vd-chat" id="vd-chat" hidden>
-          <h2 class="vd-h" data-i18n="chat_h">💬 Votre conversation</h2>
+          <h2 class="vd-h"><svg class="h-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg> <span data-i18n="chat_h">Votre conversation</span></h2>
           <div class="chat-trust" id="chat-trust"></div>
           <div class="chat-box" id="chat-box"></div>
           <form class="chat-form" onsubmit="return sendMsg(event)">
@@ -171,6 +184,12 @@ gtag('config', 'G-NR2LTEVKET');
 </main>
 
 <!-- ═══ FOOTER ═══ -->
+<!-- Sticky mobile bar: price + contact, always in reach (hidden once chat opens) -->
+<div class="vd-sticky" id="vd-sticky" hidden>
+  <div class="vd-sticky-price"><b id="vd-sticky-price"></b><span data-i18n="a_dubai">à Dubai</span></div>
+  <button class="btn btn-solid" onclick="openChat()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg> <span data-i18n="contact_btn">Contacter le dealer</span></button>
+</div>
+
 <footer class="footer">
   <div class="wrap footer-in">
     <div class="footer-brand">

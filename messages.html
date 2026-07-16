@@ -61,16 +61,20 @@ gtag('config', 'G-NR2LTEVKET');
       </div>
     </div>
 
-    <div id="mx-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+    <div id="mx-loading">
+      <div class="skel" style="height:64px;border-radius:12px;margin-bottom:10px"></div>
+      <div class="skel" style="height:64px;border-radius:12px;margin-bottom:10px"></div>
+      <div class="skel" style="height:64px;border-radius:12px"></div>
+    </div>
 
     <div id="mx-login" class="mkt-empty" hidden>
-      <div class="mkt-empty-ico">🔑</div>
+      <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
       <h3 data-i18n="msgs_login">Connectez-vous pour voir vos messages.</h3>
       <a class="btn btn-solid" href="connexion.html?next=messages.html" data-i18n="connexion">Connexion</a>
     </div>
 
     <div id="mx-empty" class="mkt-empty" hidden>
-      <div class="mkt-empty-ico">💬</div>
+      <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg></div>
       <h3 data-i18n="msgs_empty_h">Aucune conversation pour l'instant</h3>
       <p data-i18n="msgs_empty_p">Contactez un dealer depuis une annonce — sa réponse arrivera ici.</p>
       <a class="btn btn-solid" href="acheter.html" data-i18n="fav_btn">Voir les voitures</a>
