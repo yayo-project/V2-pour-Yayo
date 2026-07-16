@@ -22,6 +22,10 @@
   --sh-lg:0 4px 14px rgba(10,37,64,.09),0 22px 54px rgba(10,37,64,.15);
 }
 *{margin:0;padding:0;box-sizing:border-box}
+/* hidden ALWAYS wins — a class with display:grid/flex must never beat the
+   hidden attribute (caused the ghost skeleton above the car photo and the
+   old red "0" badge). Elements that toggle need :not([hidden]) patterns. */
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
 a{color:inherit;text-decoration:none}
