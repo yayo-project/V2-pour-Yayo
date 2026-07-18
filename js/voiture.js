@@ -75,6 +75,9 @@ function render() {
   document.getElementById("vd-meta").textContent =
     [CAR.mileage ? CAR.mileage.toLocaleString("fr-FR") + " km" : "", CAR.fuel].filter(Boolean).join(" · ");
   document.getElementById("vd-price").textContent = fmt(CAR.price);
+  // AED equivalent (fixed peg) — helps Dubai on-site buyers and mirrors how
+  // the dealer priced the car; Africa-bound buyers keep thinking in USD.
+  document.getElementById("vd-price-aed").textContent = "≈ " + yayoFmtAed(CAR.price);
 
   renderGallery();
 

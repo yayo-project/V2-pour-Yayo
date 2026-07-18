@@ -488,6 +488,8 @@ function openForm(l) {
   fillMakeSelect(mm.make);
   document.getElementById("lf-model").value = mm.model;
   document.getElementById("lf-price").value = l ? l.price : "";
+  document.getElementById("lf-cur").value = "USD"; // stored prices are USD
+  lfCurHint();
   document.getElementById("lf-year").value = l ? (l.year || "") : "";
   document.getElementById("lf-km").value = l ? (l.mileage || "") : "";
   document.getElementById("lf-cond").value = (l && l.condition) || "Très bon état";
@@ -537,7 +539,7 @@ async function saveListing(e) {
     car_name: mm.name,
     make: mm.make,
     model: mm.model,
-    price: parseInt(document.getElementById("lf-price").value, 10),
+    price: lfPriceUsd(),
     year: parseInt(document.getElementById("lf-year").value, 10) || null,
     mileage: parseInt(document.getElementById("lf-km").value, 10) || null,
     condition: document.getElementById("lf-cond").value,
@@ -583,6 +585,24 @@ async function patchListing(id, patch) {
     Object.assign(l, patch); renderListings(); renderStats();
   } catch (e) { alert(t("au_err_generic") + (e.message || e)); }
 }
+// ── Price in AED or USD: dealers think in dirhams (fixed peg $1 = 3.6725
+// AED), buyers always see USD. The DB stores USD; AED converts on save. ──
+function lfPriceUsd() {
+  const raw = parseInt(document.getElementById("lf-price").value, 10) || 0;
+  return document.getElementById("lf-cur").value === "AED" ? yayoAedToUsd(raw) : raw;
+}
+function lfCurHint() {
+  const hint = document.getElementById("lf-cur-hint");
+  if (!hint) return;
+  const cur = document.getElementById("lf-cur").value;
+  const raw = parseInt(document.getElementById("lf-price").value, 10) || 0;
+  if (!raw) { hint.hidden = true; return; }
+  hint.hidden = false;
+  hint.textContent = cur === "AED"
+    ? `${t("d_cur_shown")} ${yayoFmt(yayoAedToUsd(raw))}`
+    : `≈ ${yayoFmtAed(raw)}`;
+}
+
 // "Vendu" asks WHO bought it (optional): linking the buyer unlocks their
 // right to leave a review (verified buyers only — listings.sold_to, §27).
 async function markSold(id) {
@@ -1442,6 +1462,7 @@ function bizStatus(x) {
 function bizActionsHtml(type, x) {
   return `
     <button onclick="adOpenBiz('${type}','${x.id}')">${t("ad_act_profile")}</button>
+    <button onclick="adRename('${type}','${x.id}')">${t("ad_act_rename")}</button>
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
     ${x.verified ? "" : `<button onclick="adReject('${type}','${x.id}')">${t("ad_act_reject")}</button>`}
@@ -1537,6 +1558,17 @@ function adVerify(type, id, val) {
   adBizAction(type, id,
     () => adRpc("admin_set_verified", { subject: type, sid: id, val }),
     x => { x.verified = val; if (val) x.rejected_reason = null; });
+}
+// Rename a business (e.g. a name typed in Arabic script → Latin letters so
+// every buyer can read it). Goes through the audited §28 RPC.
+function adRename(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  const newname = prompt(t("ad_rename_ask"), x.name || "");
+  if (newname === null || !newname.trim() || newname.trim() === x.name) return;
+  adBizAction(type, id,
+    () => adRpc("admin_rename_business", { subject: type, sid: id, newname: newname.trim() }),
+    y => { y.name = newname.trim(); });
 }
 function adReject(type, id) {
   const x = bizList(type).find(r => String(r.id) === String(id));

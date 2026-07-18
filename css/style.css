@@ -952,3 +952,10 @@ body.no-scroll{overflow:hidden}
 .agl-card{margin-bottom:14px;background:var(--card);box-shadow:var(--sh)}
 .agl-card .ct-actions .btn{min-height:44px;flex:1;justify-content:center}
 .agl-car{font-size:13.5px;color:var(--ink-2);background:var(--teal-tint);border-radius:10px;padding:10px 14px;margin-top:4px}
+
+/* ═══ AED prices + admin rename ═══ */
+.vd-price-aed{font-size:13px;font-weight:700;color:var(--ink-3);margin-top:3px}
+.price-row{display:flex;gap:8px}
+.price-row input{flex:1;min-width:0}
+.price-row select{flex:0 0 auto;width:auto;padding:0 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:700;font-size:13.5px;color:var(--ink)}
+.lf-cur-hint{font-size:12.5px;font-weight:700;color:var(--teal-dark);margin-top:6px}

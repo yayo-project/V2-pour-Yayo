@@ -55,6 +55,16 @@ function yayoFmt(n) {
   return "$" + Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[   ]/g, " ");
 }
 
+// AED ↔ USD: the dirham is PEGGED to the dollar (fixed official rate since
+// 1997), so this conversion is exact and never needs a live feed.
+// Dealers may type prices in AED; buyers always see USD (stored in USD).
+const AED_PER_USD = 3.6725;
+function yayoAedToUsd(aed) { return Math.round((Number(aed) || 0) / AED_PER_USD); }
+function yayoFmtAed(usd) {
+  // reuse yayoFmt so the thousands separator is the same non-breaking space
+  return yayoFmt((Number(usd) || 0) * AED_PER_USD).replace("$", "AED ");
+}
+
 // ── Customs estimation (published formulas, per country) ──
 // Returns every line of the estimate so pages can show a real breakdown.
 // base = CIF (car price + freight) — what customs offices actually tax.

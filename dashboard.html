@@ -547,8 +547,15 @@ gtag('config', 'G-NR2LTEVKET');
                 <input id="lf-model" type="text" required maxlength="60" data-i18n-ph="d_f_model_ph" placeholder="Ex : Land Cruiser GXR">
               </div>
               <div class="field">
-                <label for="lf-price" data-i18n="d_f_price">Prix (USD, à Dubai)</label>
-                <input id="lf-price" type="number" required min="500" max="2000000" inputmode="numeric">
+                <label for="lf-price" data-i18n="d_f_price">Prix à Dubai</label>
+                <div class="price-row">
+                  <input id="lf-price" type="number" required min="100" max="8000000" inputmode="numeric" oninput="lfCurHint()">
+                  <select id="lf-cur" onchange="lfCurHint()" aria-label="Devise">
+                    <option value="USD">USD $</option>
+                    <option value="AED">AED د.إ</option>
+                  </select>
+                </div>
+                <p class="lf-cur-hint" id="lf-cur-hint" hidden></p>
                 <button type="button" class="ai-mini-btn" id="est-btn" onclick="estimatePrice()" data-i18n="d_est_btn">💡 Prix conseillé</button>
                 <p class="ai-mini-out" id="est-out" hidden></p>
               </div>

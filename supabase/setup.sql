@@ -860,3 +860,23 @@ create policy reviews_insert_buyers on public.reviews
         where s.user_id = auth.uid() and s.agency_id::text = subject_id::text))
     )
   );
+
+-- ═══════════════════════════════════════════════════════════
+-- 28) ADMIN RENAME — fix a business display name (e.g. a
+-- dealership typed in Arabic script that buyers can't read).
+-- Same pattern as the other admin actions: role check + audit.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_rename_business(subject text, sid uuid, newname text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if newname is null or length(trim(newname)) < 2 then
+    raise exception 'name too short';
+  end if;
+  if subject = 'dealer' then
+    update dealers set name = trim(newname) where id = sid;
+  else
+    update shipping_agencies set name = trim(newname) where id = sid;
+  end if;
+  perform _yayo_log('rename', subject, sid::text, trim(newname));
+end $$;
