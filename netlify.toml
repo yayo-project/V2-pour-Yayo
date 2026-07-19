@@ -4,6 +4,13 @@
 [functions]
   directory = "netlify/functions"
 
+# /sitemap.xml is generated live so every real listing is indexed by Google
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "/.netlify/functions/sitemap"
+  status = 200
+  force = true
+
 # Weekly founder digest — every Monday 08:00 UTC (12:00 Dubai)
 [functions."weekly-stats"]
   schedule = "0 8 * * 1"

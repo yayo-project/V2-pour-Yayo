@@ -109,6 +109,10 @@ gtag('config', 'G-NR2LTEVKET');
     <a class="btn btn-solid" href="acheter.html?dest=douala" style="display:inline-block">Voir les voitures pour Douala →</a>
   </p>
 
+  <h2 id="seo-cars-h" hidden>Voitures vérifiées disponibles à Dubai en ce moment</h2>
+  <p id="seo-cars-p" style="font-size:13.5px" hidden>Annonces réelles de dealers vérifiés — avec le coût total livré à Douala estimé sur chaque voiture.</p>
+  <div class="car-grid" id="seo-cars" style="margin:14px 0 6px"></div>
+
   <h2 style="font-size:15px;margin-top:34px">Autres destinations</h2>
   <p style="font-size:13.5px"><a href="importer-voiture-dubai-kinshasa.html">Dubai → Kinshasa</a> · <a href="importer-voiture-dubai-abidjan.html">Dubai → Abidjan</a> · <a href="importer-voiture-dubai-dakar.html">Dubai → Dakar</a></p>
 </main>
@@ -144,6 +148,31 @@ function seoCalc() {
     <div class="cost-total"><span>Coût total du projet — Douala</span><span class="val">≈ ${fmt(total)}</span></div>`;
 }
 document.addEventListener("DOMContentLoaded", seoCalc);
+// Real verified listings — internal links Google follows + instant value
+// for organic visitors. Section stays hidden until real cars exist.
+(async () => {
+  try {
+    const { data } = await yayoSB().from("listings")
+      .select("id,car_name,price,year,mileage,photo_url,dealers!inner(name,verified,suspended)")
+      .eq("active", true).eq("sold", false).eq("hidden", false)
+      .eq("dealers.verified", true).eq("dealers.suspended", false)
+      .order("created_at", { ascending: false }).limit(6);
+    if (!data || !data.length) return;
+    const esc = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    document.getElementById("seo-cars-h").hidden = false;
+    document.getElementById("seo-cars-p").hidden = false;
+    document.getElementById("seo-cars").innerHTML = data.map(l => `
+    <a class="car-card" href="voiture.html?id=${l.id}" style="text-decoration:none;color:inherit">
+      <div class="car-img"><img src="${esc(l.photo_url || "")}" alt="${esc(l.car_name)} à vendre à Dubai" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
+      <div class="car-body">
+        <div class="car-title">${esc(l.car_name)}</div>
+        <div class="car-chips">${l.year ? `<span>${l.year}</span>` : ""}${l.mileage ? `<span>${Number(l.mileage).toLocaleString("fr-FR")} km</span>` : ""}</div>
+        <div class="car-price-row"><span class="car-price">${yayoFmt(l.price)}</span><span class="car-price-lbl">à Dubai</span></div>
+        <div class="landed"><span class="landed-lbl">Coût total livré Douala</span><span class="landed-val">≈ ${yayoFmt(yayoLandedTotal(l.price, "douala"))}</span></div>
+      </div>
+    </a>`).join("");
+  } catch (e) { /* section stays hidden */ }
+})();
 </script>
 </body>
 </html>

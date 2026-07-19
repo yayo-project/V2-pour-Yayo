@@ -68,7 +68,8 @@ function render() {
   document.getElementById("vd-loading").hidden = true;
   if (!CAR) { document.getElementById("vd-notfound").hidden = false; return; }
   document.getElementById("vd-content").hidden = false;
-  document.title = CAR.car_name + " — Yayo";
+  document.title = CAR.car_name + " à Dubai — prix livré en Afrique | Yayo";
+  renderSeo();
 
   document.getElementById("crumb-name").textContent = CAR.car_name;
   document.getElementById("vd-title").textContent = CAR.car_name;
@@ -127,6 +128,55 @@ function render() {
     document.getElementById("vd-sticky-price").textContent = fmt(CAR.price);
     sticky.hidden = false;
   }
+}
+
+// ── Per-car SEO: description, canonical, OG tags and Vehicle structured
+// data so each REAL listing can rank on Google as its own result
+// ("Toyota Land Cruiser prix Dubai Kinshasa") with price rich snippets. ──
+function renderSeo() {
+  if (String(CAR.id).startsWith("demo")) return; // fictional demo cars are never indexed as products
+  const url = "https://yayo.digital/voiture.html?id=" + encodeURIComponent(CAR.id);
+  const landed = yayoLandedTotal(CAR.price, "kinshasa");
+  const desc = `${CAR.car_name}${CAR.year ? " " + CAR.year : ""} à vendre à Dubai chez ${CAR.dealer.name} : $${Math.round(CAR.price).toLocaleString("fr-FR")}` +
+    ` — coût total livré Kinshasa ≈ $${Math.round(landed).toLocaleString("fr-FR")} (transport + douane, estimation). Dealer vérifié, chat direct sur Yayo.`;
+  const canon = document.getElementById("vd-canonical");
+  if (canon) canon.href = url;
+  const md = document.querySelector('meta[name="description"]');
+  if (md) md.content = desc;
+  const ogt = document.querySelector('meta[property="og:title"]');
+  if (ogt) ogt.content = CAR.car_name + " — " + fmt(CAR.price) + " à Dubai | Yayo";
+  const ogd = document.querySelector('meta[property="og:description"]');
+  if (ogd) ogd.content = desc;
+  const ogi = document.querySelector('meta[property="og:image"]');
+  if (ogi && CAR.photo_url) ogi.content = CAR.photo_url;
+
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": CAR.car_name,
+    "url": url,
+    "image": (CAR.photos && CAR.photos.length ? CAR.photos : [CAR.photo_url]).filter(Boolean),
+    "description": CAR.description || desc,
+    "brand": { "@type": "Brand", "name": (CAR.car_name || "").split(" ")[0] },
+    "itemCondition": "https://schema.org/UsedCondition",
+    "offers": {
+      "@type": "Offer",
+      "price": Math.round(CAR.price),
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock",
+      "url": url,
+      "seller": { "@type": "AutoDealer", "name": CAR.dealer.name, "areaServed": "AE" }
+    }
+  };
+  if (CAR.year) ld.model = CAR.car_name;
+  let s = document.getElementById("vd-ldjson");
+  if (!s) {
+    s = document.createElement("script");
+    s.type = "application/ld+json";
+    s.id = "vd-ldjson";
+    document.head.appendChild(s);
+  }
+  s.textContent = JSON.stringify(ld);
 }
 
 // ── Photo gallery: all photos browsable big (arrows + swipe + thumbnails) ──
