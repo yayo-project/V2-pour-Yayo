@@ -912,3 +912,69 @@ create unique index if not exists listings_dealer_source_uniq
 update public.dealers
   set promo_limit = -1, promo_until = current_date + interval '3 months'
   where verified = true and promo_until is null;
+-- ═══════════════════════════════════════════════════════════
+-- 30) LISTING LIMITS — the rule, admin control, auto-promo.
+-- Effective limit = promo_limit while today < promo_until,
+-- else normal_limit; -1 = unlimited. Enforced by a DB trigger
+-- (like verification §15): a hacked client cannot exceed it.
+-- Sold and dormant cars do not count toward the limit.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_set_limits(sid uuid, p_plan text, p_normal int, p_promo int, p_until date)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  update dealers set
+    plan = coalesce(p_plan, plan),
+    normal_limit = coalesce(p_normal, normal_limit),
+    promo_limit = p_promo,
+    promo_until = p_until
+  where id = sid;
+  perform _yayo_log('set_limits', 'dealer', sid::text,
+    coalesce(p_plan,'-') || ' n=' || coalesce(p_normal::text,'-') ||
+    ' promo=' || coalesce(p_promo::text,'-') || ' until=' || coalesce(p_until::text,'-'));
+end $$;
+
+-- verifying a dealer for the FIRST time starts their 3-month
+-- unlimited launch promo automatically (only if no promo set yet)
+create or replace function public.admin_set_verified(subject text, sid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set verified = val, rejected_reason = case when val then null else rejected_reason end where id = sid;
+    if val then
+      update dealers set promo_limit = -1, promo_until = current_date + interval '3 months'
+        where id = sid and promo_until is null;
+    end if;
+  else
+    update shipping_agencies set verified = val, rejected_reason = case when val then null else rejected_reason end where id = sid;
+  end if;
+  perform _yayo_log(case when val then 'verify' else 'unverify' end, subject, sid::text, null);
+end $$;
+
+-- the enforcement trigger: block INSERTs beyond the effective limit
+create or replace function public.yayo_enforce_listing_limit()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare d record; lim int; cnt int;
+begin
+  if coalesce(public.yayo_admin_role(),'') in ('super_admin','admin_dealers') then
+    return new;
+  end if;
+  select * into d from dealers where id = new.dealer_id;
+  if d is null then return new; end if;
+  if d.promo_until is not null and current_date < d.promo_until and d.promo_limit is not null then
+    lim := d.promo_limit;
+  else
+    lim := coalesce(d.normal_limit, 10);
+  end if;
+  if lim < 0 then return new; end if;
+  select count(*) into cnt from listings
+    where dealer_id = new.dealer_id and coalesce(sold,false) = false and coalesce(dormant,false) = false;
+  if cnt >= lim then
+    raise exception 'YAYO_LIMIT_REACHED';
+  end if;
+  return new;
+end $$;
+drop trigger if exists yayo_listing_limit on public.listings;
+create trigger yayo_listing_limit before insert on public.listings
+  for each row execute function public.yayo_enforce_listing_limit();

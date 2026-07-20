@@ -376,6 +376,19 @@ function renderStats() {
   document.getElementById("stat-convos").textContent = CONVOS.length;
   document.getElementById("stat-unread").textContent = Object.values(UNREAD).reduce((s, n) => s + n, 0);
   document.getElementById("stat-views").textContent = LISTINGS.reduce((s, l) => s + (l.views || 0), 0);
+  renderLimitLine();
+}
+
+// "Annonces : 4 / Illimité (offre de lancement jusqu'au 18 oct)" — the dealer
+// always knows where they stand; the promo has visible value from day one.
+function renderLimitLine() {
+  const el = document.getElementById("lst-limit");
+  if (!el || !DEALER) return;
+  const L = yayoDealerLimit(DEALER);
+  const used = LISTINGS.filter(l => !l.sold && !l.dormant).length;
+  const cap = L.limit < 0 ? t("lim_unlimited") : String(L.limit);
+  el.hidden = false;
+  el.innerHTML = `${t("lim_usage")} : <b>${used} / ${cap}</b>${L.promo ? ` <em>(${t("lim_promo_until")} ${new Date(L.until).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})</em>` : ""}`;
 }
 
 function renderOverview() {
@@ -570,7 +583,11 @@ async function saveListing(e) {
     await loadListings();
     closeForm(); renderListings(); renderStats(); renderStartChecklist();
   } catch (err2) {
-    err.hidden = false; err.textContent = t("au_err_generic") + (err2.message || err2);
+    err.hidden = false;
+    // the §30 DB trigger blocks inserts beyond the dealer's limit — say it nicely
+    err.textContent = /YAYO_LIMIT_REACHED/.test(err2.message || "")
+      ? t("d_limit_reached")
+      : t("au_err_generic") + (err2.message || err2);
   }
   return false;
 }
@@ -1463,6 +1480,7 @@ function bizActionsHtml(type, x) {
   return `
     <button onclick="adOpenBiz('${type}','${x.id}')">${t("ad_act_profile")}</button>
     <button onclick="adRename('${type}','${x.id}')">${t("ad_act_rename")}</button>
+    ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
     ${x.verified ? "" : `<button onclick="adReject('${type}','${x.id}')">${t("ad_act_reject")}</button>`}
@@ -1486,7 +1504,7 @@ function adRenderBiz(type) {
     const [cls, lbl] = bizStatus(x);
     const contact = [x.email, x.whatsapp].filter(Boolean).map(escapeHtml).join("<br>") || "—";
     const place = escapeHtml(x.city || x.country || "");
-    const extra = type === "dealer" ? ` · ${nListings(x.id)} ${t("ad_d_listings")}` : "";
+    const extra = type === "dealer" ? ` · ${nListings(x.id)} ${t("ad_d_listings")} · ${adLimitLabel(x)}` : "";
     return `
     <tr>
       <td class="dash-td-car">${yayoAvatarHtml(x.name, x.logo_url)} <b>${escapeHtml(x.name)}</b><span class="ad-place">${place}${extra}</span></td>
@@ -1570,6 +1588,56 @@ function adRename(type, id) {
     () => adRpc("admin_rename_business", { subject: type, sid: id, newname: newname.trim() }),
     y => { y.name = newname.trim(); });
 }
+// ── Listing limits (data, not code): edit plan / limits per dealer ──
+// Compact label for lists: "∞ promo → 18/10" or "10" or "promo 25 → 18/10"
+function adLimitLabel(x) {
+  const L = yayoDealerLimit(x);
+  const n = L.limit < 0 ? "∞" : String(L.limit);
+  return L.promo ? `${n} <em class="ad-promo">(promo → ${adDate(L.until)})</em>` : n;
+}
+
+function adLimits(id) {
+  const x = bizList("dealer").find(r => String(r.id) === String(id));
+  if (!x) return;
+  const old = document.getElementById("sold-modal");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.id = "sold-modal";
+  div.className = "sold-modal";
+  const esc = s => (s == null ? "" : String(s).replace(/"/g, "&quot;"));
+  div.innerHTML = `
+    <div class="sold-box">
+      <h3>${t("ad_lim_h")} — ${escapeHtml(x.name)}</h3>
+      <p>${t("ad_lim_p")}</p>
+      <div class="field"><label>${t("ad_lim_plan")}</label>
+        <select id="lim-plan">
+          ${["starter", "pro", "elite"].map(p => `<option value="${p}"${(x.plan || "starter") === p ? " selected" : ""}>${p}</option>`).join("")}
+        </select></div>
+      <div class="field"><label>${t("ad_lim_normal")}</label>
+        <input id="lim-normal" type="number" min="-1" max="10000" value="${esc(x.normal_limit != null ? x.normal_limit : 10)}"></div>
+      <div class="field"><label>${t("ad_lim_promo")}</label>
+        <input id="lim-promo" type="number" min="-1" max="10000" value="${esc(x.promo_limit)}"></div>
+      <div class="field"><label>${t("ad_lim_until")}</label>
+        <input id="lim-until" type="date" value="${esc(x.promo_until || "")}"></div>
+      <button type="button" class="btn btn-solid btn-block" onclick="adLimitsSave('${x.id}')">${t("ad_lim_save")}</button>
+      <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+async function adLimitsSave(id) {
+  const plan = document.getElementById("lim-plan").value;
+  const normal = parseInt(document.getElementById("lim-normal").value, 10);
+  const promoRaw = document.getElementById("lim-promo").value.trim();
+  const promo = promoRaw === "" ? null : parseInt(promoRaw, 10);
+  const until = document.getElementById("lim-until").value || null;
+  const m = document.getElementById("sold-modal");
+  if (m) m.remove();
+  adBizAction("dealer", id,
+    () => adRpc("admin_set_limits", { sid: id, p_plan: plan, p_normal: isNaN(normal) ? null : normal, p_promo: promo, p_until: until }),
+    x => { x.plan = plan; if (!isNaN(normal)) x.normal_limit = normal; x.promo_limit = promo; x.promo_until = until; });
+}
+
 function adReject(type, id) {
   const x = bizList(type).find(r => String(r.id) === String(id));
   const reason = prompt(t("ad_reject_reason"), x && x.rejected_reason || "");

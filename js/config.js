@@ -65,6 +65,16 @@ function yayoFmtAed(usd) {
   return yayoFmt((Number(usd) || 0) * AED_PER_USD).replace("$", "AED ");
 }
 
+// ── Listing limit rule (THE single rule, mirrored by the DB trigger §30) ──
+// promo active (today < promo_until) → promo_limit, else normal_limit.
+// -1 = unlimited. Returns {limit, promo, until}.
+function yayoDealerLimit(d) {
+  if (!d) return { limit: 10, promo: false, until: null };
+  const promoActive = d.promo_until && new Date(d.promo_until) > new Date() && d.promo_limit != null;
+  const limit = promoActive ? Number(d.promo_limit) : Number(d.normal_limit != null ? d.normal_limit : 10);
+  return { limit, promo: !!promoActive, until: promoActive ? d.promo_until : null };
+}
+
 // ── Customs estimation (published formulas, per country) ──
 // Returns every line of the estimate so pages can show a real breakdown.
 // base = CIF (car price + freight) — what customs offices actually tax.

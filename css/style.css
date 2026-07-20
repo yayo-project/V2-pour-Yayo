@@ -959,3 +959,13 @@ body.no-scroll{overflow:hidden}
 .price-row input{flex:1;min-width:0}
 .price-row select{flex:0 0 auto;width:auto;padding:0 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff;font-weight:700;font-size:13.5px;color:var(--ink)}
 .lf-cur-hint{font-size:12.5px;font-weight:700;color:var(--teal-dark);margin-top:6px}
+
+/* ═══ Listing limits (step 2) ═══ */
+.lst-limit{font-size:13px;font-weight:700;color:var(--ink-2);margin:0}
+.lst-limit b{color:var(--ink)}
+.lst-limit em{font-style:normal;color:var(--teal-dark);font-weight:700}
+.ad-promo{font-style:normal;color:var(--teal-dark)}
+.sold-box .field{margin-bottom:10px}
+.sold-box .field label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:4px}
+.sold-box .field input,.sold-box .field select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff}
+.sold-box .btn-block{margin-top:4px}
