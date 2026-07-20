@@ -880,3 +880,35 @@ begin
   end if;
   perform _yayo_log('rename', subject, sid::text, trim(newname));
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 29) WEBSITE IMPORT + LISTING LIMITS — schema only (step 1).
+-- Limits are DATA on the dealer row, never code:
+--   effective limit = promo_limit while today < promo_until,
+--   else normal_limit. -1 = unlimited (sentinel).
+-- Import fields let a listing remember where it came from so
+-- re-imports skip duplicates. dormant = hidden by a limit
+-- downgrade (NOT deleted, NOT the dealer's active switch,
+-- NOT the admin's hidden flag — those already exist).
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers add column if not exists plan text not null default 'starter';
+alter table public.dealers add column if not exists normal_limit int not null default 10;
+alter table public.dealers add column if not exists promo_limit int;
+alter table public.dealers add column if not exists promo_until date;
+
+alter table public.listings add column if not exists source_url text;
+alter table public.listings add column if not exists import_method text;
+alter table public.listings add column if not exists imported_at timestamptz;
+alter table public.listings add column if not exists dormant boolean not null default false;
+
+-- one car from one source site can exist only once per dealer —
+-- duplicate protection at the database level, not just in code
+create unique index if not exists listings_dealer_source_uniq
+  on public.listings (dealer_id, source_url) where source_url is not null;
+
+-- launch promo: every currently verified dealer (the "first dealers")
+-- gets UNLIMITED for 3 months from today. New dealers get their own
+-- 3 months at verification time (wired in step 2).
+update public.dealers
+  set promo_limit = -1, promo_until = current_date + interval '3 months'
+  where verified = true and promo_until is null;

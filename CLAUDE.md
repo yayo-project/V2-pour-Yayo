@@ -142,3 +142,53 @@ Yayo has not completed real buyer transactions yet. NEVER use fake testimonials,
 - Founder is non-technical: when you DO explain, use simple words, no jargon — but explain AFTER building, not before. Show working results, not questions.
 - Commit messages in English, short and clear. Use PRs so Netlify makes deploy previews.
 - Every interactive element must work end to end before you call a page done.
+
+## Website Import + Listing Limits
+
+### Purpose
+Two connected features:
+1. Website Import — a dealer pastes his website link and all his cars appear in his dashboard, exactly as if added manually.
+2. Data-driven listing limits — how many listings each dealer can publish, changeable in the future by editing data (no code deploy). Launches as UNLIMITED for the first dealers, controllable later.
+
+### Locked decisions (do not violate)
+- Buyers are always free. Unchanged.
+- Login never auto-verifies dealer status. The Vérifié badge still requires registration + license upload + admin review. Import publishes THROUGH this existing flow, never around it.
+- Human-triggered first, autonomy later: ship manual import + review gate first; auto-sync is a later upgrade.
+- Reuse existing systems: multi-photo gallery, Vérifié flow, auth roles, Supabase schema. Do not rebuild them.
+- Always produce complete deployable files; list all changes and get approval before building.
+
+### Website Import — behaviour
+- Dealer flow: paste link (+ "I own this site" checkbox) → Yayo reads site → review screen (all cars pre-ticked, cover photo + photo count) → "Confirmer tout" → cars appear in dashboard like manual listings.
+- Extraction: try structured data (JSON-LD / schema.org) first; fall back to Groq (LLaMA) on raw HTML. Crawl paginated inventory pages automatically.
+- Photos: collect ALL photos per car, grouped under one listing. First photo = cover; rest = gallery. Download and re-host into Supabase storage — never hotlink. Also check Open Graph, lazy-load attrs (data-src/data-lazy), and <noscript> to catch JS-hidden photos.
+- Quantity: up to ~50 cars import in one shot; 50+ use a background function with a progress bar, listings appearing in batches. Photos are the main time cost.
+- Duplicate prevention: each car gets a fingerprint = its own source_url + dealer id (fallback: make+model+year+price+first-photo-hash). Before writing, check if the dealer already has that fingerprint. Match → skip (optionally update price/photos). No match → import. Same URL pasted twice → "Everything's already imported."
+- Re-import (ship first): dealer clicks import again → Yayo shows ONLY new cars; existing listings untouched.
+- Deferred: auto-sync (nightly cron re-read → pending tray), and headless browser for SPA sites. For SPA sites now, detect and tell the dealer to add manually.
+
+### Listing limits — data-driven control
+- Principle: the limit is DATA, not code. It lives on each dealer's record and is edited from the admin panel — never a code deploy.
+- Dealer fields: plan (starter/pro/elite), normal_limit (Starter 10 / Pro 50 / Elite unlimited), promo_limit (a number or unlimited), promo_until (date).
+- The single rule: if today < promo_until → use promo_limit; else → use normal_limit. This handles number promos, unlimited promos, VIP deals, and campaigns with one rule.
+- Unlimited is a sentinel value (e.g. -1 / unlimited:true), handled by the same rule — nothing special to build.
+- Launch: first dealers get promo_limit = unlimited with a promo_until date.
+- Graceful downgrade: when a promo ends, dealer drops to normal_limit. Extra listings become status = dormant (hidden, NOT deleted), with an upgrade prompt. Dormant listings auto-reactivate when the dealer makes room (upgrade or frees a slot).
+- Import respects the effective limit: always READ all cars; PUBLISH up to the limit; overflow cars show as locked with an upgrade prompt. During the unlimited promo, nothing is locked.
+
+### Schema additions
+- listings: source_url, import_method (jsonld/llm/manual), imported_at, status (active/dormant)
+- dealers: plan, normal_limit, promo_limit, promo_until
+
+### Build order (each step tested before the next)
+1. Schema fields + migration.
+2. Limit rule + admin control; set first dealers to unlimited.
+3. Import function (JSON-LD first → Groq fallback → pagination → fingerprint dedupe → re-host photos). Returns candidates, does not publish.
+4. Dashboard button + review screen; publish through existing Vérifié flow; respect effective limit.
+5. Graceful downgrade + dormant listings.
+6. (Later) auto-sync; headless browser for SPA sites.
+
+### Open decisions to confirm with Yayo
+- Promo timing: per-dealer 3 months from signup (recommended) vs one global window.
+- Fallback limit after promo ends (Starter 10, or a softer step).
+- Is import available on Starter, or Pro+ only.
+- Exact length of the launch unlimited promo, and how many "first" dealers qualify.
