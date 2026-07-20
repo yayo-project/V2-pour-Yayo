@@ -179,6 +179,10 @@ async function sitemapListingUrls(origin) {
 }
 // og: meta + gallery photos from a detail page (deterministic — no AI)
 function detailPhotos(html, pageUrl) {
+  // cut the page at the "similar cars" section — its photos belong to OTHER
+  // cars and were bleeding into every import candidate
+  const cut = html.search(/similar\s+listing|related\s+(cars|vehicles|listings)|voitures\s+similaires|سيارات\s+مشابهة/i);
+  if (cut > 400) html = html.slice(0, cut);
   const set = new Set();
   const og = html.match(/<meta[^>]*property\s*=\s*["']og:image["'][^>]*content\s*=\s*["']([^"']+)["']/i)
     || html.match(/<meta[^>]*content\s*=\s*["']([^"']+)["'][^>]*property\s*=\s*["']og:image["']/i);
