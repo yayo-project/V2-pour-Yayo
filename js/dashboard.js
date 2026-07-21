@@ -451,7 +451,7 @@ function impCall(payload) {
 }
 function impShow(id) { ["imp-start", "imp-loading", "imp-review", "imp-publish", "imp-done"].forEach(s => { document.getElementById(s).hidden = s !== id; }); }
 function openImport() {
-  IMP = { cars: [], busy: false };
+  IMP = { cars: [], busy: false, publishing: false, cancelled: false };
   document.getElementById("imp-url").value = "";
   document.getElementById("imp-own").checked = false;
   hide("imp-err");
@@ -459,7 +459,14 @@ function openImport() {
   document.getElementById("imp-modal").hidden = false;
   applyI18n(document.getElementById("imp-modal"));
 }
-function closeImport() { if (IMP.busy) return; document.getElementById("imp-modal").hidden = true; }
+// Cancel / ✕ must ALWAYS work. Only a running publish asks for confirmation
+// (closing mid-publish would leave the dealer unsure what was saved).
+function closeImport() {
+  if (IMP.publishing && !confirm(t("imp_close_publishing"))) return;
+  IMP.cancelled = true;
+  IMP.busy = false;
+  document.getElementById("imp-modal").hidden = true;
+}
 function impBar(id, pct) { document.getElementById(id).style.width = Math.max(4, Math.min(100, pct)) + "%"; }
 
 async function impRead() {
@@ -509,6 +516,7 @@ async function impRead() {
       const todo = disc.urls.filter(u => !have.has(u)).slice(0, IMPORT_READ_CAP);
       if (!todo.length) return impFail(t("imp_all_done"));
       for (let i = 0; i < todo.length; i += IMPORT_BATCH) {
+        if (IMP.cancelled) return;                       // dealer closed the window
         impBar("imp-bar-fill", 10 + (i / todo.length) * 85);
         document.getElementById("imp-loading-txt").textContent = cars.length + " " + t("imp_found");
         const b = await impCall({ phase: "extract", urls: todo.slice(i, i + IMPORT_BATCH) });
@@ -516,7 +524,9 @@ async function impRead() {
       }
       impBar("imp-bar-fill", 100);
     }
+    if (IMP.cancelled) return;
     if (!cars.length) return impFail(t("imp_empty"));
+    IMP.busy = false;                                    // reading finished → Cancel works again
     impRenderReview(cars, disc.total || cars.length);
   } catch (e) {
     impFail(t("imp_err_generic"));
@@ -564,7 +574,7 @@ function impRenderReview(cars, siteTotal) {
   document.getElementById("imp-grid").innerHTML = IMP.cars.map((c, i) => `
     <div class="imp-card${c.locked ? " imp-locked" : ""}${c.pick ? " on" : ""}" id="imp-card-${i}">
       <div class="imp-card-img">
-        ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
+        ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
         ${c.photos.length > 1 ? `<span class="imp-pcount">${c.photos.length}</span>` : ""}
         ${c.locked ? `<span class="imp-lock">🔒</span>` : `<label class="imp-tick"><input type="checkbox" ${c.pick ? "checked" : ""} onchange="impToggle(${i}, this.checked)"></label>`}
       </div>
@@ -596,6 +606,14 @@ function impUpdateConfirm() {
   const btn = document.getElementById("imp-confirm");
   btn.textContent = n ? t("imp_confirm").replace("{n}", n) : t("imp_confirm_none");
   btn.disabled = !n;
+  // Explain WHY the button is off, so it never looks broken: on sites that
+  // hide prices every car waits for one.
+  const hint = document.getElementById("imp-hint");
+  if (hint) {
+    const needPrice = IMP.cars.filter(c => !c.locked && c.price_missing && !c.pick).length;
+    hint.hidden = !(!n && needPrice);
+    if (!hint.hidden) hint.textContent = t("imp_need_price").replace("{n}", needPrice);
+  }
 }
 
 async function impRehost(urls) {
@@ -615,6 +633,7 @@ async function impConfirm() {
   const picks = IMP.cars.filter(c => c.pick && !c.locked);
   if (!picks.length) return;
   IMP.busy = true;
+  IMP.publishing = true;
   impShow("imp-publish");
   let done = 0, ok = 0, failed = 0, blocked = false;
   const total = picks.length;
@@ -655,6 +674,7 @@ async function impConfirm() {
   }
 
   IMP.busy = false;
+  IMP.publishing = false;
   if (!DEMO) await loadListings();
   renderListings(); renderStats(); renderStartChecklist();
   impShow("imp-done");

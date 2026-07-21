@@ -34,14 +34,34 @@ const MAX_CARS_LD = 60;       // cap for the pure JSON-LD fast path
 const MAX_HTML = 2500000;
 const FETCH_TIMEOUT = 9000;
 
-// A path that looks like ONE car's page (segment keyword + a slug after it).
-const DETAIL_PATH = /\/(listings?|vehicles?|cars?|voitures?|annonces?|autos?|stock|product|item|details?|inventory)[\/-][a-z0-9][\w%-]{2,}/i;
+// A URL segment that talks about cars ("used-cars", "listings", "vehicules"…)
+const CAR_SEG = /(listing|vehicle|vehicule|voiture|annonce|inventory|inventaire|stock|product|item|car|auto|used|occasion|preowned|pre-owned)/i;
+// …but these are SERVICE / content pages, never a car ("car-care", "car-wash")
+const SERVICE_SEG = /(care|wash|detail(ing)?|service|repair|maintenance|warrant|insurance|finance|loan|lease|rental|rent|hire|part|accessor|blog|news|tip|guide|about|contact|team|career|job|privacy|terms|polic|faq|valuation|sell|trade|export|import|shipping|showroom|branch|location)/i;
 // A query that identifies ONE car, e.g. product.php?product=slug, ?vid=123.
 const DETAIL_QUERY = /[?&](product|car|vehicle|listing|item|vid|pid|carid|stockid|auto|ref)=[a-z0-9][\w%-]{2,}/i;
-// An index/inventory page worth crawling for more detail links.
-const INDEX_HINT = /[?&](category|make|brand|browse|type|page|paged|serie|model|body|fuel)=|\/(category|categories|inventory|browse|shop|stock|listings?|vehicles?|cars?|collection)(\/|\.php|$|\?)/i;
+const INDEX_QUERY = /[?&](category|make|brand|browse|type|page|paged|serie|model|body|fuel)=/i;
 // Never treat these as cars.
-const JUNK = /(cart|login|signin|signup|register|account|wishlist|favou?rite|contact|about|blog|news|video|privacy|terms|policy|faq|checkout|compare|\.(?:jpg|jpeg|png|webp|gif|svg|css|js|pdf|xml)(?:\?|$))/i;
+const JUNK = /(cart|login|signin|signup|register|account|wishlist|favou?rite|checkout|compare|\.(?:jpg|jpeg|png|webp|gif|svg|css|js|pdf|xml)(?:\?|$))/i;
+
+// A segment that looks like ONE specific car: has a number (id/year), or
+// several words joined by hyphens, or is simply long. "suv" / "sedan" don't.
+function sluggy(seg) {
+  const s = decodeURIComponent(seg || "");
+  return /\d/.test(s) || (s.match(/-/g) || []).length >= 2 || s.length >= 14;
+}
+// Classify a path: one car page, an inventory page worth crawling, or neither.
+// Works for /listings/toyota-x/, /used-cars/1234-Aston-Martin/, /voitures/…
+function pathKind(pathname) {
+  const segs = decodeURIComponent(pathname).split("/").filter(Boolean);
+  for (let i = 0; i < segs.length; i++) {
+    if (!CAR_SEG.test(segs[i]) || SERVICE_SEG.test(segs[i])) continue;
+    const next = segs[i + 1];
+    if (next && !SERVICE_SEG.test(next) && sluggy(next)) return "detail";
+    return "index";
+  }
+  return null;
+}
 
 // ── tiny helpers ──────────────────────────────────────────────
 function absUrl(u, base) { try { return new URL(u, base).href; } catch (e) { return null; } }
@@ -340,8 +360,9 @@ function classifyLinks(html, baseUrl) {
     if (!u || !sameHost(u, baseUrl) || JUNK.test(u)) continue;
     let path, query;
     try { const p = new URL(u); path = p.pathname; query = p.search; } catch (e) { continue; }
-    if (DETAIL_QUERY.test(query) || DETAIL_PATH.test(path)) details.add(u);
-    else if (INDEX_HINT.test(query + " " + path)) indexes.add(u);
+    const kind = pathKind(path);
+    if (DETAIL_QUERY.test(query) || kind === "detail") details.add(u);
+    else if (kind === "index" || INDEX_QUERY.test(query)) indexes.add(u);
   }
   return { details: [...details], indexes: [...indexes], host };
 }
@@ -357,7 +378,7 @@ async function sitemapDetailUrls(origin) {
       if (/\.xml(\?|$)/i.test(u)) {
         if (/listing|vehicle|car|product|post|item/i.test(u) && queue.length < 8) { try { queue.push(await fetchPage(u)); } catch (e) {} }
       } else if (!JUNK.test(u)) {
-        try { const p = new URL(u); if (DETAIL_QUERY.test(p.search) || DETAIL_PATH.test(p.pathname)) details.add(u.split("#")[0]); } catch (e) {}
+        try { const p = new URL(u); if (DETAIL_QUERY.test(p.search) || pathKind(p.pathname) === "detail") details.add(u.split("#")[0]); } catch (e) {}
       }
     }
   }
@@ -393,7 +414,7 @@ function detailPhotos(html, pageUrl) {
   const cut = html.search(/similar\s+(listing|car|vehicle|product)|related\s+(cars|vehicles|listings|products)|you\s+may\s+also|voitures?\s+similaires|most\s+viewed/i);
   if (cut > 400) html = html.slice(0, cut);
   const set = new Set();
-  const push = u => { if (!u) return; const a = absUrl(u, pageUrl); if (!a) return; if (/logo|icon|avatar|placeholder|banner|sprite|design|flag|whatsapp|payment/i.test(a)) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(a)) return; set.add(unsizeImg(a)); };
+  const push = u => { if (!u) return; const a = absUrl(u, pageUrl); if (!a) return; if (/logo|icon|avatar|placeholder|banner|sprite|design|flag|whatsapp|payment|preload|print-|header|footer|loader|spinner|blank|default|no-image|noimage|watermark/i.test(a)) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(a)) return; set.add(unsizeImg(a)); };
   // og:image first (usually the cover)
   const og = (html.match(/property\s*=\s*["']og:image["'][^>]*content\s*=\s*["']([^"']+)["']/i)
     || html.match(/content\s*=\s*["']([^"']+)["'][^>]*property\s*=\s*["']og:image["']/i) || [])[1];
