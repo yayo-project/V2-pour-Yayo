@@ -434,6 +434,211 @@ function renderListings() {
   }).join("");
 }
 
+// ══════════════════════════════════════════════════════════════
+// IMPORT FROM WEBSITE (step 4) — paste link → cars appear, publish
+// through the SAME insert path (Vérifié flow, §30 limit, storage).
+// ══════════════════════════════════════════════════════════════
+const IMPORT_FN = "/.netlify/functions/import-website";
+const REHOST_FN = "/.netlify/functions/rehost-photos";
+const IMPORT_READ_CAP = 40;   // cars read per import run (re-import gets the next)
+const IMPORT_BATCH = 12;      // detail pages per extract call
+const IMPORT_PUB_CONC = 3;    // cars published in parallel
+const IMPORT_PHOTOS_MAX = 8;  // photos re-hosted per car
+let IMP = { cars: [], busy: false };
+
+function impCall(payload) {
+  return fetch(IMPORT_FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(r => r.json());
+}
+function impShow(id) { ["imp-start", "imp-loading", "imp-review", "imp-publish", "imp-done"].forEach(s => { document.getElementById(s).hidden = s !== id; }); }
+function openImport() {
+  IMP = { cars: [], busy: false };
+  document.getElementById("imp-url").value = "";
+  document.getElementById("imp-own").checked = false;
+  hide("imp-err");
+  impShow("imp-start");
+  document.getElementById("imp-modal").hidden = false;
+  applyI18n(document.getElementById("imp-modal"));
+}
+function closeImport() { if (IMP.busy) return; document.getElementById("imp-modal").hidden = true; }
+function impBar(id, pct) { document.getElementById(id).style.width = Math.max(4, Math.min(100, pct)) + "%"; }
+
+async function impRead() {
+  const url = document.getElementById("imp-url").value.trim();
+  const err = document.getElementById("imp-err");
+  if (!url) { err.hidden = false; err.textContent = t("imp_need_url"); return; }
+  if (!document.getElementById("imp-own").checked) { err.hidden = false; err.textContent = t("imp_need_own"); return; }
+  hide("imp-err");
+  IMP.busy = true;
+  impShow("imp-loading");
+  impBar("imp-bar-fill", 8);
+  document.getElementById("imp-loading-txt").textContent = t("imp_reading");
+  try {
+    const disc = await impCall({ url });
+    if (disc.spa) return impFail(t("imp_spa"));
+    if (disc.unavailable) return impFail(t("imp_unavailable"));
+    if (disc.error === "unreachable") return impFail(t("imp_unreachable"));
+    if (disc.error) return impFail(t("imp_err_generic"));
+
+    let cars = [];
+    if (Array.isArray(disc.cars) && disc.cars.length) {
+      cars = disc.cars;                                   // jsonld / feed / llm
+      impBar("imp-bar-fill", 100);
+    } else if (disc.method === "details" && Array.isArray(disc.urls)) {
+      // skip cars already imported so RE-IMPORT continues through the catalogue
+      const have = new Set(LISTINGS.map(l => l.source_url).filter(Boolean));
+      const todo = disc.urls.filter(u => !have.has(u)).slice(0, IMPORT_READ_CAP);
+      if (!todo.length) return impFail(t("imp_all_done"));
+      for (let i = 0; i < todo.length; i += IMPORT_BATCH) {
+        impBar("imp-bar-fill", 10 + (i / todo.length) * 85);
+        document.getElementById("imp-loading-txt").textContent = cars.length + " " + t("imp_found");
+        const b = await impCall({ phase: "extract", urls: todo.slice(i, i + IMPORT_BATCH) });
+        (b.cars || []).forEach(c => cars.push(c));
+      }
+      impBar("imp-bar-fill", 100);
+    }
+    if (!cars.length) return impFail(t("imp_empty"));
+    impRenderReview(cars, disc.total || cars.length);
+  } catch (e) {
+    impFail(t("imp_err_generic"));
+  }
+}
+function impFail(msg) {
+  IMP.busy = false;
+  impShow("imp-start");
+  const err = document.getElementById("imp-err");
+  err.hidden = false; err.textContent = msg;
+}
+
+function impRenderReview(cars, siteTotal) {
+  // dedupe within the batch + against listings already on Yayo
+  const have = new Set(LISTINGS.map(l => l.source_url).filter(Boolean));
+  const seen = new Set();
+  cars = cars.filter(c => {
+    const fp = c.source_url || (c.fingerprint || (c.name + "|" + c.price_usd));
+    if (have.has(c.source_url) || seen.has(fp)) return false;
+    seen.add(fp); return true;
+  });
+  // effective limit → how many can go live now (unlimited during promo)
+  const L = yayoDealerLimit(DEALER);
+  const used = LISTINGS.filter(l => !l.sold && !l.dormant).length;
+  const slots = L.limit < 0 ? Infinity : Math.max(0, L.limit - used);
+
+  IMP.cars = cars.map((c, i) => ({
+    name: c.name, make: c.make, model: c.model, year: c.year, mileage: c.mileage,
+    price_usd: c.price_usd, price_missing: !!c.price_missing,
+    photos: (c.photos || []).slice(0, IMPORT_PHOTOS_MAX), source_url: c.source_url || null,
+    import_method: c.import_method || "import",
+    locked: i >= slots,
+    pick: i < slots && !c.price_missing   // priced cars pre-ticked; price-less wait for a price
+  }));
+
+  impShow("imp-review");
+  document.getElementById("imp-review-h").textContent = IMP.cars.length + " " + t("imp_found");
+  document.getElementById("imp-review-sub").textContent =
+    (siteTotal > IMP.cars.length ? t("imp_more_note").replace("{n}", siteTotal) : t("imp_review_p"));
+  const ln = document.getElementById("imp-locked-note");
+  const lockedCount = IMP.cars.filter(c => c.locked).length;
+  ln.hidden = !lockedCount;
+  if (lockedCount) ln.textContent = t("imp_locked").replace("{n}", lockedCount);
+
+  document.getElementById("imp-grid").innerHTML = IMP.cars.map((c, i) => `
+    <div class="imp-card${c.locked ? " imp-locked" : ""}${c.pick ? " on" : ""}" id="imp-card-${i}">
+      <div class="imp-card-img">
+        ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
+        ${c.photos.length > 1 ? `<span class="imp-pcount">${c.photos.length}</span>` : ""}
+        ${c.locked ? `<span class="imp-lock">🔒</span>` : `<label class="imp-tick"><input type="checkbox" ${c.pick ? "checked" : ""} onchange="impToggle(${i}, this.checked)"></label>`}
+      </div>
+      <div class="imp-card-b">
+        <div class="imp-card-name">${escapeHtml(c.name)}</div>
+        ${c.locked
+          ? `<div class="imp-card-lock" data-i18n="imp_card_locked">Passez au plan supérieur pour publier</div>`
+          : c.price_missing
+            ? `<div class="imp-price-row"><span data-i18n="imp_add_price">Ajoutez le prix</span><span class="imp-cur">$</span><input type="number" min="0" inputmode="numeric" class="imp-price-in" oninput="impPrice(${i}, this.value)" value="${c.price_usd || ""}"></div>`
+            : `<div class="imp-card-price">${fmt(c.price_usd)}</div>`}
+      </div>
+    </div>`).join("");
+  impUpdateConfirm();
+}
+function impToggle(i, on) {
+  IMP.cars[i].pick = on && (!IMP.cars[i].price_missing || IMP.cars[i].price_usd > 0);
+  document.getElementById("imp-card-" + i).classList.toggle("on", IMP.cars[i].pick);
+  impUpdateConfirm();
+}
+function impPrice(i, val) {
+  const n = parseInt(val, 10);
+  IMP.cars[i].price_usd = n > 0 ? n : null;
+  IMP.cars[i].pick = n > 0;
+  document.getElementById("imp-card-" + i).classList.toggle("on", IMP.cars[i].pick);
+  impUpdateConfirm();
+}
+function impUpdateConfirm() {
+  const n = IMP.cars.filter(c => c.pick && !c.locked).length;
+  const btn = document.getElementById("imp-confirm");
+  btn.textContent = n ? t("imp_confirm").replace("{n}", n) : t("imp_confirm_none");
+  btn.disabled = !n;
+}
+
+async function impRehost(urls) {
+  if (!urls.length) return [];
+  if (DEMO) return urls;                 // demo: keep original photo urls
+  try {
+    const { data } = await yayoSB().auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if (!token) return [];
+    const res = await fetch(REHOST_FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, urls }) });
+    const j = await res.json();
+    return Array.isArray(j.photos) ? j.photos : [];
+  } catch (e) { return []; }
+}
+
+async function impConfirm() {
+  const picks = IMP.cars.filter(c => c.pick && !c.locked);
+  if (!picks.length) return;
+  IMP.busy = true;
+  impShow("imp-publish");
+  let done = 0, ok = 0, failed = 0;
+  const total = picks.length;
+  const tick = () => { done++; impBar("imp-pub-fill", (done / total) * 100); document.getElementById("imp-pub-txt").textContent = done + " / " + total; };
+  document.getElementById("imp-pub-txt").textContent = "0 / " + total;
+
+  const publishOne = async (c) => {
+    try {
+      const photos = await impRehost(c.photos);
+      if (!photos.length) { failed++; return; }   // a listing needs at least one photo
+      const mm = c.make && c.model ? { make: c.make, model: c.model } : splitCarName(c.name);
+      const payload = {
+        car_name: c.name, make: mm.make || c.make || null, model: mm.model || c.model || null,
+        price: c.price_usd, year: c.year || null, mileage: c.mileage || null,
+        condition: "Très bon état", color: null,
+        photo_url: photos[0], photos, description: null,
+        source_url: c.source_url, import_method: c.import_method, imported_at: new Date().toISOString()
+      };
+      if (DEMO) { LISTINGS.unshift({ ...payload, id: "demo-imp-" + Date.now() + Math.random(), active: true, sold: false, dealer: { name: DEALER.name } }); ok++; return; }
+      const sb = yayoSB();
+      const insert = (pl) => sb.from("listings").insert({ ...pl, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: true, sold: false });
+      let { error } = await insert(payload);
+      if (error && /column|source_url|import_method|imported_at|make|model|photos/i.test(error.message || "")) {
+        const { source_url, import_method, imported_at, make, model, photos: ph, ...slim } = payload;
+        ({ error } = await insert(slim));
+      }
+      if (error) { failed++; return; }
+      ok++;
+    } catch (e) { failed++; }
+    finally { tick(); }
+  };
+  // publish in small parallel groups so photos re-host fast without hammering
+  for (let i = 0; i < picks.length; i += IMPORT_PUB_CONC) {
+    await Promise.all(picks.slice(i, i + IMPORT_PUB_CONC).map(publishOne));
+  }
+
+  IMP.busy = false;
+  if (!DEMO) await loadListings();
+  renderListings(); renderStats(); renderStartChecklist();
+  impShow("imp-done");
+  document.getElementById("imp-done-h").textContent = t("imp_done_h").replace("{n}", ok);
+  document.getElementById("imp-done-sub").textContent = failed ? t("imp_done_some").replace("{n}", failed) : t("imp_done_all");
+}
+
 // ── Listing photos (upload from device — never a URL field) ──
 function addPhotos(files) {
   [...files].forEach(f => {

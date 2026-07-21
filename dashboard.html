@@ -531,6 +531,7 @@ gtag('config', 'G-NR2LTEVKET');
       <section id="tab-listings" hidden>
         <div class="dash-bar">
           <button class="btn btn-solid" onclick="openForm()" data-i18n="d_add">+ Ajouter une voiture</button>
+          <button class="btn btn-ghost-dark" onclick="openImport()" data-i18n="imp_btn">Importer depuis mon site web</button>
           <p class="lst-limit" id="lst-limit" hidden></p>
         </div>
 
@@ -666,6 +667,60 @@ gtag('config', 'G-NR2LTEVKET');
 
   </div>
 </main>
+
+<!-- ═══ IMPORT FROM WEBSITE (step 4) ═══ -->
+<div class="imp-overlay" id="imp-modal" hidden>
+  <div class="imp-box">
+    <button type="button" class="imp-x" onclick="closeImport()" aria-label="Fermer">✕</button>
+
+    <!-- Step A: paste the URL -->
+    <div id="imp-start">
+      <h3 data-i18n="imp_h">Importer vos voitures depuis votre site</h3>
+      <p class="imp-sub" data-i18n="imp_p">Collez le lien de votre site web — Yayo lit vos voitures et les prépare ici, comme si vous les aviez ajoutées à la main.</p>
+      <input id="imp-url" type="url" inputmode="url" data-i18n-ph="imp_url_ph" placeholder="https://mon-site.com" autocomplete="off">
+      <label class="imp-own"><input type="checkbox" id="imp-own"> <span data-i18n="imp_own">Je confirme que ce site m'appartient.</span></label>
+      <p class="auth-error" id="imp-err" hidden></p>
+      <button type="button" class="btn btn-solid btn-block" id="imp-go" onclick="impRead()" data-i18n="imp_read">Lire mon site</button>
+    </div>
+
+    <!-- Step B: progress while reading -->
+    <div id="imp-loading" hidden>
+      <h3 data-i18n="imp_reading_h">Lecture de votre site…</h3>
+      <div class="imp-bar"><i id="imp-bar-fill"></i></div>
+      <p class="imp-count" id="imp-loading-txt"></p>
+    </div>
+
+    <!-- Step C: review the found cars -->
+    <div id="imp-review" hidden>
+      <div class="imp-review-head">
+        <h3 id="imp-review-h"></h3>
+        <p class="imp-sub" id="imp-review-sub"></p>
+      </div>
+      <div class="imp-grid" id="imp-grid"></div>
+      <p class="imp-locked-note" id="imp-locked-note" hidden></p>
+      <div class="imp-actions">
+        <button type="button" class="btn btn-ghost-dark" onclick="closeImport()" data-i18n="d_cancel">Annuler</button>
+        <button type="button" class="btn btn-solid" id="imp-confirm" onclick="impConfirm()"></button>
+      </div>
+    </div>
+
+    <!-- Step D: publishing progress -->
+    <div id="imp-publish" hidden>
+      <h3 data-i18n="imp_pub_h">Publication de vos voitures…</h3>
+      <div class="imp-bar"><i id="imp-pub-fill"></i></div>
+      <p class="imp-count" id="imp-pub-txt"></p>
+      <p class="imp-sub" data-i18n="imp_pub_note">Nous copions les photos sur Yayo pour que vos annonces ne dépendent plus de votre site.</p>
+    </div>
+
+    <!-- Step E: done -->
+    <div id="imp-done" hidden>
+      <div class="imp-done-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3 id="imp-done-h"></h3>
+      <p class="imp-sub" id="imp-done-sub"></p>
+      <button type="button" class="btn btn-solid btn-block" onclick="closeImport()" data-i18n="imp_done_btn">Voir mes annonces</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ FOOTER ═══ -->
 <footer class="footer">
