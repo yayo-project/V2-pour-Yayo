@@ -566,17 +566,26 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "jsonld", count: cars.length, cars }) };
     }
 
-    // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON).
-    // This is what makes JavaScript-only inventory apps work — cleaner than
-    // scraping, and it needs no per-detail crawl.
+    // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON) —
+    // what makes JavaScript-only inventory apps work, cleaner than scraping.
     const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint);
-    if (feed.length >= 2) {
+    // a big, clean catalog wins outright (no crawl needed)
+    if (feed.length >= 12) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
     }
 
-    // layer 2: discover the detail-page URLs (client extracts them in batches)
+    // layer 2: discover the detail-page URLs (client extracts them in batches).
+    // The crawl often finds far more cars than a partial feed (e.g. a "most
+    // viewed" widget), so a small feed must NOT short-circuit a rich crawl.
     const detailUrls = await collectDetailUrls(url, entryHtml);
-    if (detailUrls.length) {
+    if (detailUrls.length >= 2 && detailUrls.length >= feed.length) {
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls }) };
+    }
+    // otherwise a usable feed (2–11 cars, richer than the crawl) still works
+    if (feed.length >= 2) {
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
+    }
+    if (detailUrls.length >= 1) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls }) };
     }
 
