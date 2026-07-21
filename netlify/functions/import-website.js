@@ -32,11 +32,12 @@ const MAX_DETAIL_URLS = 400;  // detail URLs collected before we stop discoverin
 const MAX_EXTRACT = 12;       // detail pages accepted per EXTRACT call
 const MAX_CARS_LD = 60;       // cap for the pure JSON-LD fast path
 const MAX_HTML = 2500000;
-const FETCH_TIMEOUT = 6500;
-// Serverless calls are killed at ~10s. Everything below watches this deadline
-// and returns whatever it has rather than being cut off (a slow dealer site
-// used to produce a gateway timeout, which the dashboard showed as a failure).
-const TOTAL_BUDGET = 8200;
+const FETCH_TIMEOUT = 8000;
+// The gateway kills a call at ~26s. Everything below watches this deadline and
+// returns whatever it already has instead of being cut off (a slow dealer site
+// used to produce a gateway timeout, shown in the dashboard as "reading
+// failed"). Keep it generous: sites that need a sitemap crawl take ~10-15s.
+const TOTAL_BUDGET = 20000;
 let DEADLINE = 0;
 function budgetLeft() { return DEADLINE ? Math.max(0, DEADLINE - Date.now()) : FETCH_TIMEOUT; }
 
@@ -352,9 +353,9 @@ async function carsFromDiscoveredApi(html, base) {
 async function carsFromDataFeeds(entryHtml, url) {
   const origin = new URL(url).origin;
   let cars = carsFromHydration(entryHtml, url);   // free: already-downloaded HTML
-  if (cars.length < 2 && budgetLeft() > 4000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
-  if (cars.length < 2 && budgetLeft() > 3500) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
-  if (cars.length < 2 && budgetLeft() > 3000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 12000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 10000) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 8000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
   return cars;
 }
 
@@ -402,7 +403,7 @@ async function collectDetailUrls(entryUrl, entryHtml) {
   const { details: d0, indexes } = classifyLinks(entryHtml, entryUrl);
   d0.forEach(u => details.add(u));
   // the entry page alone may already be enough; only dig deeper if there is time
-  if (budgetLeft() < 2500) return [...details].slice(0, MAX_DETAIL_URLS);
+  if (budgetLeft() < 4000) return [...details].slice(0, MAX_DETAIL_URLS);
   const [sitemap, ...idxHtmls] = await Promise.all([
     sitemapDetailUrls(new URL(entryUrl).origin).catch(() => []),
     ...indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
