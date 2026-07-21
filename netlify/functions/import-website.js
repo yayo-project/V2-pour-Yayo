@@ -532,6 +532,9 @@ async function extractBatch(urls, key) {
     const freq = {};
     docs.forEach(d => new Set(d.photos).forEach(p => { freq[p] = (freq[p] || 0) + 1; }));
     docs.forEach(d => { d.photos = d.photos.filter(p => freq[p] < 2); });
+    // Re-check AFTER the dedup: pages that only carried shared chrome are left
+    // with no photo of their own — those are category/marketing pages, not cars.
+    docs = docs.filter(d => d.photos.length);
   }
 
   // one Groq call per 4 pages for make/model/year/price; key missing or a call
