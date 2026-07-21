@@ -157,6 +157,176 @@ function carsFromJsonLd(html, pageUrl) {
   }).filter(c => c.name); // price NOT required
 }
 
+// ══════════════════════════════════════════════════════════════
+// DATA-FEED LAYER — read the site's OWN data instead of scraping.
+// Nearly every "JavaScript inventory app" fetches its cars from a
+// JSON feed (Shopify /products.json, a WordPress REST route, or an
+// app-data blob embedded in the page). Reading that feed gives us
+// cleaner data than any HTML scrape — and it's how we cover SPA
+// sites that have no readable car HTML at all.
+// ══════════════════════════════════════════════════════════════
+function fieldLike(o, re) { for (const k of Object.keys(o)) if (re.test(k)) { const v = o[k]; if (v != null && v !== "" && typeof v !== "object") return v; } return null; }
+function collectJsonImages(o, base) {
+  const out = [];
+  const push = x => {
+    if (!x) return;
+    if (typeof x === "string") { const a = absUrl(x, base); if (a && /\.(jpe?g|png|webp)(\?|$)/i.test(a) && !/logo|icon|sprite|placeholder/i.test(a)) out.push(unsizeImg(a)); }
+    else if (typeof x === "object") { const s = x.src || x.url || x.large || x.original || x.image || x.full || x.path; if (s) push(s); }
+  };
+  for (const k of Object.keys(o)) {
+    if (!/image|img|photo|picture|thumb|gallery|media|cover|banner/i.test(k)) continue;
+    const v = o[k]; if (Array.isArray(v)) v.forEach(push); else push(v);
+  }
+  return [...new Set(out)].slice(0, 15);
+}
+function jsonPrice(o) {
+  // direct price field, else a Shopify-style variants[0].price, else nested price object
+  let p = fieldLike(o, /^(price|amount|cost|sale_?price|regular_?price|listing_?price|value)$/i);
+  if (p == null && Array.isArray(o.variants) && o.variants[0]) p = o.variants[0].price != null ? o.variants[0].price : (o.variants[0].amount);
+  if (p == null && o.price && typeof o.price === "object") p = o.price.amount || o.price.value;
+  return toInt(p);
+}
+function looksLikeCar(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return false;
+  const keys = Object.keys(o).map(k => k.toLowerCase());
+  const hasName = keys.some(k => /^(name|title|product_?name|model_?name|heading|handle)$/.test(k)) || (fieldLike(o, /make|brand|manufacturer|vendor/i) && fieldLike(o, /^model$/i));
+  // a STRONG car signal — a bare title+image (blog post, menu item) must NOT
+  // qualify, so image/photo alone are deliberately excluded here
+  const hasSignal = keys.some(k => /(price|amount|year|mileage|odometer|make|brand|vendor|vin|variant|fuel|transmission|engine|body_?type|drivetrain)/.test(k));
+  return hasName && hasSignal;
+}
+function jsonCarToCandidate(o, base) {
+  const make = fieldLike(o, /^(make|brand|manufacturer|vendor)$/i);
+  const model = fieldLike(o, /^(model|model_?name)$/i);
+  const year = toInt(String(fieldLike(o, /^(year|model_?year|manufacture_?year|reg_?year)$/i) || "").slice(0, 4));
+  let name = fieldLike(o, /^(name|title|product_?name|heading|label)$/i);
+  if (!name) name = [make, model, year].filter(Boolean).join(" ") || null;
+  if (!name) return null;
+  const urlField = fieldLike(o, /^(url|link|permalink|href|handle|slug)$/i);
+  let source_url = null;
+  if (urlField) source_url = /^https?:/i.test(urlField) ? urlField : absUrl((String(urlField).startsWith("/") ? "" : "/") + urlField, base);
+  return {
+    name: String(name).trim().slice(0, 120),
+    make: make ? String(make).trim().slice(0, 40) : null,
+    model: model ? String(model).trim().slice(0, 80) : null,
+    year: year || null,
+    price_original: jsonPrice(o),
+    currency: (fieldLike(o, /currency|priceCurrency/i) ? String(fieldLike(o, /currency|priceCurrency/i)).toUpperCase().slice(0, 3) : null),
+    mileage: toInt(fieldLike(o, /mileage|odometer|kilometer|^km$/i)),
+    photos: collectJsonImages(o, base),
+    source_url,
+    import_method: "api"
+  };
+}
+// deep-search ANY parsed JSON for arrays of car-like objects
+function deepFindCars(root, base) {
+  const cars = []; let nodes = 0;
+  (function walk(node, depth) {
+    if (depth > 9 || nodes > 60000 || node == null || typeof node !== "object") return;
+    nodes++;
+    if (Array.isArray(node)) {
+      const carItems = node.filter(looksLikeCar);
+      if (carItems.length >= 2) carItems.forEach(it => { const c = jsonCarToCandidate(it, base); if (c) cars.push(c); });
+      node.forEach(n => walk(n, depth + 1));
+    } else {
+      for (const k in node) walk(node[k], depth + 1);
+    }
+  })(root, 0);
+  return cars;
+}
+async function fetchJson(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, redirect: "follow", headers: { "User-Agent": UAS[0], "Accept": "application/json,*/*" } });
+    if (!res.ok) throw new Error("http " + res.status);
+    const t = await res.text();
+    if (t.length > MAX_HTML) throw new Error("too big");
+    return JSON.parse(t);
+  } finally { clearTimeout(timer); }
+}
+// app-data embedded in the page (Next.js, Nuxt, Redux, or a JSON <script>)
+function carsFromHydration(html, base) {
+  const cars = [];
+  const grab = re => { const m = html.match(re); if (m) { try { deepFindCars(JSON.parse(m[1]), base).forEach(c => cars.push(c)); } catch (e) {} } };
+  grab(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  grab(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\})\s*<\/script>/i);
+  grab(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/i);
+  grab(/window\.__APOLLO_STATE__\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/i);
+  // any application/json <script> that holds an array of car-like objects
+  const re = /<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m, n = 0;
+  while ((m = re.exec(html)) && n < 8) { n++; try { deepFindCars(JSON.parse(m[1].trim()), base).forEach(c => cars.push(c)); } catch (e) {} }
+  return cars;
+}
+// Shopify: every store exposes a public /products.json feed
+async function carsFromShopify(origin) {
+  const cars = [];
+  for (let page = 1; page <= 3; page++) {
+    let data; try { data = await fetchJson(origin + "/products.json?limit=250&page=" + page); } catch (e) { break; }
+    const items = data && Array.isArray(data.products) ? data.products : null;
+    if (!items || !items.length) break;
+    items.forEach(p => {
+      const variant = (p.variants && p.variants[0]) || {};
+      const imgs = (p.images || []).map(im => im && (im.src || im)).filter(Boolean).map(u => unsizeImg(u)).slice(0, 15);
+      const name = p.title || [p.vendor, p.product_type].filter(Boolean).join(" ");
+      if (!name) return;
+      cars.push({
+        name: String(name).slice(0, 120), make: p.vendor || null, model: null,
+        year: toInt(String(name).match(/\b(19[89]\d|20[0-3]\d)\b/) ? RegExp.$1 : ""),
+        price_original: toInt(variant.price), currency: null, mileage: null, photos: imgs,
+        source_url: p.handle ? origin + "/products/" + p.handle : null, import_method: "api"
+      });
+    });
+    if (items.length < 250) break;
+  }
+  return cars;
+}
+// WordPress REST: discover a car/vehicle/listing/product route and read it
+async function carsFromWpRest(origin) {
+  const cars = [];
+  const tryRoute = async (path) => { try { const d = await fetchJson(origin + path); deepFindCars(d, origin).forEach(c => cars.push(c)); } catch (e) {} };
+  // discover custom routes
+  try {
+    const root = await fetchJson(origin + "/wp-json/");
+    const routes = root && root.routes ? Object.keys(root.routes) : [];
+    const carRoutes = routes.filter(r => /(vehicle|listing|car|inventory|stock|auto|product|search)/i.test(r) && !/\{|revision|autosave/i.test(r)).slice(0, 4);
+    for (const r of carRoutes) await tryRoute(r + (r.includes("?") ? "&" : "?") + "per_page=100");
+  } catch (e) {}
+  // common fixed routes (WooCommerce store API + posts of vehicle types)
+  if (cars.length < 2) for (const p of ["/wp-json/wc/store/products?per_page=100", "/wp-json/wp/v2/vehicle?per_page=100", "/wp-json/wp/v2/listing?per_page=100", "/wp-json/wp/v2/car?per_page=100"]) { if (cars.length < 2) await tryRoute(p); }
+  return cars;
+}
+// generic: data endpoints referenced in the page HTML (…/api/…, .json, ?rest_route=)
+async function carsFromDiscoveredApi(html, base) {
+  const origin = new URL(base).origin;
+  const cands = new Set();
+  const re = /["'`]([^"'`\s]*(?:\/api\/|\/wp-json\/|rest_route=|\/graphql|\/ajax\/|search|inventory|listings?|vehicles?|products?)[^"'`\s]*\.?(?:json)?[^"'`\s]*)["'`]/gi;
+  let m, n = 0;
+  while ((m = re.exec(html)) && n < 40) {
+    n++; let u = m[1];
+    if (/\.(js|css|png|jpe?g|svg|woff|gif|webp)(\?|$)/i.test(u)) continue;
+    if (u.startsWith("//")) u = "https:" + u; else if (u.startsWith("/")) u = origin + u; else if (!/^https?:/i.test(u)) continue;
+    if (!sameHost(u, base)) continue;
+    cands.add(u.replace(/\\\//g, "/"));
+  }
+  const cars = [];
+  for (const u of [...cands].slice(0, 6)) {
+    if (cars.length >= 2) break;
+    try { deepFindCars(await fetchJson(u), base).forEach(c => cars.push(c)); } catch (e) {}
+  }
+  return cars;
+}
+// try every data feed in order of reliability; first that yields ≥2 cars wins
+async function carsFromDataFeeds(entryHtml, url) {
+  const origin = new URL(url).origin;
+  let cars = carsFromHydration(entryHtml, url);
+  if (cars.length < 2) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
+  if (cars.length < 2) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
+  if (cars.length < 2) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
+  return cars;
+}
+
 // ── link classification & discovery crawl ─────────────────────
 function classifyLinks(html, baseUrl) {
   const details = new Set(), indexes = new Set();
@@ -394,6 +564,14 @@ exports.handler = async (event) => {
       }
       const cars = normalize(ld, aedHint);
       return { statusCode: 200, headers, body: JSON.stringify({ method: "jsonld", count: cars.length, cars }) };
+    }
+
+    // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON).
+    // This is what makes JavaScript-only inventory apps work — cleaner than
+    // scraping, and it needs no per-detail crawl.
+    const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint);
+    if (feed.length >= 2) {
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
     }
 
     // layer 2: discover the detail-page URLs (client extracts them in batches)
