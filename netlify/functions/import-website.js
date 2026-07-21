@@ -55,15 +55,24 @@ function isPublicHttp(u) {
   if (h === "[::1]" || h === "::1") return false;
   return true;
 }
-async function fetchPage(url) {
+// Real-browser headers — cheap shared hosts often throttle or block requests
+// that look like bots. A second UA is tried on retry.
+const UAS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+];
+async function fetchPage(url, attempt) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
   try {
+    let ref; try { ref = new URL(url).origin + "/"; } catch (e) { ref = undefined; }
     const res = await fetch(url, {
       signal: ctrl.signal, redirect: "follow",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 YayoImportBot/1.0",
-        "Accept": "text/html,application/xhtml+xml,application/xml"
+        "User-Agent": UAS[(attempt || 0) % UAS.length],
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,fr;q=0.8,ar;q=0.7",
+        "Referer": ref
       }
     });
     if (!res.ok) throw new Error("http " + res.status);
@@ -71,10 +80,12 @@ async function fetchPage(url) {
     return text.length > MAX_HTML ? text.slice(0, MAX_HTML) : text;
   } finally { clearTimeout(timer); }
 }
+// Flaky origins (datacenter IP throttling) need a few tries with backoff.
 async function fetchRetry(url, tries) {
   let err;
-  for (let i = 0; i < (tries || 2); i++) {
-    try { return await fetchPage(url); } catch (e) { err = e; }
+  const n = tries || 3;
+  for (let i = 0; i < n; i++) {
+    try { return await fetchPage(url, i); } catch (e) { err = e; if (i < n - 1) await new Promise(r => setTimeout(r, 350 * (i + 1))); }
   }
   throw err;
 }
@@ -311,13 +322,23 @@ async function inBatches(items, size, fn) {
 // ── EXTRACT one batch of detail URLs → candidates ──
 async function extractBatch(urls, key) {
   const clean = urls.filter(u => isPublicHttp(u) && !JUNK.test(u)).slice(0, MAX_EXTRACT);
-  const docs = (await inBatches(clean, 6, async (u) => {
+  // concurrency 4 (not 6) — hammering a shared host in parallel gets us throttled
+  let docs = (await inBatches(clean, 4, async (u) => {
     try {
-      const html = await fetchRetry(u, 2);
+      const html = await fetchRetry(u, 3);
       const text = stripHtml(html);
       return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
     } catch (e) { return null; }
   })).filter(Boolean).filter(d => d.name || d.photos.length);
+
+  // Site chrome (banners, "latest offers" carousel, logos) repeats across many
+  // car pages; a real car photo is unique to its page. Drop any image that
+  // shows up on 2+ different pages in this batch → clean per-car galleries.
+  if (docs.length > 2) {
+    const freq = {};
+    docs.forEach(d => new Set(d.photos).forEach(p => { freq[p] = (freq[p] || 0) + 1; }));
+    docs.forEach(d => { d.photos = d.photos.filter(p => freq[p] < 2); });
+  }
 
   // one Groq call per 4 pages for make/model/year/price; key missing or a call
   // failing is non-fatal — name+photos survive, specs get derived from the name.
