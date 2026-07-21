@@ -446,8 +446,15 @@ const IMPORT_PUB_CONC = 3;    // cars published in parallel
 const IMPORT_PHOTOS_MAX = 8;  // photos re-hosted per car
 let IMP = { cars: [], busy: false };
 
+// A very slow dealer site can make the reader hit the gateway timeout, which
+// answers with an HTML error page — turn that into a clear message, not a crash.
 function impCall(payload) {
-  return fetch(IMPORT_FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(r => r.json());
+  return fetch(IMPORT_FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    .then(async r => {
+      const txt = await r.text();
+      try { return JSON.parse(txt); }
+      catch (e) { return { error: r.status === 504 || r.status === 502 ? "slow" : "badresponse" }; }
+    });
 }
 function impShow(id) { ["imp-start", "imp-loading", "imp-review", "imp-publish", "imp-done"].forEach(s => { document.getElementById(s).hidden = s !== id; }); }
 function openImport() {
@@ -504,6 +511,7 @@ async function impRead() {
     if (disc.spa) return impFail(t("imp_spa"));
     if (disc.unavailable) return impFail(t("imp_unavailable"));
     if (disc.error === "unreachable") return impFail(t("imp_unreachable"));
+    if (disc.error === "slow") return impFail(t("imp_slow"));
     if (disc.error) return impFail(t("imp_err_generic"));
 
     let cars = [];

@@ -32,7 +32,13 @@ const MAX_DETAIL_URLS = 400;  // detail URLs collected before we stop discoverin
 const MAX_EXTRACT = 12;       // detail pages accepted per EXTRACT call
 const MAX_CARS_LD = 60;       // cap for the pure JSON-LD fast path
 const MAX_HTML = 2500000;
-const FETCH_TIMEOUT = 9000;
+const FETCH_TIMEOUT = 6500;
+// Serverless calls are killed at ~10s. Everything below watches this deadline
+// and returns whatever it has rather than being cut off (a slow dealer site
+// used to produce a gateway timeout, which the dashboard showed as a failure).
+const TOTAL_BUDGET = 8200;
+let DEADLINE = 0;
+function budgetLeft() { return DEADLINE ? Math.max(0, DEADLINE - Date.now()) : FETCH_TIMEOUT; }
 
 // A URL segment that talks about cars ("used-cars", "listings", "vehicules"…)
 const CAR_SEG = /(listing|vehicle|vehicule|voiture|annonce|inventory|inventaire|stock|product|item|car|auto|used|occasion|preowned|pre-owned)/i;
@@ -82,8 +88,10 @@ const UAS = [
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
 ];
 async function fetchPage(url, attempt) {
+  const left = budgetLeft();
+  if (left < 400) throw new Error("no time left");
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT);
+  const timer = setTimeout(() => ctrl.abort(), Math.min(FETCH_TIMEOUT, left));
   try {
     let ref; try { ref = new URL(url).origin + "/"; } catch (e) { ref = undefined; }
     const res = await fetch(url, {
@@ -105,7 +113,10 @@ async function fetchRetry(url, tries) {
   let err;
   const n = tries || 3;
   for (let i = 0; i < n; i++) {
-    try { return await fetchPage(url, i); } catch (e) { err = e; if (i < n - 1) await new Promise(r => setTimeout(r, 350 * (i + 1))); }
+    try { return await fetchPage(url, i); } catch (e) { err = e; }
+    // only retry while there is real time left for another attempt
+    if (i < n - 1 && budgetLeft() > 2500) await new Promise(r => setTimeout(r, 250));
+    else break;
   }
   throw err;
 }
@@ -340,10 +351,10 @@ async function carsFromDiscoveredApi(html, base) {
 // try every data feed in order of reliability; first that yields ≥2 cars wins
 async function carsFromDataFeeds(entryHtml, url) {
   const origin = new URL(url).origin;
-  let cars = carsFromHydration(entryHtml, url);
-  if (cars.length < 2) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
-  if (cars.length < 2) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
-  if (cars.length < 2) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
+  let cars = carsFromHydration(entryHtml, url);   // free: already-downloaded HTML
+  if (cars.length < 2 && budgetLeft() > 4000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 3500) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 3000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
   return cars;
 }
 
@@ -390,6 +401,8 @@ async function collectDetailUrls(entryUrl, entryHtml) {
   const details = new Set();
   const { details: d0, indexes } = classifyLinks(entryHtml, entryUrl);
   d0.forEach(u => details.add(u));
+  // the entry page alone may already be enough; only dig deeper if there is time
+  if (budgetLeft() < 2500) return [...details].slice(0, MAX_DETAIL_URLS);
   const [sitemap, ...idxHtmls] = await Promise.all([
     sitemapDetailUrls(new URL(entryUrl).origin).catch(() => []),
     ...indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
@@ -515,8 +528,9 @@ async function extractBatch(urls, key) {
   const clean = urls.filter(u => isPublicHttp(u) && !JUNK.test(u)).slice(0, MAX_EXTRACT);
   // concurrency 4 (not 6) — hammering a shared host in parallel gets us throttled
   let docs = (await inBatches(clean, 4, async (u) => {
+    if (budgetLeft() < 1200) return null;   // return what we have, never time out
     try {
-      const html = await fetchRetry(u, 3);
+      const html = await fetchRetry(u, 2);
       const text = stripHtml(html);
       return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
     } catch (e) { return null; }
@@ -543,6 +557,7 @@ async function extractBatch(urls, key) {
   if (key && docs.length) {
     const indexed = docs.map((d, i) => ({ ...d, i }));
     for (let i = 0; i < indexed.length; i += 4) {
+      if (budgetLeft() < 1500) break;   // names + photos already extracted; specs are a bonus
       try { Object.assign(specs, await groqSpecs(key, indexed.slice(i, i + 4))); } catch (e) {}
     }
   }
@@ -558,6 +573,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: '{"error":"POST only"}' };
   let body; try { body = JSON.parse(event.body || "{}"); } catch (e) { return { statusCode: 400, headers, body: '{"error":"bad json"}' }; }
   const key = process.env.GROQ_API_KEY;
+  DEADLINE = Date.now() + TOTAL_BUDGET;   // always answer before the gateway kills us
 
   try {
     // ── PHASE B: EXTRACT a batch of detail URLs (no crawl, bounded work) ──
