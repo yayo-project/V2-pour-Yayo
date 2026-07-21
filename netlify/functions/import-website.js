@@ -1,5 +1,13 @@
-// YAYO — Website Import, extraction engine (step 3).
-// POST { url, skip? } → { method, total?, skip?, next_skip?, more?, cars:[…] }
+// YAYO — Website Import, extraction engine (step 3). Two stateless phases so
+// each call stays inside the serverless time budget (Netlify ~10s):
+//
+//   A) DISCOVER — POST { url } (or { url, phase:"discover" })
+//        → { method:"jsonld", cars:[…] }              small site, done in one shot
+//        → { method:"details", total, urls:[…] }      client extracts in batches
+//        → { spa:true } | { empty:true } | { error } | { unavailable:true }
+//   B) EXTRACT — POST { phase:"extract", urls:[…≤12] }
+//        → { cars:[…] }                               one batch of detail pages
+//
 // A candidate: { name, make, model, year, price_usd|null, price_original|null,
 //   currency, currency_guessed, price_missing, mileage, photos[], source_url,
 //   fingerprint, import_method }
@@ -8,24 +16,23 @@
 // cars) happens in step 4 through the review screen + Vérifié flow.
 //
 // Goal: ANY dealer site, any technology, "paste the URL → your cars appear".
-// Strategy, most reliable first — a car is NEVER dropped just for missing a
-// price (many Dubai export dealers hide prices; the dealer sets it on review):
+// A car is NEVER dropped just for a missing price — many Dubai export dealers
+// hide prices; the dealer sets it on the review screen.
 //   1. JSON-LD / schema.org Car|Vehicle|Product on the entry/paginated pages.
-//   2. Discovery crawl: harvest product-detail links from the page's anchors,
-//      its category/inventory pages, and its sitemap(s); fetch detail pages in
-//      batches (skip continues). Per page: photos + name taken deterministically
-//      from the HTML (og:image, gallery, JS image arrays, <h1>), specs/price via
-//      Groq on the page text (price optional).
+//   2. Discovery crawl: product-detail links harvested from the page anchors,
+//      its category/inventory pages, and sitemap(s). Detail pages are fetched
+//      in EXTRACT batches: photos + name deterministically (og:image, gallery,
+//      JS image arrays, <h1>), specs/price via Groq on the page text.
 //   3. Whole-page Groq extraction as a last resort.
 // Truly empty / JS-only with nothing readable → { spa:true } (add manually).
 
 const AED_PER_USD = 3.6725;
-const MAX_INDEX_PAGES = 16;   // category/inventory pages crawled for discovery
+const MAX_INDEX_PAGES = 10;   // category/inventory pages crawled during DISCOVER
 const MAX_DETAIL_URLS = 400;  // detail URLs collected before we stop discovering
-const DETAIL_BATCH = 12;      // detail pages read per call (skip continues)
+const MAX_EXTRACT = 12;       // detail pages accepted per EXTRACT call
 const MAX_CARS_LD = 60;       // cap for the pure JSON-LD fast path
 const MAX_HTML = 2500000;
-const FETCH_TIMEOUT = 11000;
+const FETCH_TIMEOUT = 9000;
 
 // A path that looks like ONE car's page (segment keyword + a slug after it).
 const DETAIL_PATH = /\/(listings?|vehicles?|cars?|voitures?|annonces?|autos?|stock|product|item|details?|inventory)[\/-][a-z0-9][\w%-]{2,}/i;
@@ -63,6 +70,13 @@ async function fetchPage(url) {
     const text = await res.text();
     return text.length > MAX_HTML ? text.slice(0, MAX_HTML) : text;
   } finally { clearTimeout(timer); }
+}
+async function fetchRetry(url, tries) {
+  let err;
+  for (let i = 0; i < (tries || 2); i++) {
+    try { return await fetchPage(url); } catch (e) { err = e; }
+  }
+  throw err;
 }
 function toInt(x) { if (x == null) return null; const n = parseInt(String(x).replace(/[^\d]/g, ""), 10); return isNaN(n) ? null : n; }
 function unsizeImg(u) { return u.replace(/-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp))/i, "$1"); }
@@ -168,26 +182,18 @@ async function sitemapDetailUrls(origin) {
   }
   return [...details];
 }
-// BFS: entry page + its index/category pages + sitemap → all detail URLs
+// entry page + its index/category pages + sitemap → all detail URLs.
+// Sitemap and category pages are fetched in parallel to stay inside budget.
 async function collectDetailUrls(entryUrl, entryHtml) {
   const details = new Set();
   const { details: d0, indexes } = classifyLinks(entryHtml, entryUrl);
   d0.forEach(u => details.add(u));
-  const frontier = indexes.slice(0, MAX_INDEX_PAGES);
-  const seen = new Set([entryUrl, ...frontier]);
-  let fetched = 0;
-  while (frontier.length && fetched < MAX_INDEX_PAGES && details.size < MAX_DETAIL_URLS) {
-    const batch = frontier.splice(0, 4);
-    const htmls = await Promise.all(batch.map(u => fetchPage(u).catch(() => null)));
-    fetched += batch.length;
-    htmls.forEach((html, i) => {
-      if (!html) return;
-      const c = classifyLinks(html, batch[i]);
-      c.details.forEach(u => details.add(u));
-      c.indexes.forEach(u => { if (!seen.has(u) && frontier.length + fetched < MAX_INDEX_PAGES) { seen.add(u); frontier.push(u); } });
-    });
-  }
-  try { (await sitemapDetailUrls(new URL(entryUrl).origin)).forEach(u => details.add(u)); } catch (e) {}
+  const [sitemap, ...idxHtmls] = await Promise.all([
+    sitemapDetailUrls(new URL(entryUrl).origin).catch(() => []),
+    ...indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
+  ]);
+  (sitemap || []).forEach(u => details.add(u));
+  idxHtmls.forEach(x => { if (x && x.h) classifyLinks(x.h, x.u).details.forEach(u => details.add(u)); });
   return [...details].slice(0, MAX_DETAIL_URLS);
 }
 
@@ -302,74 +308,80 @@ async function inBatches(items, size, fn) {
   const r = []; for (let i = 0; i < items.length; i += size) r.push(...await Promise.all(items.slice(i, i + size).map(fn))); return r;
 }
 
+// ── EXTRACT one batch of detail URLs → candidates ──
+async function extractBatch(urls, key) {
+  const clean = urls.filter(u => isPublicHttp(u) && !JUNK.test(u)).slice(0, MAX_EXTRACT);
+  const docs = (await inBatches(clean, 6, async (u) => {
+    try {
+      const html = await fetchRetry(u, 2);
+      const text = stripHtml(html);
+      return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
+    } catch (e) { return null; }
+  })).filter(Boolean).filter(d => d.name || d.photos.length);
+
+  // one Groq call per 4 pages for make/model/year/price; key missing or a call
+  // failing is non-fatal — name+photos survive, specs get derived from the name.
+  let specs = {};
+  if (key && docs.length) {
+    const indexed = docs.map((d, i) => ({ ...d, i }));
+    for (let i = 0; i < indexed.length; i += 4) {
+      try { Object.assign(specs, await groqSpecs(key, indexed.slice(i, i + 4))); } catch (e) {}
+    }
+  }
+  return normalize(docs.map((d, i) => {
+    const s = specs[i] || {};
+    return { name: d.name, make: s.make, model: s.model, year: s.year, mileage: s.mileage, price_original: toInt(s.price), currency: s.currency ? String(s.currency).toUpperCase() : null, photos: d.photos, source_url: d.url, import_method: "details", aedHint: d.aed };
+  }), false);
+}
+
 exports.handler = async (event) => {
   const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: '{"error":"POST only"}' };
   let body; try { body = JSON.parse(event.body || "{}"); } catch (e) { return { statusCode: 400, headers, body: '{"error":"bad json"}' }; }
-
-  let url = String(body.url || "").trim();
-  const skip = Math.max(0, parseInt(body.skip, 10) || 0);
-  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
-  url = url.split("#")[0];
-  if (!url || !isPublicHttp(url)) return { statusCode: 400, headers, body: '{"error":"valid public http(s) url required"}' };
   const key = process.env.GROQ_API_KEY;
 
   try {
-    // Entry page — fetched once, reused. (On a "continue" call we refetch it
-    // only to rebuild the detail-URL list deterministically, which is cheap.)
-    let entryHtml; try { entryHtml = await fetchPage(url); } catch (e) { return { statusCode: 200, headers, body: JSON.stringify({ error: "unreachable" }) }; }
+    // ── PHASE B: EXTRACT a batch of detail URLs (no crawl, bounded work) ──
+    if (body.phase === "extract") {
+      const urls = Array.isArray(body.urls) ? body.urls : [];
+      if (!urls.length) return { statusCode: 400, headers, body: '{"error":"urls[] required"}' };
+      const cars = await extractBatch(urls, key);
+      return { statusCode: 200, headers, body: JSON.stringify({ count: cars.length, cars }) };
+    }
+
+    // ── PHASE A: DISCOVER ──
+    let url = String(body.url || "").trim();
+    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+    url = url.split("#")[0];
+    if (!url || !isPublicHttp(url)) return { statusCode: 400, headers, body: '{"error":"valid public http(s) url required"}' };
+
+    let entryHtml; try { entryHtml = await fetchRetry(url, 2); } catch (e) { return { statusCode: 200, headers, body: JSON.stringify({ error: "unreachable" }) }; }
     const aedHint = /\bAED\b|د\.إ|dirham/i.test(entryHtml);
 
-    // ── layer 1: JSON-LD (only trust it when it yields several cars) ──
-    if (skip === 0) {
-      let ld = carsFromJsonLd(entryHtml, url);
-      if (ld.length >= 2) {
-        // follow rel=next / ?page= a few times for more JSON-LD
-        let next = (entryHtml.match(/rel\s*=\s*["']next["'][^>]*href\s*=\s*["']([^"']+)["']/i) || [])[1];
-        let guard = 0;
-        while (next && ld.length < MAX_CARS_LD && guard < 4) {
-          const nu = absUrl(next, url); if (!nu || !sameHost(nu, url)) break;
-          let h; try { h = await fetchPage(nu); } catch (e) { break; }
-          ld = ld.concat(carsFromJsonLd(h, nu));
-          next = (h.match(/rel\s*=\s*["']next["'][^>]*href\s*=\s*["']([^"']+)["']/i) || [])[1]; guard++;
-        }
-        return { statusCode: 200, headers, body: JSON.stringify({ method: "jsonld", count: normalize(ld, aedHint).length, cars: normalize(ld, aedHint) }) };
+    // layer 1: JSON-LD — if the entry (and a few next pages) already list the
+    // cars with structured data, return them directly; no batching needed.
+    let ld = carsFromJsonLd(entryHtml, url);
+    if (ld.length >= 2) {
+      let next = (entryHtml.match(/rel\s*=\s*["']next["'][^>]*href\s*=\s*["']([^"']+)["']/i) || [])[1];
+      let guard = 0;
+      while (next && ld.length < MAX_CARS_LD && guard < 4) {
+        const nu = absUrl(next, url); if (!nu || !sameHost(nu, url)) break;
+        let h; try { h = await fetchPage(nu); } catch (e) { break; }
+        ld = ld.concat(carsFromJsonLd(h, nu));
+        next = (h.match(/rel\s*=\s*["']next["'][^>]*href\s*=\s*["']([^"']+)["']/i) || [])[1]; guard++;
       }
+      const cars = normalize(ld, aedHint);
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "jsonld", count: cars.length, cars }) };
     }
 
-    // ── layer 2: discovery crawl → detail pages ──
+    // layer 2: discover the detail-page URLs (client extracts them in batches)
     const detailUrls = await collectDetailUrls(url, entryHtml);
     if (detailUrls.length) {
-      const total = detailUrls.length;
-      const batch = detailUrls.slice(skip, skip + DETAIL_BATCH);
-      const docs = (await inBatches(batch, 6, async (u) => {
-        try {
-          const html = await fetchPage(u);
-          const text = stripHtml(html);
-          return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
-        } catch (e) { return null; }
-      })).filter(Boolean).filter(d => d.name || d.photos.length);
-
-      // ask Groq for make/model/year/price in one batch (4 per call); if the
-      // key is missing or a call fails, we still keep name+photos (+ derived
-      // make/model/year from the name in normalize).
-      let specs = {};
-      if (key && docs.length) {
-        const indexed = docs.map((d, i) => ({ ...d, i }));
-        for (let i = 0; i < indexed.length; i += 4) {
-          try { Object.assign(specs, await groqSpecs(key, indexed.slice(i, i + 4))); } catch (e) {}
-        }
-      }
-      const cars = normalize(docs.map((d, i) => {
-        const s = specs[i] || {};
-        return { name: d.name, make: s.make, model: s.model, year: s.year, mileage: s.mileage, price_original: toInt(s.price), currency: s.currency ? String(s.currency).toUpperCase() : null, photos: d.photos, source_url: d.url, import_method: "details", aedHint: d.aed };
-      }), aedHint);
-      const nextSkip = skip + DETAIL_BATCH;
-      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total, skip, next_skip: nextSkip < total ? nextSkip : null, more: nextSkip < total, count: cars.length, cars }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls }) };
     }
 
-    // ── layer 3: whole-page Groq (last resort) ──
+    // layer 3: whole-page Groq (last resort, single small site)
     const text = cleanForLlm(entryHtml, url);
     if (text.length < 800) return { statusCode: 200, headers, body: JSON.stringify({ spa: true }) };
     if (!key) return { statusCode: 200, headers, body: '{"unavailable":true}' };
