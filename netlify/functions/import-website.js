@@ -520,7 +520,10 @@ async function extractBatch(urls, key) {
       const text = stripHtml(html);
       return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
     } catch (e) { return null; }
-  })).filter(Boolean).filter(d => d.name || d.photos.length);
+  // A real car listing ALWAYS has at least one photo. Requiring one keeps
+  // category/marketing pages ("SUV under 3k a month") out of the review
+  // screen — and a photo-less car could not be published anyway.
+  })).filter(Boolean).filter(d => d.name && d.photos.length);
 
   // Site chrome (banners, "latest offers" carousel, logos) repeats across many
   // car pages; a real car photo is unique to its page. Drop any image that
