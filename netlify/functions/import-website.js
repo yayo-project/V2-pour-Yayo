@@ -573,6 +573,9 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: '{"error":"POST only"}' };
   let body; try { body = JSON.parse(event.body || "{}"); } catch (e) { return { statusCode: 400, headers, body: '{"error":"bad json"}' }; }
   const key = process.env.GROQ_API_KEY;
+  const T0 = Date.now();
+  const TRACE = [];
+  const mark = (label) => { if (body.debug) TRACE.push(label + ":" + (Date.now() - T0)); };
   DEADLINE = Date.now() + TOTAL_BUDGET;   // always answer before the gateway kills us
 
   try {
@@ -590,12 +593,15 @@ exports.handler = async (event) => {
     url = url.split("#")[0];
     if (!url || !isPublicHttp(url)) return { statusCode: 400, headers, body: '{"error":"valid public http(s) url required"}' };
 
-    let entryHtml; try { entryHtml = await fetchRetry(url, 2); } catch (e) { return { statusCode: 200, headers, body: JSON.stringify({ error: "unreachable" }) }; }
+    let entryHtml; try { entryHtml = await fetchRetry(url, 2); } catch (e) { return { statusCode: 200, headers, body: JSON.stringify({ error: "unreachable", trace: TRACE }) }; }
+    mark("entry(" + Math.round(entryHtml.length / 1024) + "kb)");
     const aedHint = /\bAED\b|د\.إ|dirham/i.test(entryHtml);
+    mark("aed");
 
     // layer 1: JSON-LD — if the entry (and a few next pages) already list the
     // cars with structured data, return them directly; no batching needed.
     let ld = carsFromJsonLd(entryHtml, url);
+    mark("jsonld(" + ld.length + ")");
     if (ld.length >= 2) {
       let next = (entryHtml.match(/rel\s*=\s*["']next["'][^>]*href\s*=\s*["']([^"']+)["']/i) || [])[1];
       let guard = 0;
@@ -612,6 +618,7 @@ exports.handler = async (event) => {
     // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON) —
     // what makes JavaScript-only inventory apps work, cleaner than scraping.
     const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint);
+    mark("feeds(" + feed.length + ")");
     // a big, clean catalog wins outright (no crawl needed)
     if (feed.length >= 12) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
@@ -621,8 +628,9 @@ exports.handler = async (event) => {
     // The crawl often finds far more cars than a partial feed (e.g. a "most
     // viewed" widget), so a small feed must NOT short-circuit a rich crawl.
     const detailUrls = await collectDetailUrls(url, entryHtml);
+    mark("crawl(" + detailUrls.length + ")");
     if (detailUrls.length >= 2 && detailUrls.length >= feed.length) {
-      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls, trace: TRACE }) };
     }
     // otherwise a usable feed (2–11 cars, richer than the crawl) still works
     if (feed.length >= 2) {
