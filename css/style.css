@@ -1020,3 +1020,7 @@ body.no-scroll{overflow:hidden}
   .imp-actions{flex-direction:column-reverse}
   .imp-actions .btn{width:100%}
 }
+/* small inline action inside an admin detail line (e.g. release website) */
+.ad-inline-btn{margin-left:8px;border:1px solid var(--line);background:#fff;border-radius:7px;padding:3px 9px;font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.ad-inline-btn:hover{border-color:#B3261E;color:#B3261E}
+[dir="rtl"] .ad-inline-btn{margin-left:0;margin-right:8px}

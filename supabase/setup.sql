@@ -978,3 +978,85 @@ end $$;
 drop trigger if exists yayo_listing_limit on public.listings;
 create trigger yayo_listing_limit before insert on public.listings
   for each row execute function public.yayo_enforce_listing_limit();
+
+-- ═══════════════════════════════════════════════════════════
+-- 31) IMPORT OWNERSHIP — one website = one dealer, and one
+-- dealer account = one website. Invisible for honest dealers.
+-- Rules:
+--   • a website can never be claimed by two dealers
+--   • once a dealer has imported cars, their account is bound
+--     to that website (a typo costs nothing: while they have
+--     imported 0 cars they can freely change it)
+--   • an imported listing must come from the dealer's own
+--     claimed website — enforced by trigger, not by the client
+--   • admin can free an account (rebrand / genuine 2nd site)
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers add column if not exists import_domain text;
+alter table public.dealers add column if not exists import_claimed_at timestamptz;
+
+create unique index if not exists dealers_import_domain_uniq
+  on public.dealers (lower(import_domain)) where import_domain is not null;
+
+-- claim a website for the CALLING dealer
+-- → 'ok' | 'taken' (another account) | 'locked:<domain>' (this account is
+--   already bound to a different site) | 'nodealer'
+create or replace function public.yayo_claim_import_domain(dom text)
+returns text language plpgsql security definer set search_path = public as $$
+declare me uuid; mine text; owner_id uuid; clean text; imported int;
+begin
+  clean := lower(regexp_replace(coalesce(dom,''), '^www\.', ''));
+  if clean = '' then return 'nodealer'; end if;
+
+  select id, lower(regexp_replace(coalesce(import_domain,''), '^www\.', ''))
+    into me, mine
+    from dealers where lower(email) = lower(coalesce(auth.jwt()->>'email','')) limit 1;
+  if me is null then return 'nodealer'; end if;
+
+  -- same site again (re-import) is always fine
+  if mine = clean then return 'ok'; end if;
+
+  -- is this website already another dealer's?
+  select id into owner_id from dealers
+    where lower(regexp_replace(coalesce(import_domain,''), '^www\.', '')) = clean limit 1;
+  if owner_id is not null and owner_id <> me then return 'taken'; end if;
+
+  -- this account already bound to a different site AND has imported cars?
+  if coalesce(mine,'') <> '' then
+    select count(*) into imported from listings
+      where dealer_id = me and source_url is not null;
+    if imported > 0 then return 'locked:' || mine; end if;
+  end if;
+
+  update dealers set import_domain = clean, import_claimed_at = now() where id = me;
+  return 'ok';
+end $$;
+
+-- an imported listing must come from THIS dealer's claimed website
+create or replace function public.yayo_guard_import_source()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare dom text; claimed text;
+begin
+  if new.source_url is null or new.source_url = '' then return new; end if;
+  dom := lower(regexp_replace(coalesce(substring(new.source_url from '^https?://([^/:]+)'),''), '^www\.', ''));
+  select lower(regexp_replace(coalesce(import_domain,''), '^www\.', '')) into claimed
+    from dealers where id = new.dealer_id;
+  if coalesce(claimed,'') = '' or dom is distinct from claimed then
+    raise exception 'YAYO_IMPORT_NOT_YOURS';
+  end if;
+  return new;
+end $$;
+drop trigger if exists yayo_import_source on public.listings;
+create trigger yayo_import_source before insert on public.listings
+  for each row execute function public.yayo_guard_import_source();
+
+-- admin frees an account: the dealer can then link a different website,
+-- and the old website becomes claimable again. Already-imported cars stay.
+create or replace function public.admin_reset_import_domain(sid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare old text;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  select import_domain into old from dealers where id = sid;
+  update dealers set import_domain = null, import_claimed_at = null where id = sid;
+  perform _yayo_log('reset_import_domain', 'dealer', sid::text, old);
+end $$;

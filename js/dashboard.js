@@ -468,6 +468,26 @@ async function impRead() {
   if (!url) { err.hidden = false; err.textContent = t("imp_need_url"); return; }
   if (!document.getElementById("imp-own").checked) { err.hidden = false; err.textContent = t("imp_need_own"); return; }
   hide("imp-err");
+
+  // OWNERSHIP: one website belongs to one dealer. Claim it before reading so
+  // the dealer is told immediately, not after a long wait. (§31 also enforces
+  // this at the database level, so it cannot be bypassed.)
+  let domain = "";
+  try { domain = new URL(/^https?:\/\//i.test(url) ? url : "https://" + url).hostname.replace(/^www\./i, ""); } catch (e) {}
+  if (!DEMO && domain) {
+    try {
+      const { data, error } = await yayoSB().rpc("yayo_claim_import_domain", { dom: domain });
+      const say = msg => { const e2 = document.getElementById("imp-err"); e2.hidden = false; e2.textContent = msg; };
+      if (!error && data === "taken") { say(t("imp_taken")); return; }
+      // this account is already tied to a different website (cars imported)
+      if (!error && String(data || "").startsWith("locked:")) {
+        say(t("imp_locked_site").replace("{site}", String(data).slice(7)));
+        return;
+      }
+    } catch (e) { /* §31 not run yet — import still works, the DB stays the gate */ }
+  }
+  IMP.domain = domain;
+
   IMP.busy = true;
   impShow("imp-loading");
   impBar("imp-bar-fill", 8);
@@ -596,7 +616,7 @@ async function impConfirm() {
   if (!picks.length) return;
   IMP.busy = true;
   impShow("imp-publish");
-  let done = 0, ok = 0, failed = 0;
+  let done = 0, ok = 0, failed = 0, blocked = false;
   const total = picks.length;
   const tick = () => { done++; impBar("imp-pub-fill", (done / total) * 100); document.getElementById("imp-pub-txt").textContent = done + " / " + total; };
   document.getElementById("imp-pub-txt").textContent = "0 / " + total;
@@ -621,6 +641,9 @@ async function impConfirm() {
         const { source_url, import_method, imported_at, make, model, photos: ph, ...slim } = payload;
         ({ error } = await insert(slim));
       }
+      // §31: the database refuses an imported car from a site this dealer
+      // doesn't own — the real protection, impossible to bypass from a client
+      if (error && /YAYO_IMPORT_NOT_YOURS/.test(error.message || "")) { blocked = true; failed++; return; }
       if (error) { failed++; return; }
       ok++;
     } catch (e) { failed++; }
@@ -636,7 +659,18 @@ async function impConfirm() {
   renderListings(); renderStats(); renderStartChecklist();
   impShow("imp-done");
   document.getElementById("imp-done-h").textContent = t("imp_done_h").replace("{n}", ok);
-  document.getElementById("imp-done-sub").textContent = failed ? t("imp_done_some").replace("{n}", failed) : t("imp_done_all");
+  document.getElementById("imp-done-sub").textContent = blocked
+    ? t("imp_taken")
+    : (failed ? t("imp_done_some").replace("{n}", failed) : t("imp_done_all"));
+
+  // Tell the founder who imported which site, and whether ownership was
+  // automatically evident (dealer's email domain matches the website).
+  if (!DEMO && ok && IMP.domain) {
+    const mail = (DEALER.email || "").split("@")[1] || "";
+    const proof = mail && (IMP.domain === mail.toLowerCase() || IMP.domain.endsWith("." + mail.toLowerCase()))
+      ? "email vérifié" : "pas de preuve automatique";
+    try { yayoNotifyAdmin("import", DEALER.name, IMP.domain + " — " + ok + " voitures — " + proof); } catch (e) {}
+  }
 }
 
 // ── Listing photos (upload from device — never a URL field) ──
@@ -1744,6 +1778,8 @@ function adOpenBiz(type, id) {
     ${line("ad_d_pickup", meta.pickup)}
     ${line("ad_d_langs", meta.languages)}
     ${line("ad_d_years", meta.years)}
+    ${x.import_domain ? `<p class="ad-dl"><b>${t("ad_d_site")}</b> <a href="https://${escapeHtml(x.import_domain)}" target="_blank" rel="noopener">${escapeHtml(x.import_domain)}</a>
+      <button class="ad-inline-btn" onclick="adResetImport('${x.id}')">${t("ad_reset_site")}</button></p>` : ""}
     ${x.rejected_reason ? `<p class="ad-dl ad-reason"><b>${t("ad_d_reason")}</b> ${escapeHtml(x.rejected_reason)}</p>` : ""}
     ${type === "dealer" ? `<p class="ad-dl"><b>${nL}</b> ${t("ad_d_listings")}</p>` : ""}
     ${gal.length ? `<div class="up-thumbs">${gal.slice(0, 6).map(u => `<div class="up-thumb"><img src="${escapeHtml(u)}" alt=""></div>`).join("")}</div>` : ""}
@@ -1784,6 +1820,16 @@ function adVerify(type, id, val) {
 }
 // Rename a business (e.g. a name typed in Arabic script → Latin letters so
 // every buyer can read it). Goes through the audited §28 RPC.
+// Free a dealer's website link (rebrand, genuine 2nd site, wrong claim).
+// The old website becomes claimable by another account — say so clearly.
+function adResetImport(id) {
+  const x = bizList("dealer").find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (!confirm(t("ad_reset_site_confirm").replace("{site}", x.import_domain || "—"))) return;
+  adBizAction("dealer", id,
+    () => adRpc("admin_reset_import_domain", { sid: id }),
+    y => { y.import_domain = null; y.import_claimed_at = null; });
+}
 function adRename(type, id) {
   const x = bizList(type).find(r => String(r.id) === String(id));
   if (!x) return;
