@@ -574,7 +574,7 @@ function impRenderReview(cars, siteTotal) {
   document.getElementById("imp-grid").innerHTML = IMP.cars.map((c, i) => `
     <div class="imp-card${c.locked ? " imp-locked" : ""}${c.pick ? " on" : ""}" id="imp-card-${i}">
       <div class="imp-card-img">
-        ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
+        ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
         ${c.photos.length > 1 ? `<span class="imp-pcount">${c.photos.length}</span>` : ""}
         ${c.locked ? `<span class="imp-lock">🔒</span>` : `<label class="imp-tick"><input type="checkbox" ${c.pick ? "checked" : ""} onchange="impToggle(${i}, this.checked)"></label>`}
       </div>
