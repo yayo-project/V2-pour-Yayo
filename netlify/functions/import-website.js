@@ -43,8 +43,8 @@ function budgetLeft() { return DEADLINE ? Math.max(0, DEADLINE - Date.now()) : F
 
 // A URL segment that talks about cars ("used-cars", "listings", "vehicules"…)
 const CAR_SEG = /(listing|vehicle|vehicule|voiture|annonce|inventory|inventaire|stock|product|item|car|auto|used|occasion|preowned|pre-owned)/i;
-// …but these are SERVICE / content pages, never a car ("car-care", "car-wash")
-const SERVICE_SEG = /(care|wash|detail(ing)?|service|repair|maintenance|warrant|insurance|finance|loan|lease|rental|rent|hire|part|accessor|blog|news|tip|guide|about|contact|team|career|job|privacy|terms|polic|faq|valuation|sell|trade|export|import|shipping|showroom|branch|location)/i;
+// …but these are SERVICE / content pages, never a car ("car-care", "book_car")
+const SERVICE_SEG = /(care|wash|detail(ing)?|service|repair|maintenance|warrant|insurance|finance|loan|lease|rental|rent|hire|part|accessor|blog|news|tip|guide|about|contact|team|career|job|privacy|terms|polic|faq|valuation|sell|trade|export|import|shipping|showroom|branch|location|book|reserve|payment|checkout|quote|test-?drive|compare|favou?rite|profile|login|register|search)/i;
 // A query that identifies ONE car, e.g. product.php?product=slug, ?vid=123.
 const DETAIL_QUERY = /[?&](product|car|vehicle|listing|item|vid|pid|carid|stockid|auto|ref)=[a-z0-9][\w%-]{2,}/i;
 const INDEX_QUERY = /[?&](category|make|brand|browse|type|page|paged|serie|model|body|fuel)=/i;
@@ -61,13 +61,17 @@ function sluggy(seg) {
 // Works for /listings/toyota-x/, /used-cars/1234-Aston-Martin/, /voitures/…
 function pathKind(pathname) {
   const segs = decodeURIComponent(pathname).split("/").filter(Boolean);
+  let sawCarSeg = false;
+  // check EVERY car-ish segment, not just the first: real car links are often
+  // nested, e.g. /buy-used-cars/vehicle/1424-audi-q8 — the slug sits two
+  // levels down, and stopping at the first segment mislabels it a category.
   for (let i = 0; i < segs.length; i++) {
     if (!CAR_SEG.test(segs[i]) || SERVICE_SEG.test(segs[i])) continue;
+    sawCarSeg = true;
     const next = segs[i + 1];
     if (next && !SERVICE_SEG.test(next) && sluggy(next)) return "detail";
-    return "index";
   }
-  return null;
+  return sawCarSeg ? "index" : null;
 }
 
 // ── tiny helpers ──────────────────────────────────────────────
@@ -514,14 +518,28 @@ async function collectDetailUrls(entryUrl, entryHtml) {
 }
 
 // ── per-detail-page deterministic extraction (photos + name) ──
+// "Buy Used 2023 Audi Q8 SUV in Dubai - 84K KM | Alba Cars" → "2023 Audi Q8 SUV in Dubai - 84K KM"
+function cleanTitle(s) {
+  let t = decodeEntities(stripHtml(s || ""));
+  t = t.split("|")[0];                                   // drop the site name
+  t = t.replace(/^\s*(buy|shop|acheter|for\s+sale)\s+/i, "")
+       .replace(/^\s*(used|pre-?owned|second\s*hand|neuf|new)\s+(?=\d|[A-Z])/i, "")
+       .replace(/\s*[-–—]\s*(for sale|in stock|dubai|uae).*$/i, "")
+       .trim();
+  return t;
+}
 function pickName(html) {
   const h1 = (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1];
-  if (h1) { const t = stripHtml(h1); if (t.length > 2 && t.length < 130) return t; }
+  if (h1) { const t = cleanTitle(h1); if (t.length > 2 && t.length < 130) return t; }
   const og = (html.match(/property\s*=\s*["']og:title["'][^>]*content\s*=\s*["']([^"']+)["']/i)
     || html.match(/content\s*=\s*["']([^"']+)["'][^>]*property\s*=\s*["']og:title["']/i) || [])[1];
-  if (og && !/^[\w .]*(motors?|fze|export|trading|automobiles?)\b/i.test(og)) return og.slice(0, 120);
+  if (og && !/^[\w .]*(motors?|fze|export|trading|automobiles?)\b/i.test(og)) {
+    const t = cleanTitle(og); if (t.length > 2) return t.slice(0, 120);
+  }
   const title = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
-  return title ? stripHtml(title).split(/[|\-–]/)[0].trim().slice(0, 120) : null;
+  if (!title) return null;
+  const t = cleanTitle(title);
+  return t ? t.slice(0, 120) : null;
 }
 function detailPhotos(html, pageUrl) {
   // drop "similar / related cars" tail — its photos belong to other cars
@@ -544,6 +562,12 @@ function detailPhotos(html, pageUrl) {
   // plain <img> in the (trimmed) main content
   const imgRe = /<img[^>]*?(?:data-src|data-lazy|data-original|src)\s*=\s*["']([^"'\s]+\.(?:jpe?g|png|webp)[^"'\s]*)["']/gi;
   let m; while ((m = imgRe.exec(html)) && set.size < 20) push(m[1]);
+  // Last resort: modern React/Next sites keep their gallery inside a JSON
+  // payload rather than <img> tags, so sweep the raw page for image URLs.
+  if (set.size < 3) {
+    const rawRe = /https?:\/\/[^"'\\\s<>()]+\.(?:jpe?g|png|webp)(?:\?[^"'\\\s<>()]*)?/gi;
+    let r; while ((r = rawRe.exec(html)) && set.size < 15) push(r[0].replace(/&amp;/g, "&"));
+  }
   return [...set].slice(0, 15);
 }
 // a compact price-region snippet so Groq parses little text, not the whole DOM
