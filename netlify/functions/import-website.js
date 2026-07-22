@@ -314,6 +314,66 @@ async function carsFromShopify(origin) {
   }
   return cars;
 }
+// WordPress stores cars as a custom post type and publishes it at
+// /wp-json/wp/v2/<type> — with ?_embed the featured PHOTO comes too. This is
+// how we read dealer sites whose cars/photos are drawn by JavaScript: the data
+// is public, it just never appears in the HTML. (newautofzco.com)
+const WP_CAR_TYPE = /^\/wp\/v2\/(cars?|vehicles?|listings?|inventory|autos?|voitures?|stock|products?)$/i;
+function decodeEntities(s) {
+  return String(s || "")
+    .replace(/&#(\d+);/g, (m, d) => String.fromCharCode(+d))
+    .replace(/&#x([0-9a-f]+);/gi, (m, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+function wpItemToCar(it, origin) {
+  const name = decodeEntities((it.title && (it.title.rendered || it.title)) || "");
+  if (!name) return null;
+  const photos = [];
+  try {
+    const media = (it._embedded && it._embedded["wp:featuredmedia"]) || [];
+    media.forEach(m => { const u = m && (m.source_url || (m.media_details && m.media_details.file)); if (u && /^https?:/.test(u)) photos.push(unsizeImg(u)); });
+  } catch (e) {}
+  // some themes keep extra shots in the rendered content
+  const html = (it.content && it.content.rendered) || "";
+  const re = /<img[^>]*?(?:data-src|src)\s*=\s*["']([^"'\s]+\.(?:jpe?g|png|webp)[^"'\s]*)["']/gi;
+  let m2; while ((m2 = re.exec(html)) && photos.length < 12) { const a = absUrl(m2[1], origin); if (a && !/logo|icon|placeholder/i.test(a)) photos.push(unsizeImg(a)); }
+  return {
+    name: name.slice(0, 120),
+    make: null, model: null, year: null,
+    price_original: toInt(fieldLike(it, /^(price|regular_?price|sale_?price|car_?price|amount)$/i)),
+    currency: null,
+    mileage: toInt(fieldLike(it, /mileage|odometer|kilometer/i)),
+    photos: [...new Set(photos)].slice(0, 12),
+    source_url: it.link || null,
+    import_method: "api"
+  };
+}
+async function carsFromWpTypes(origin) {
+  let routes = [];
+  try {
+    const root = await fetchJson(origin + "/wp-json/");
+    routes = root && root.routes ? Object.keys(root.routes).filter(r => WP_CAR_TYPE.test(r)) : [];
+  } catch (e) { return []; }
+  if (!routes.length) return [];
+  // prefer a car-specific type over the generic "products"
+  routes.sort((a, b) => (/product/i.test(a) ? 1 : 0) - (/product/i.test(b) ? 1 : 0));
+  const cars = [];
+  for (const r of routes.slice(0, 2)) {
+    for (let page = 1; page <= 2; page++) {
+      if (budgetLeft() < 5000) break;
+      let items;
+      try { items = await fetchJson(origin + r + "?per_page=100&_embed=1&page=" + page); } catch (e) { break; }
+      if (!Array.isArray(items) || !items.length) break;
+      items.forEach(it => { const c = wpItemToCar(it, origin); if (c) cars.push(c); });
+      if (items.length < 100) break;
+    }
+    if (cars.length >= 12) break;
+  }
+  return cars;
+}
+
 // WordPress REST: discover a car/vehicle/listing/product route and read it
 async function carsFromWpRest(origin) {
   const cars = [];
@@ -353,6 +413,9 @@ async function carsFromDiscoveredApi(html, base) {
 async function carsFromDataFeeds(entryHtml, url) {
   const origin = new URL(url).origin;
   let cars = carsFromHydration(entryHtml, url);   // free: already-downloaded HTML
+  // WordPress car post type + embedded photo — the highest-yield free source,
+  // and the one that rescues sites whose cars are rendered by JavaScript
+  if (cars.length < 2 && budgetLeft() > 9000) { try { cars = cars.concat(await carsFromWpTypes(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 12000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 10000) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 8000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
@@ -618,7 +681,8 @@ exports.handler = async (event) => {
 
     // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON) —
     // what makes JavaScript-only inventory apps work, cleaner than scraping.
-    const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint);
+    // same quality bar as the crawl path: a real listing has at least one photo
+    const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint).filter(c => c.photos.length);
     mark("feeds(" + feed.length + ")");
     // a big, clean catalog wins outright (no crawl needed)
     if (feed.length >= 12) {
