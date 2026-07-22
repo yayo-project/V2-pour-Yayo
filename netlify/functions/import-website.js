@@ -760,31 +760,23 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: wpUrls.length, batch: MAX_EXTRACT, urls: wpUrls, trace: TRACE }) };
     }
 
-    // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON) —
-    // what makes JavaScript-only inventory apps work, cleaner than scraping.
-    // same quality bar as the crawl path: a real listing has at least one photo
-    const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint).filter(c => c.photos.length);
-    mark("feeds(" + feed.length + ")");
-    // a big, clean catalog wins outright (no crawl needed)
-    if (feed.length >= 12) {
-      return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
-    }
-
-    // layer 2: discover the detail-page URLs (client extracts them in batches).
-    // The crawl often finds far more cars than a partial feed (e.g. a "most
-    // viewed" widget), so a small feed must NOT short-circuit a rich crawl.
-    // WordPress car post type: the cars are public data even when the page
-    // renders them with JavaScript. Preferred when it holds more than the HTML
-    // crawl found (newautofzco.com: 100 real cars vs 9 marketing pages).
+    // layer 2: follow the site's own car links — the proven path, so it runs
+    // BEFORE the speculative data-feed probes. Those probes cost ~8s on a site
+    // that has no feed, which used to leave a slow crawl finishing right on the
+    // deadline (mohamedhakim.com: 400 cars found at exactly 20.0s).
     let detailUrls = await collectDetailUrls(url, entryHtml);
     mark("crawl(" + detailUrls.length + ")");
     if (wpUrls.length > detailUrls.length) detailUrls = wpUrls;   // few, but better than the HTML
-    if (detailUrls.length >= 2 && detailUrls.length >= feed.length) {
+    if (detailUrls.length >= 2) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls, trace: TRACE }) };
     }
-    // otherwise a usable feed (2–11 cars, richer than the crawl) still works
+
+    // layer 3: only now pay for the data-feed probes (Shopify / WordPress REST
+    // / app-data JSON). Same quality bar: a real listing has at least one photo.
+    const feed = normalize(await carsFromDataFeeds(entryHtml, url), aedHint).filter(c => c.photos.length);
+    mark("feeds(" + feed.length + ")");
     if (feed.length >= 2) {
-      return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "feed", count: feed.length, cars: feed, trace: TRACE }) };
     }
     if (detailUrls.length >= 1) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls }) };
