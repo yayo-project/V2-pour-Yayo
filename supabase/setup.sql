@@ -1060,3 +1060,78 @@ begin
   update dealers set import_domain = null, import_claimed_at = null where id = sid;
   perform _yayo_log('reset_import_domain', 'dealer', sid::text, old);
 end $$;
+-- ═══════════════════════════════════════════════════════════
+-- 32) GRACEFUL DOWNGRADE — when a promo ends, a dealer's extra
+-- cars are put to sleep (dormant), NEVER deleted. They come
+-- back automatically the moment the dealer makes room: sells a
+-- car, hides one, or gets a bigger plan.
+-- Oldest listings keep their place; the newest sleep first.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.yayo_reconcile_dealer(d_id uuid)
+returns int language plpgsql security definer set search_path = public as $$
+declare d record; lim int; live int; changed int := 0;
+begin
+  select * into d from dealers where id = d_id;
+  if d is null then return 0; end if;
+
+  if d.promo_until is not null and current_date < d.promo_until and d.promo_limit is not null
+    then lim := d.promo_limit;
+    else lim := coalesce(d.normal_limit, 10);
+  end if;
+
+  -- unlimited: wake everything up
+  if lim < 0 then
+    update listings set dormant = false
+      where dealer_id = d_id and coalesce(dormant,false) = true;
+    get diagnostics changed = row_count;
+    return changed;
+  end if;
+
+  select count(*) into live from listings
+    where dealer_id = d_id and coalesce(sold,false) = false and coalesce(dormant,false) = false;
+
+  if live > lim then
+    -- too many: the NEWEST extra cars go to sleep
+    with extra as (
+      select id from listings
+        where dealer_id = d_id and coalesce(sold,false) = false and coalesce(dormant,false) = false
+        order by created_at desc
+        limit (live - lim)
+    )
+    update listings set dormant = true where id in (select id from extra);
+    get diagnostics changed = row_count;
+  elsif live < lim then
+    -- room again: wake the oldest sleeping cars first
+    with wake as (
+      select id from listings
+        where dealer_id = d_id and coalesce(sold,false) = false and coalesce(dormant,false) = true
+        order by created_at asc
+        limit (lim - live)
+    )
+    update listings set dormant = false where id in (select id from wake);
+    get diagnostics changed = row_count;
+  end if;
+  return changed;
+end $$;
+
+-- the dealer's own dashboard can reconcile their account on load
+create or replace function public.yayo_reconcile_me()
+returns int language plpgsql security definer set search_path = public as $$
+declare me uuid;
+begin
+  select id into me from dealers
+    where lower(email) = lower(coalesce(auth.jwt()->>'email','')) limit 1;
+  if me is null then return 0; end if;
+  return public.yayo_reconcile_dealer(me);
+end $$;
+
+-- nightly sweep for every dealer (called by the scheduled function)
+create or replace function public.yayo_reconcile_all()
+returns int language plpgsql security definer set search_path = public as $$
+declare r record; total int := 0;
+begin
+  for r in select id from dealers loop
+    total := total + public.yayo_reconcile_dealer(r.id);
+  end loop;
+  return total;
+end $$;

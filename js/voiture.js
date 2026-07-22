@@ -30,7 +30,7 @@ async function loadCar() {
         .from("listings")
         .select("*, dealers(*)")
         .eq("id", CAR_ID).maybeSingle();
-      if (data && data.hidden) data = null; // hidden by admin — not shown to buyers
+      if (data && (data.hidden || data.dormant)) data = null; // hidden by admin, or asleep after a plan change (§32)
       // pending/suspended dealer = listing not public yet (admin approval first)
       if (data && !(data.dealers && data.dealers.verified && !data.dealers.suspended)) data = null;
       if (!error && data) {
@@ -411,7 +411,7 @@ async function loadSimilar() {
     try {
       const { data } = await yayoSB().from("listings")
         .select("id, car_name, price, mileage, fuel, year, photo_url, photos, make, dealers!inner(verified, suspended)")
-        .eq("active", true).eq("hidden", false)
+        .eq("active", true).eq("hidden", false).eq("dormant", false)
         .eq("dealers.verified", true).eq("dealers.suspended", false)
         .neq("id", CAR.id).limit(9);
       const firstWord = (CAR.car_name || "").split(" ")[0].toLowerCase();

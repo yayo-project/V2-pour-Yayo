@@ -14,3 +14,7 @@
 # Weekly founder digest — every Monday 08:00 UTC (12:00 Dubai)
 [functions."weekly-stats"]
   schedule = "0 8 * * 1"
+
+# Nightly: put extra cars to sleep when a promo ends, wake them when there's room
+[functions."reconcile-limits"]
+  schedule = "0 2 * * *"

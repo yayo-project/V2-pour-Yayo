@@ -31,7 +31,7 @@ exports.handler = async () => {
         `${SUPABASE_URL}/rest/v1/listings?select=id,created_at,hidden,dealers!inner(verified,suspended)&active=eq.true&sold=eq.false&dealers.verified=eq.true&dealers.suspended=eq.false&order=created_at.desc&limit=1000`,
         { headers: { apikey: key, authorization: `Bearer ${key}` } }
       );
-      if (r.ok) cars = (await r.json()).filter(l => !l.hidden);
+      if (r.ok) cars = (await r.json()).filter(l => !l.hidden && !l.dormant);
     } catch (e) { /* static part still serves */ }
   }
 

@@ -40,7 +40,8 @@ async function loadCars() {
     if (!error && data && data.length > 0) {
       // buyers only ever see listings from ADMIN-VERIFIED dealers
       // (pending/suspended dealers prepare in their dashboard, invisible here)
-      data = data.filter(l => !l.hidden && l.dealers && l.dealers.verified && !l.dealers.suspended);
+      // dormant = asleep because the dealer's plan shrank (§32) — not for buyers
+      data = data.filter(l => !l.hidden && !l.dormant && l.dealers && l.dealers.verified && !l.dealers.suspended);
       list = data.map(l => ({
         id: l.id,
         car_name: l.car_name,

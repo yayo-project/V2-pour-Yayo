@@ -236,6 +236,10 @@ function renderDealerCharts() {
 
 // ── Data ──
 async function loadListings() {
+  // Bring the account in line with its current plan first (§32): if a promo
+  // ended, extra cars go to sleep; if the dealer freed a slot, the oldest
+  // sleeping car wakes up. Silent no-op until §32 is run.
+  try { await yayoSB().rpc("yayo_reconcile_me"); } catch (e) {}
   try {
     const { data } = await yayoSB().from("listings").select("*")
       .eq("dealer_id", DEALER.id).order("created_at", { ascending: false }).limit(200);
@@ -386,9 +390,17 @@ function renderLimitLine() {
   if (!el || !DEALER) return;
   const L = yayoDealerLimit(DEALER);
   const used = LISTINGS.filter(l => !l.sold && !l.dormant).length;
+  const asleep = LISTINGS.filter(l => l.dormant).length;
   const cap = L.limit < 0 ? t("lim_unlimited") : String(L.limit);
+  const dateFmt = { day: "numeric", month: "short" };
   el.hidden = false;
-  el.innerHTML = `${t("lim_usage")} : <b>${used} / ${cap}</b>${L.promo ? ` <em>(${t("lim_promo_until")} ${new Date(L.until).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })})</em>` : ""}`;
+  el.innerHTML = `${t("lim_usage")} : <b>${used} / ${cap}</b>${L.promo ? ` <em>(${t("lim_promo_until")} ${new Date(L.until).toLocaleDateString(YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR", dateFmt)})</em>` : ""}`;
+  // cars put to sleep by a plan change — reassure the dealer nothing was lost
+  const note = document.getElementById("lst-dormant");
+  if (note) {
+    note.hidden = !asleep;
+    if (asleep) note.textContent = t("d_dormant_note").replace("{n}", asleep);
+  }
 }
 
 function renderOverview() {
@@ -404,6 +416,8 @@ function renderOverview() {
 // ── Listings CRUD ──
 function statusOf(l) {
   if (l.sold) return ["sold", t("d_st_sold")];
+  // asleep because the plan shrank (§32): kept safe, wakes up automatically
+  if (l.dormant) return ["off", t("d_st_dormant")];
   if (!l.active) return ["off", t("d_st_off")];
   return ["active", t("d_st_active")];
 }
@@ -579,7 +593,12 @@ function impRenderReview(cars, siteTotal) {
   ln.hidden = !lockedCount;
   if (lockedCount) ln.textContent = t("imp_locked").replace("{n}", lockedCount);
 
-  document.getElementById("imp-grid").innerHTML = IMP.cars.map((c, i) => `
+  document.getElementById("imp-grid").innerHTML = impCardsHtml();
+  impUpdateConfirm();
+}
+// every label goes through t() so the cards follow the dealer's language
+function impCardsHtml() {
+  return IMP.cars.map((c, i) => `
     <div class="imp-card${c.locked ? " imp-locked" : ""}${c.pick ? " on" : ""}" id="imp-card-${i}">
       <div class="imp-card-img">
         ${c.photos[0] ? `<img src="${escapeHtml(c.photos[0])}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">` : `<span class="imp-noimg"></span>`}
@@ -589,13 +608,12 @@ function impRenderReview(cars, siteTotal) {
       <div class="imp-card-b">
         <div class="imp-card-name">${escapeHtml(c.name)}</div>
         ${c.locked
-          ? `<div class="imp-card-lock" data-i18n="imp_card_locked">Passez au plan supérieur pour publier</div>`
+          ? `<div class="imp-card-lock">${t("imp_card_locked")}</div>`
           : c.price_missing
-            ? `<div class="imp-price-row"><span data-i18n="imp_add_price">Ajoutez le prix</span><span class="imp-cur">$</span><input type="number" min="0" inputmode="numeric" class="imp-price-in" oninput="impPrice(${i}, this.value)" value="${c.price_usd || ""}"></div>`
+            ? `<div class="imp-price-row"><span>${t("imp_add_price")}</span><span class="imp-cur">$</span><input type="number" min="0" inputmode="numeric" class="imp-price-in" oninput="impPrice(${i}, this.value)" value="${c.price_usd || ""}"></div>`
             : `<div class="imp-card-price">${fmt(c.price_usd)}</div>`}
       </div>
     </div>`).join("");
-  impUpdateConfirm();
 }
 function impToggle(i, on) {
   IMP.cars[i].pick = on && (!IMP.cars[i].price_missing || IMP.cars[i].price_usd > 0);
@@ -2181,6 +2199,16 @@ async function uploadLicense(kind, files) {
 window.onLangChange = () => {
   if (!document.getElementById("dash-dealer").hidden) {
     renderBadge(); renderPendingBanner("dealer"); renderOverview(); renderDealerCharts(); renderListings(); renderConvoList(); renderChips();
+    renderLimitLine();
+  }
+  // the import window keeps its own rendered cards — retranslate them live
+  const impModal = document.getElementById("imp-modal");
+  if (impModal && !impModal.hidden) {
+    applyI18n(impModal);
+    if (!document.getElementById("imp-review").hidden && IMP.cars.length) {
+      document.getElementById("imp-grid").innerHTML = impCardsHtml();
+      impUpdateConfirm();
+    }
   }
   if (!document.getElementById("dash-agency-app").hidden) {
     syncRoutesFromDOM(); syncOfficesFromDOM(); enterAgency();
