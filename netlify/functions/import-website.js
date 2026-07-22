@@ -368,8 +368,48 @@ async function wpCarApiUrls(origin) {
   try {
     const items = await fetchJson(origin + "/wp-json/wp/v2/" + base + "?per_page=100&orderby=date&order=desc&_fields=id");
     if (!Array.isArray(items) || !items.length) return [];
-    return items.filter(i => i && i.id).map(i => origin + "/wp-json/wp/v2/" + base + "/" + i.id + "?_embed=1");
+    // plain post URLs — EXTRACT turns each into two tiny calls (title + gallery)
+    return items.filter(i => i && i.id).map(i => origin + "/wp-json/wp/v2/" + base + "/" + i.id);
   } catch (e) { return []; }
+}
+
+// One WordPress car → its title, its page link and its FULL gallery, using two
+// small parallel requests. The car's photos are its media attachments; that
+// list also holds brochures (PDF) and documents, which must never become car
+// photos.
+async function wpCarFromApi(apiUrl) {
+  const m = String(apiUrl).match(/^(https?:\/\/[^/]+)\/wp-json\/wp\/v2\/([^/?]+)\/(\d+)/i);
+  if (!m) return null;
+  const [, origin, base, id] = m;
+  const [post, media] = await Promise.all([
+    fetchJson(origin + "/wp-json/wp/v2/" + base + "/" + id + "?_fields=title,link").catch(() => null),
+    fetchJson(origin + "/wp-json/wp/v2/media?parent=" + id + "&per_page=20&_fields=source_url,mime_type").catch(() => [])
+  ]);
+  const name = decodeEntities((post && post.title && (post.title.rendered || post.title)) || "");
+  if (!name) return null;
+  const photos = [];
+  (Array.isArray(media) ? media : []).forEach(x => {
+    const u = x && x.source_url;
+    if (!u) return;
+    const isImage = (x.mime_type && /^image\//i.test(x.mime_type)) || /\.(jpe?g|png|webp)(\?|$)/i.test(u);
+    if (!isImage) return;                                   // skips PDF brochures
+    if (/logo|icon|placeholder|banner|brochure|spec-?sheet/i.test(u)) return;
+    photos.push(unsizeImg(u));
+  });
+  // no attachments? fall back to the featured image
+  if (!photos.length) {
+    try {
+      const emb = await fetchJson(origin + "/wp-json/wp/v2/" + base + "/" + id + "?_embed=1");
+      const f = emb && emb._embedded && emb._embedded["wp:featuredmedia"];
+      if (f && f[0] && f[0].source_url) photos.push(unsizeImg(f[0].source_url));
+    } catch (e) { /* no photo → dropped by the quality bar */ }
+  }
+  return {
+    name: name.slice(0, 120), make: null, model: null, year: null,
+    price_original: null, currency: null, mileage: null,
+    photos: [...new Set(photos)].slice(0, 10),
+    source_url: (post && post.link) || null, import_method: "api"
+  };
 }
 
 // WordPress REST: discover a car/vehicle/listing/product route and read it
@@ -594,10 +634,9 @@ async function extractBatch(urls, key) {
     // we read dealers whose pages draw their cars with JavaScript
     if (/\/wp-json\//.test(u)) {
       try {
-        const it = await fetchJson(u);
-        const c = wpItemToCar(it, new URL(u).origin);
+        const c = await wpCarFromApi(u);
         if (!c || !c.photos.length) return null;
-        return { url: c.source_url || u, name: c.name, photos: c.photos, priceText: "", aed: false, wp: c };
+        return { url: c.source_url || u, name: c.name, photos: c.photos, priceText: "", aed: false };
       } catch (e) { return null; }
     }
     try {
