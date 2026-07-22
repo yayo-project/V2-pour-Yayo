@@ -412,8 +412,10 @@ async function carsFromDataFeeds(entryHtml, url) {
   const origin = new URL(url).origin;
   let cars = carsFromHydration(entryHtml, url);   // free: already-downloaded HTML
   if (cars.length < 2 && budgetLeft() > 12000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
-  if (cars.length < 2 && budgetLeft() > 10000) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
-  if (cars.length < 2 && budgetLeft() > 8000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
+  // these two download the whole /wp-json/ index and probe several routes —
+  // measured at 22s on a slow host, so they only run with real time to spare
+  if (cars.length < 2 && budgetLeft() > 15000) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
+  if (cars.length < 2 && budgetLeft() > 13000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
   return cars;
 }
 
@@ -684,6 +686,15 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "jsonld", count: cars.length, cars }) };
     }
 
+    // layer 1.2: WordPress car post type — two tiny requests, and it rescues
+    // dealers whose pages draw their cars with JavaScript (the data is public).
+    // Checked BEFORE the heavier probes so it can never be starved of time.
+    const wpUrls = await wpCarApiUrls(new URL(url).origin);
+    mark("wpapi(" + wpUrls.length + ")");
+    if (wpUrls.length >= 12) {
+      return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: wpUrls.length, batch: MAX_EXTRACT, urls: wpUrls, trace: TRACE }) };
+    }
+
     // layer 1.5: the site's OWN data feed (Shopify/WordPress/app-data JSON) —
     // what makes JavaScript-only inventory apps work, cleaner than scraping.
     // same quality bar as the crawl path: a real listing has at least one photo
@@ -702,11 +713,7 @@ exports.handler = async (event) => {
     // crawl found (newautofzco.com: 100 real cars vs 9 marketing pages).
     let detailUrls = await collectDetailUrls(url, entryHtml);
     mark("crawl(" + detailUrls.length + ")");
-    if (detailUrls.length < 20) {
-      const wp = await wpCarApiUrls(new URL(url).origin);
-      mark("wpapi(" + wp.length + ")");
-      if (wp.length > detailUrls.length) detailUrls = wp;
-    }
+    if (wpUrls.length > detailUrls.length) detailUrls = wpUrls;   // few, but better than the HTML
     if (detailUrls.length >= 2 && detailUrls.length >= feed.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls, trace: TRACE }) };
     }
