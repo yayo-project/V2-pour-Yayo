@@ -24,7 +24,7 @@ async function timedFetch(url, opts) {
 }
 
 exports.handler = async (event) => {
-  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json" };
+  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json; charset=utf-8" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: '{"error":"POST only"}' };
 

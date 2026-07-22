@@ -639,7 +639,7 @@ async function extractBatch(urls, key) {
 }
 
 exports.handler = async (event) => {
-  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json" };
+  const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json; charset=utf-8" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers };
   if (event.httpMethod !== "POST") return { statusCode: 405, headers, body: '{"error":"POST only"}' };
   let body; try { body = JSON.parse(event.body || "{}"); } catch (e) { return { statusCode: 400, headers, body: '{"error":"bad json"}' }; }
