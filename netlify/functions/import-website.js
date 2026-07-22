@@ -565,8 +565,10 @@ function detailPhotos(html, pageUrl) {
   // Last resort: modern React/Next sites keep their gallery inside a JSON
   // payload rather than <img> tags, so sweep the raw page for image URLs.
   if (set.size < 3) {
+    // React/Next payloads escape their URLs ("https:\/\/…"), so un-escape first
+    const flat = html.replace(/\\\//g, "/").replace(/\\u002[fF]/g, "/");
     const rawRe = /https?:\/\/[^"'\\\s<>()]+\.(?:jpe?g|png|webp)(?:\?[^"'\\\s<>()]*)?/gi;
-    let r; while ((r = rawRe.exec(html)) && set.size < 15) push(r[0].replace(/&amp;/g, "&"));
+    let r; while ((r = rawRe.exec(flat)) && set.size < 15) push(r[0].replace(/&amp;/g, "&"));
   }
   return [...set].slice(0, 15);
 }
