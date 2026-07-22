@@ -350,28 +350,26 @@ function wpItemToCar(it, origin) {
     import_method: "api"
   };
 }
-async function carsFromWpTypes(origin) {
-  let routes = [];
+// WordPress car post type → a LIST of per-car API links, read in batches.
+// Asking for all cars at once with ?_embed returns megabytes and times out
+// (20 cars = 1.3MB / 20s on a slow host), but the slim index is tiny and one
+// car with its photo is ~68KB / 3s — perfect for the existing batch flow.
+const WP_TYPE_NAME = /^(cars?|vehicles?|listings?|inventory|autos?|voitures?|stock)$/i;
+async function wpCarApiUrls(origin) {
+  if (budgetLeft() < 6000) return [];
+  let base = null;
   try {
-    const root = await fetchJson(origin + "/wp-json/");
-    routes = root && root.routes ? Object.keys(root.routes).filter(r => WP_CAR_TYPE.test(r)) : [];
+    const types = await fetchJson(origin + "/wp-json/wp/v2/types");
+    const keys = types && typeof types === "object" ? Object.keys(types) : [];
+    const hit = keys.find(k => WP_TYPE_NAME.test((types[k] && types[k].rest_base) || k));
+    if (hit) base = (types[hit] && types[hit].rest_base) || hit;
   } catch (e) { return []; }
-  if (!routes.length) return [];
-  // prefer a car-specific type over the generic "products"
-  routes.sort((a, b) => (/product/i.test(a) ? 1 : 0) - (/product/i.test(b) ? 1 : 0));
-  const cars = [];
-  for (const r of routes.slice(0, 2)) {
-    for (let page = 1; page <= 2; page++) {
-      if (budgetLeft() < 5000) break;
-      let items;
-      try { items = await fetchJson(origin + r + "?per_page=100&_embed=1&page=" + page); } catch (e) { break; }
-      if (!Array.isArray(items) || !items.length) break;
-      items.forEach(it => { const c = wpItemToCar(it, origin); if (c) cars.push(c); });
-      if (items.length < 100) break;
-    }
-    if (cars.length >= 12) break;
-  }
-  return cars;
+  if (!base) return [];
+  try {
+    const items = await fetchJson(origin + "/wp-json/wp/v2/" + base + "?per_page=100&orderby=date&order=desc&_fields=id");
+    if (!Array.isArray(items) || !items.length) return [];
+    return items.filter(i => i && i.id).map(i => origin + "/wp-json/wp/v2/" + base + "/" + i.id + "?_embed=1");
+  } catch (e) { return []; }
 }
 
 // WordPress REST: discover a car/vehicle/listing/product route and read it
@@ -413,9 +411,6 @@ async function carsFromDiscoveredApi(html, base) {
 async function carsFromDataFeeds(entryHtml, url) {
   const origin = new URL(url).origin;
   let cars = carsFromHydration(entryHtml, url);   // free: already-downloaded HTML
-  // WordPress car post type + embedded photo — the highest-yield free source,
-  // and the one that rescues sites whose cars are rendered by JavaScript
-  if (cars.length < 2 && budgetLeft() > 9000) { try { cars = cars.concat(await carsFromWpTypes(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 12000) { try { cars = cars.concat(await carsFromShopify(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 10000) { try { cars = cars.concat(await carsFromWpRest(origin)); } catch (e) {} }
   if (cars.length < 2 && budgetLeft() > 8000) { try { cars = cars.concat(await carsFromDiscoveredApi(entryHtml, url)); } catch (e) {} }
@@ -593,6 +588,16 @@ async function extractBatch(urls, key) {
   // concurrency 4 (not 6) — hammering a shared host in parallel gets us throttled
   let docs = (await inBatches(clean, 4, async (u) => {
     if (budgetLeft() < 1200) return null;   // return what we have, never time out
+    // a WordPress car endpoint answers with JSON (photo included) — this is how
+    // we read dealers whose pages draw their cars with JavaScript
+    if (/\/wp-json\//.test(u)) {
+      try {
+        const it = await fetchJson(u);
+        const c = wpItemToCar(it, new URL(u).origin);
+        if (!c || !c.photos.length) return null;
+        return { url: c.source_url || u, name: c.name, photos: c.photos, priceText: "", aed: false, wp: c };
+      } catch (e) { return null; }
+    }
     try {
       const html = await fetchRetry(u, 2);
       const text = stripHtml(html);
@@ -692,8 +697,16 @@ exports.handler = async (event) => {
     // layer 2: discover the detail-page URLs (client extracts them in batches).
     // The crawl often finds far more cars than a partial feed (e.g. a "most
     // viewed" widget), so a small feed must NOT short-circuit a rich crawl.
-    const detailUrls = await collectDetailUrls(url, entryHtml);
+    // WordPress car post type: the cars are public data even when the page
+    // renders them with JavaScript. Preferred when it holds more than the HTML
+    // crawl found (newautofzco.com: 100 real cars vs 9 marketing pages).
+    let detailUrls = await collectDetailUrls(url, entryHtml);
     mark("crawl(" + detailUrls.length + ")");
+    if (detailUrls.length < 20) {
+      const wp = await wpCarApiUrls(new URL(url).origin);
+      mark("wpapi(" + wp.length + ")");
+      if (wp.length > detailUrls.length) detailUrls = wp;
+    }
     if (detailUrls.length >= 2 && detailUrls.length >= feed.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ method: "details", total: detailUrls.length, batch: MAX_EXTRACT, urls: detailUrls, trace: TRACE }) };
     }
