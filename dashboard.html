@@ -369,6 +369,27 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
       </section>
 
+      <!-- CAR REQUESTS (Demandes) -->
+      <section id="tab-ad-requests" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_requests">Demandes de voitures</h2>
+          <p class="dash-sub" data-i18n="ad_p_requests">Ce que les acheteurs cherchent et ne trouvent pas encore — votre carte de la demande.</p>
+          <div class="ad-filters">
+            <select id="ad-req-filter" onchange="adRenderRequests()">
+              <option value="open" data-i18n="ad_req_f_open">À traiter</option>
+              <option value="all" data-i18n="ad_f_all">Toutes</option>
+              <option value="done" data-i18n="ad_req_f_done">Satisfaites</option>
+            </select>
+            <select id="ad-req-city" onchange="adRenderRequests()">
+              <option value="" data-i18n="ad_req_city_all">Toutes les villes</option>
+            </select>
+          </div>
+          <div id="ad-req-list"></div>
+          <p class="dash-empty" id="ad-req-empty" hidden data-i18n="ad_no_requests">Aucune demande pour l'instant.</p>
+          <p class="auth-error" id="ad-req-err" hidden></p>
+        </div>
+      </section>
+
       <!-- USERS -->
       <section id="tab-ad-users" hidden>
         <div class="vd-card">

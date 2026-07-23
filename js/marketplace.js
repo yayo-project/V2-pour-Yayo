@@ -10,6 +10,7 @@ const BRANDS = ["Toyota","Kia","Hyundai","Nissan","Mercedes","Honda","Mitsubishi
 let CUR = YAYO_CONFIG.DEFAULT_DEST;
 let ALL = [];
 let FILTERED = [];
+let LAST_Q = "";   // last search text — drives the "request this car" prompt
 
 const DEMO_CARS = window.YAYO_DEMO;
 
@@ -132,6 +133,7 @@ function setDestKey(k) {
 function applyFilters() {
   writeParams();
   const qRaw = document.getElementById("mkt-q").value.trim();
+  LAST_Q = qRaw;
   const q = qRaw.toLowerCase();
   const min = parseInt(document.getElementById("f-min").value, 10);
   const max = parseInt(document.getElementById("f-max").value, 10);
@@ -180,8 +182,21 @@ function render() {
     : `${FILTERED.length} ${FILTERED.length > 1 ? t("count_cars") : t("count_car")} · ${CUR === "dubai" ? t("a_dubai") : t("count_rendu") + " " + dst.name}`;
   count.textContent = BUDGET ? `${base} · ${t("bud_lbl")} ≤ ${fmt(BUDGET.amount)}` : base;
 
-  if (FILTERED.length === 0) { g.innerHTML = ""; empty.hidden = false; return; }
+  const req = document.getElementById("mkt-req");
+  if (FILTERED.length === 0) {
+    g.innerHTML = ""; empty.hidden = false;
+    // no match + they actually searched something → offer to record the demand
+    if (req) {
+      if (LAST_Q) {
+        const h = document.getElementById("mkt-req-h");
+        if (h) h.textContent = t("req_cta_h").replace("{q}", LAST_Q);
+        req.hidden = false;
+      } else req.hidden = true;
+    }
+    return;
+  }
   empty.hidden = true;
+  if (req) req.hidden = true;
 
   g.innerHTML = FILTERED.map(c => `
   <div class="car-card" onclick="openCar('${c.id || ""}')">
@@ -244,6 +259,16 @@ function toggleFilters() {
 
 function closeFiltersIfMobile() {
   if (document.getElementById("mkt-filters").classList.contains("open")) toggleFilters();
+}
+
+// "Prévenez-moi" from the no-results prompt: prefill the request from the search
+function reqFromSearch() {
+  const q = document.getElementById("mkt-q").value.trim();
+  const pf = (typeof reqParsePrefill === "function") ? reqParsePrefill(q) : { q };
+  pf.q = q;
+  if (!pf.city && CUR && CUR !== "dubai") pf.city = CUR;
+  if (!pf.budget && BUDGET && BUDGET.amount) pf.budget = BUDGET.amount;
+  openRequest(pf);
 }
 
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }

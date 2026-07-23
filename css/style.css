@@ -568,6 +568,24 @@ body.no-scroll{overflow:hidden}
 .rp-close:hover{background:#DFE6EE}
 .rp-done{color:#1B9E77;font-weight:700;text-align:center;margin:14px 0 4px}
 [dir="rtl"] .rp-close{right:auto;left:12px}
+/* Two fields side-by-side inside the request modal */
+.req-row{display:flex;gap:12px}
+.req-row>div{flex:1;min-width:0}
+@media(max-width:420px){.req-row{flex-direction:column;gap:0}}
+/* "Not on Yayo yet? Tell us" prompt under empty search results */
+.req-cta{margin:14px auto 0;max-width:440px;text-align:center;background:linear-gradient(180deg,#F0FCFA,#fff);border:1px solid #BEEDE8;border-radius:14px;padding:22px 20px;box-shadow:0 6px 22px rgba(31,216,201,.10)}
+.req-cta-ico{width:44px;height:44px;margin:0 auto 10px;border-radius:50%;background:#1FD8C9;color:#0A2540;display:flex;align-items:center;justify-content:center}
+.req-cta-ico svg{width:24px;height:24px}
+.req-cta h4{margin:0 0 6px;color:var(--ink,#0A2540);font-size:16px;font-weight:800}
+.req-cta p{margin:0 0 14px;color:#3F5473;font-size:13.5px;line-height:1.5}
+/* "Mes demandes" cards (buyer inbox) */
+.mreq-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #DFE6EE;border-radius:12px;margin-bottom:10px;background:#fff}
+.mreq-card .mreq-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mreq-card .mreq-main b{color:var(--ink,#0A2540);font-size:14.5px}
+.mreq-card .mreq-bits{color:#3F5473;font-size:12.5px}
+.mreq-card .mreq-del{border:0;background:#F4F7FB;color:#7A8CA5;width:28px;height:28px;border-radius:8px;cursor:pointer;flex:0 0 auto;font-size:12px}
+.mreq-card .mreq-del:hover{background:#FDE7E7;color:#E5484D}
+.btn-sm{padding:7px 12px;font-size:13px}
 /* Bold estimation warning under the landed price / transport chooser */
 .cost-note-strong{font-weight:800;color:var(--ink,#0A2540);background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:10px 14px;font-size:13.5px;line-height:1.55;margin:12px 0 0}
 /* Photos in chat */

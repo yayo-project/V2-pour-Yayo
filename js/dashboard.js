@@ -1575,12 +1575,12 @@ async function saveAgProfile(e) {
 // super_admin > admin_dealers / admin_support / admin_stats
 // ═══════════════════════════════════════════════
 let AD_ROLE = null;
-let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null, AD_REPORTS = [];
+let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null, AD_REPORTS = [], AD_REQUESTS = [];
 
 const AD_PERMS = {
-  super_admin:   ["stats", "dealers", "agencies", "listings", "reports", "users", "team", "log"],
+  super_admin:   ["stats", "dealers", "agencies", "listings", "requests", "reports", "users", "team", "log"],
   admin_dealers: ["dealers", "agencies"],
-  admin_support: ["listings", "reports", "users"],
+  admin_support: ["listings", "requests", "reports", "users"],
   admin_stats:   ["stats"]
 };
 function adCan(section) { return (AD_PERMS[AD_ROLE] || []).includes(section); }
@@ -1632,6 +1632,12 @@ function adminDemoData() {
     { id: "rp-2", created_at: iso(2), kind: "listing", message: "Cette annonce montre une photo qui ne correspond pas au modèle indiqué.", contact: null, url: "https://yayo.digital/voiture.html?id=demo-3", status: "en_cours" },
     { id: "rp-3", created_at: iso(6), kind: "other", message: "Bravo pour le site, mais les prix en francs CFA seraient utiles.", contact: null, url: "https://yayo.digital/", status: "resolu" }
   ];
+  AD_REQUESTS = [
+    { id: "cr-1", created_at: iso(0), make: "Toyota", model: "Prado 2021", budget_usd: 32000, city: "kinshasa", contact: "acheteur.kin@example.com", source_q: "prado 2021 kinshasa", status: "nouveau" },
+    { id: "cr-2", created_at: iso(1), make: "Toyota", model: "Land Cruiser 76", budget_usd: 45000, city: "kinshasa", contact: "+243812345678", source_q: "land cruiser 76", status: "nouveau" },
+    { id: "cr-3", created_at: iso(3), make: "Hyundai", model: "Tucson", budget_usd: 18000, city: "douala", contact: "marie.douala@example.com", source_q: "$18000 douala", status: "contacte" },
+    { id: "cr-4", created_at: iso(8), make: "Mercedes-Benz", model: "C200", budget_usd: 25000, city: "abidjan", contact: "client@example.com", source_q: "mercedes c200 abidjan", status: "satisfait" }
+  ];
 }
 
 // Real data — each section loads independently so one failure never blanks the rest
@@ -1653,6 +1659,10 @@ async function adminInit() {
   if (adCan("reports")) jobs.push(
     sb.from("reports").select("*").order("created_at", { ascending: false }).limit(300)
       .then(r => { AD_REPORTS = r.data || []; if (r.error) adSqlHint(r.error); })
+  );
+  if (adCan("requests")) jobs.push(
+    sb.from("car_requests").select("*").order("created_at", { ascending: false }).limit(500)
+      .then(r => { AD_REQUESTS = r.data || []; if (r.error) adSqlHint(r.error); })
   );
   try { await Promise.all(jobs); } catch (e) { adSqlHint(e); }
 }
@@ -1677,7 +1687,7 @@ function adminEnter() {
 }
 
 function showAdTab(name) {
-  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-reports", "ad-users", "ad-team", "ad-log"].forEach(tb => {
+  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-requests", "ad-reports", "ad-users", "ad-team", "ad-log"].forEach(tb => {
     const el = document.getElementById("tab-" + tb);
     if (el) el.hidden = tb !== name;
   });
@@ -1687,6 +1697,7 @@ function showAdTab(name) {
 function renderAdmin() {
   if (adCan("dealers")) { adRenderBiz("dealer"); adRenderBiz("agency"); }
   if (adCan("listings")) adRenderListings();
+  if (adCan("requests")) adRenderRequests();
   if (adCan("reports")) adRenderReports();
   if (adCan("users")) adRenderUsers();
   if (adCan("team")) adRenderTeam();
@@ -1752,6 +1763,69 @@ async function adReportStatus(id, status) {
     const { error } = await yayoSB().from("reports").update({ status }).eq("id", id);
     if (error) throw error;
   } catch (e) { r.status = old; adRenderReports(); adFail("ad-rp-err", e); }
+}
+
+// ── Car requests (Demandes) — nouveau → contacté → satisfait ──
+function adReqCityName(k) { const d = (YAYO_CONFIG.DESTINATIONS || {})[k]; return (d && d.name) || k || ""; }
+function adReqFillCityFilter() {
+  const sel = document.getElementById("ad-req-city");
+  if (!sel || sel.dataset.filled) return;
+  const cities = [...new Set(AD_REQUESTS.map(r => r.city).filter(Boolean))];
+  sel.insertAdjacentHTML("beforeend",
+    cities.map(c => `<option value="${c}">${escapeHtml(adReqCityName(c))}</option>`).join(""));
+  sel.dataset.filled = "1";
+}
+function adRenderRequests() {
+  adReqFillCityFilter();
+  const f = (document.getElementById("ad-req-filter") || {}).value || "open";
+  const city = (document.getElementById("ad-req-city") || {}).value || "";
+  const rows = AD_REQUESTS.filter(r => {
+    if (city && r.city !== city) return false;
+    if (f === "all") return true;
+    if (f === "done") return r.status === "satisfait";
+    return r.status !== "satisfait";
+  });
+  document.getElementById("ad-req-empty").hidden = !!rows.length;
+  document.getElementById("ad-req-list").innerHTML = rows.map(r => {
+    const st = r.status || "nouveau";
+    const pill = st === "satisfait" ? ["active", t("ad_req_st_done")]
+      : st === "contacte" ? ["sold", t("ad_req_st_doing")] : ["off", t("ad_req_st_new")];
+    const title = [r.make, r.model].filter(Boolean).join(" ") || t("myreq_any");
+    const meta = [
+      r.budget_usd ? "≤ " + yayoFmt(r.budget_usd) : null,
+      r.city ? adReqCityName(r.city) : null,
+      r.year_min ? "≥ " + r.year_min : null
+    ].filter(Boolean).join(" · ");
+    return `
+    <div class="rp-card vd-card" style="margin-bottom:12px;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <b>${escapeHtml(title)}</b>
+        <span class="status ${pill[0]}">${pill[1]}</span>
+      </div>
+      ${meta ? `<p style="margin:8px 0 4px;color:var(--ink-2,#3F5473);font-weight:600">${escapeHtml(meta)}</p>` : ""}
+      ${r.note ? `<p style="margin:4px 0;white-space:pre-wrap">${escapeHtml(r.note)}</p>` : ""}
+      <p class="dash-sub" style="margin:4px 0 10px">
+        ${adDate(r.created_at)}${r.contact ? " · ✉ " + escapeHtml(r.contact) : ""}${r.source_q ? ' · 🔎 "' + escapeHtml(r.source_q) + '"' : ""}
+      </p>
+      <div class="ad-actions">
+        ${st !== "contacte" && st !== "satisfait" ? `<button onclick="adReqStatus('${r.id}','contacte')">${t("ad_req_take")}</button>` : ""}
+        ${st !== "satisfait" ? `<button onclick="adReqStatus('${r.id}','satisfait')">${t("ad_req_resolve")}</button>` : `<button onclick="adReqStatus('${r.id}','nouveau')">${t("ad_req_reopen")}</button>`}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function adReqStatus(id, status) {
+  const r = AD_REQUESTS.find(x => String(x.id) === String(id));
+  if (!r) return;
+  const old = r.status;
+  r.status = status;
+  adRenderRequests();
+  if (DEMO_ADMIN) return;
+  try {
+    const { error } = await yayoSB().from("car_requests").update({ status }).eq("id", id);
+    if (error) throw error;
+  } catch (e) { r.status = old; adRenderRequests(); adFail("ad-req-err", e); }
 }
 
 // ── Dealers & agencies ──

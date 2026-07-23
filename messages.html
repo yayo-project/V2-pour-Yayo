@@ -64,6 +64,18 @@ gtag('config', 'G-NR2LTEVKET');
       </div>
     </div>
 
+    <!-- Cars the buyer is waiting for (shown only when they have some) -->
+    <div id="mx-requests" class="vd-card" hidden style="margin-bottom:16px">
+      <div class="sec-head" style="margin-bottom:12px">
+        <div>
+          <h2 class="vd-h" style="margin:0" data-i18n="myreq_h">Mes demandes</h2>
+          <p class="dash-sub" style="margin:2px 0 0" data-i18n="myreq_p">Les voitures que vous attendez. On vous prévient dès qu'une correspond.</p>
+        </div>
+        <button class="btn btn-ghost-dark btn-sm" onclick="newRequest()" data-i18n="myreq_new">＋ Nouvelle demande</button>
+      </div>
+      <div id="mreq-list"></div>
+    </div>
+
     <div id="mx-loading">
       <div class="skel" style="height:64px;border-radius:12px;margin-bottom:10px"></div>
       <div class="skel" style="height:64px;border-radius:12px;margin-bottom:10px"></div>
@@ -118,6 +130,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/i18n.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
+<script src="js/requests.js"></script>
 <script src="js/messages.js"></script>
 </body>
 </html>

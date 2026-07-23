@@ -2,7 +2,7 @@
 // Fired (fire-and-forget) by the client after key supply-side events, so the
 // founder never misses his first real dealer. No secrets exposed: only kind +
 // name are accepted; everything else is looked up or ignored.
-// POST { kind: "dealer_signup" | "agency_signup" | "license_upload" | "new_report" | "import", name?, detail? }
+// POST { kind: "dealer_signup" | "agency_signup" | "license_upload" | "new_report" | "import" | "car_request", name?, detail? }
 const ADMIN_EMAIL = "yayoapp20@gmail.com";
 
 const KINDS = {
@@ -10,7 +10,8 @@ const KINDS = {
   agency_signup: { emoji: "🚢", title: "Nouvelle agence inscrite" },
   license_upload: { emoji: "📄", title: "Licence commerciale envoyée — à vérifier" },
   new_report: { emoji: "⚑", title: "Nouveau signalement" },
-  import: { emoji: "🌐", title: "Import site web — vérifiez la propriété" }
+  import: { emoji: "🌐", title: "Import site web — vérifiez la propriété" },
+  car_request: { emoji: "🔎", title: "Nouvelle demande de voiture" }
 };
 
 exports.handler = async (event) => {

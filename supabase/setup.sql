@@ -1135,3 +1135,58 @@ begin
   end loop;
   return total;
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 33) CAR REQUESTS — a buyer searches for a car that isn't on
+-- Yayo yet. Instead of losing them, we record what they want
+-- (make/model/budget/destination) so we can tell them when a
+-- match appears, and so the founder sees a live map of demand.
+-- Anyone (logged in or not) can create one; a buyer sees only
+-- their own; admins see and triage them all.
+-- Status: nouveau → contacte → satisfait.
+-- ═══════════════════════════════════════════════════════════
+create table if not exists public.car_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  user_id uuid,               -- null when the buyer wasn't logged in
+  make text,
+  model text,
+  budget_usd numeric,         -- buyer's max budget, in USD
+  city text,                  -- destination city key (kinshasa/douala/abidjan/dakar)
+  year_min int,
+  note text,
+  contact text,               -- email or phone so we can reach them
+  source_q text,              -- the raw search that triggered the request
+  status text not null default 'nouveau',
+  admin_note text
+);
+alter table public.car_requests enable row level security;
+
+-- create: anyone; a logged-in buyer can only stamp their OWN id
+drop policy if exists car_requests_insert_any on public.car_requests;
+create policy car_requests_insert_any on public.car_requests
+  for insert to anon, authenticated
+  with check (user_id is null or user_id = auth.uid());
+
+-- read: the buyer sees their own …
+drop policy if exists car_requests_owner_select on public.car_requests;
+create policy car_requests_owner_select on public.car_requests
+  for select to authenticated using (user_id = auth.uid());
+
+-- … and any admin sees them all
+drop policy if exists car_requests_admin_select on public.car_requests;
+create policy car_requests_admin_select on public.car_requests
+  for select to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');
+
+-- the buyer can cancel (delete) their own request
+drop policy if exists car_requests_owner_delete on public.car_requests;
+create policy car_requests_owner_delete on public.car_requests
+  for delete to authenticated using (user_id = auth.uid());
+
+-- admins triage the status (nouveau → contacte → satisfait)
+drop policy if exists car_requests_admin_update on public.car_requests;
+create policy car_requests_admin_update on public.car_requests
+  for update to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');
+
+create index if not exists car_requests_city_idx on public.car_requests (city);
+create index if not exists car_requests_user_idx on public.car_requests (user_id);

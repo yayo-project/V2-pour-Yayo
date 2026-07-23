@@ -174,6 +174,13 @@ gtag('config', 'G-NR2LTEVKET');
           <p data-i18n="empty_p">Essayez d'élargir les filtres ou de changer la marque.</p>
           <button class="btn btn-solid" onclick="clearFilters()" data-i18n="empty_btn">Effacer les filtres</button>
         </div>
+        <!-- No match for what they searched → capture the demand -->
+        <div class="req-cta" id="mkt-req" hidden>
+          <div class="req-cta-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 8v4l3 2"/></svg></div>
+          <h4 id="mkt-req-h" data-i18n="req_cta_h">Pas encore sur Yayo ?</h4>
+          <p data-i18n="req_cta_p">Dites-nous ce que vous cherchez — on vous prévient dès qu'une voiture correspond.</p>
+          <button class="btn btn-solid" onclick="reqFromSearch()" data-i18n="req_cta_btn">Être prévenu quand elle arrive</button>
+        </div>
       </div>
 
     </div>
@@ -224,6 +231,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/auth.js"></script>
 <script src="js/fav.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/requests.js"></script>
 <script src="js/marketplace.js"></script>
 </body>
 </html>
