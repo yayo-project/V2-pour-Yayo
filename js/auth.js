@@ -255,6 +255,67 @@ function initReportLink() {
 }
 document.addEventListener("DOMContentLoaded", initReportLink);
 
+// ── Mobile menu: get out of the way as soon as something is chosen ──
+// The menu used to stay open after tapping a language button (FR/EN/AR) or an
+// in-page link, covering the screen with no obvious way back — and the page
+// behind kept scrolling, so pulling on it fought the menu's own scroll.
+// Handled here once for every page (each page keeps its own toggleMenu()).
+function yayoMenuEl() { return document.getElementById("mmenu"); }
+function yayoMenuIsOpen() { const m = yayoMenuEl(); return !!(m && m.classList.contains("open")); }
+// The page stays locked while ANY full-screen panel is up — the menu here, or
+// the marketplace filter drawer, which locks scrolling on its own.
+function yayoSyncScrollLock() {
+  const open = yayoMenuIsOpen() || !!document.querySelector(".mkt-filters.open");
+  document.body.classList.toggle("no-scroll", open);
+}
+function yayoCloseMenu() {
+  const m = yayoMenuEl();
+  if (!m || !m.classList.contains("open")) return;
+  m.classList.remove("open");
+  yayoSyncScrollLock();
+}
+
+function initMobileMenu() {
+  const m = yayoMenuEl();
+  if (!m) return;
+
+  // While the menu is open the page behind must not scroll — whoever opened it
+  // (each page's toggleMenu) only flips .open, so mirror that onto the body.
+  new MutationObserver(yayoSyncScrollLock).observe(m, { attributes: true, attributeFilter: ["class"] });
+
+  // 1. any choice inside the menu closes it — links AND the FR/EN/AR buttons
+  m.addEventListener("click", (e) => {
+    if (e.target.closest("a, button")) setTimeout(yayoCloseMenu, 60);
+  });
+
+  // 2. a tap anywhere outside closes it (the burger toggles itself)
+  document.addEventListener("click", (e) => {
+    if (!yayoMenuIsOpen()) return;
+    if (e.target.closest("#mmenu") || e.target.closest(".burger")) return;
+    yayoCloseMenu();
+  });
+
+  // 3. Escape closes it (desktop / keyboard users)
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") yayoCloseMenu(); });
+
+  // 4. swipe up on the menu retracts it, the way it opened. Only when the menu
+  //    isn't scrolling (or is already at its top) so it never steals a scroll.
+  let sy = null, sx = null;
+  m.addEventListener("touchstart", (e) => {
+    sy = e.touches[0].clientY; sx = e.touches[0].clientX;
+  }, { passive: true });
+  m.addEventListener("touchend", (e) => {
+    if (sy === null) return;
+    const dy = e.changedTouches[0].clientY - sy;
+    const dx = e.changedTouches[0].clientX - sx;
+    const scrolls = m.scrollHeight > m.clientHeight + 4;
+    // clearly vertical, clearly upward, and not in the middle of a scroll
+    if (dy < -45 && Math.abs(dx) < Math.abs(dy) && (!scrolls || m.scrollTop <= 0)) yayoCloseMenu();
+    sy = sx = null;
+  }, { passive: true });
+}
+document.addEventListener("DOMContentLoaded", initMobileMenu);
+
 function openReportModal() {
   let ov = document.getElementById("rp-overlay");
   if (!ov) {
