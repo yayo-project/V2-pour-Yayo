@@ -155,7 +155,7 @@ async function submitRequest(e) {
 
   btn.disabled = true;
   try {
-    const { error } = await yayoSB().from("car_requests").insert({
+    const row = {
       user_id: user ? user.id : null,
       make: make || null,
       model: model || null,
@@ -163,8 +163,15 @@ async function submitRequest(e) {
       city: city,
       note: note || null,
       contact: contact || null,
-      source_q: source_q
-    });
+      source_q: source_q,
+      lang: (typeof YAYO_LANG === "string" ? YAYO_LANG : "fr")   // email them in THEIR language
+    };
+    let { error } = await yayoSB().from("car_requests").insert(row);
+    // setup.sql §34 not run yet → no lang column: save the request anyway
+    if (error && /lang|column/i.test(error.message || "")) {
+      const { lang, ...slim } = row;
+      ({ error } = await yayoSB().from("car_requests").insert(slim));
+    }
     if (error) throw error;
     if (typeof yayoNotifyAdmin === "function")
       yayoNotifyAdmin("car_request", [make, model].filter(Boolean).join(" "),

@@ -701,6 +701,8 @@ async function impConfirm() {
 
   IMP.busy = false;
   IMP.publishing = false;
+  // one call for the whole batch — buyers waiting for any of these cars hear once
+  if (!DEMO && ok) yayoNotifyMatch(DEALER.id);
   if (!DEMO) await loadListings();
   renderListings(); renderStats(); renderStartChecklist();
   impShow("imp-done");
@@ -865,6 +867,8 @@ async function saveListing(e) {
       ({ error } = await write(slim));
     }
     if (error) throw error;
+    // a NEW car may answer a buyer's saved request — tell them (never on edit)
+    if (!EDIT_ID) yayoNotifyMatch(DEALER.id);
     await loadListings();
     closeForm(); renderListings(); renderStats(); renderStartChecklist();
   } catch (err2) {

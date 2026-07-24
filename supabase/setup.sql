@@ -1190,3 +1190,28 @@ create policy car_requests_admin_update on public.car_requests
 
 create index if not exists car_requests_city_idx on public.car_requests (city);
 create index if not exists car_requests_user_idx on public.car_requests (user_id);
+
+-- ═══════════════════════════════════════════════════════════
+-- 34) CAR REQUEST MATCHES — when a dealer publishes a car that
+-- matches an open request, the buyer gets ONE email ("a car
+-- matching your search is available"). Two guards so a 400-car
+-- import can never spam anyone:
+--   • last_notified_at  → at most one email per request per day
+--   • car_request_matches → the same car is never announced twice
+-- lang remembers the buyer's language so the email is in THEIR
+-- language, not French-only.
+-- ═══════════════════════════════════════════════════════════
+alter table public.car_requests add column if not exists lang text;
+alter table public.car_requests add column if not exists last_notified_at timestamptz;
+
+create table if not exists public.car_request_matches (
+  request_id uuid not null,
+  listing_id uuid not null,
+  created_at timestamptz not null default now(),
+  primary key (request_id, listing_id)
+);
+alter table public.car_request_matches enable row level security;
+-- the notifier runs with the service key (bypasses RLS); admins can look
+drop policy if exists car_request_matches_admin_select on public.car_request_matches;
+create policy car_request_matches_admin_select on public.car_request_matches
+  for select to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');

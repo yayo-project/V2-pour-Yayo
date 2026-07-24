@@ -337,6 +337,21 @@ function yayoNotifyMessage(convoId) {
   } catch (e) { /* offline/local — chat works regardless */ }
 }
 
+// ── "Une voiture correspond à votre recherche" (fire-and-forget) ──
+// Called right after a dealer publishes (one car or a whole import): the
+// function finds the buyers whose saved request matches and emails them.
+// Throttled server-side (1/request/day) so an import can never spam.
+function yayoNotifyMatch(dealerId) {
+  if (!dealerId) return;
+  try {
+    fetch("/.netlify/functions/notify-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dealer_id: dealerId })
+    }).catch(() => {});
+  } catch (e) { /* never blocks publishing */ }
+}
+
 // ── Founder alert (fire-and-forget) — "a dealer just registered" etc. ──
 function yayoNotifyAdmin(kind, name, detail) {
   try {
