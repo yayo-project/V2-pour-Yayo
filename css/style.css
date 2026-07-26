@@ -608,8 +608,6 @@ body.no-scroll{overflow:hidden}
 /* secondary "use this price in my total" link under the agency actions */
 .ct-usethis{display:inline-block;margin-top:8px;font-size:13px;color:#3F5473;text-decoration:underline;text-underline-offset:3px}
 .ct-usethis:hover{color:var(--teal-deep,#0FB5A6)}
-.ct-compare{display:block;text-align:center;margin-top:10px;font-size:13.5px;color:#3F5473;text-decoration:underline;text-underline-offset:3px;padding:8px}
-.ct-compare:hover{color:var(--teal-deep,#0FB5A6)}
 /* Bold estimation warning under the landed price / transport chooser */
 .cost-note-strong{font-weight:800;color:var(--ink,#0A2540);background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:10px 14px;font-size:13.5px;line-height:1.55;margin:12px 0 0}
 /* Photos in chat */
