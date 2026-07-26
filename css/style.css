@@ -986,6 +986,15 @@ body.no-scroll{overflow:hidden}
 .bd-toggle.open .bd-chev{transform:rotate(180deg)}
 #vd-breakdown{margin-top:12px}
 #vd-total-line{margin-top:6px}
+/* The two secondary actions on the landed-cost card must read as real,
+   tappable buttons — filled, not outlines: yellow opens the estimate,
+   green goes to the agencies. */
+.bd-toggle{background:#FFD24D;border-color:#E5B429;color:#0A2540}
+.bd-toggle:hover{background:#F5C43A;border-color:#D3A420}
+.bd-toggle svg:first-child,.bd-toggle .bd-chev{color:#6B4A0F}
+#ct-btn-link.btn{background:#15803D;border-color:#15803D;color:#fff}
+#ct-btn-link.btn:hover{background:#116932;border-color:#116932;color:#fff}
+#ct-btn-link.btn svg{color:#fff}
 .ct-go{margin-top:12px;min-height:48px}
 .ct-go .vseal{width:15px;height:15px;vertical-align:-3px}
 
