@@ -586,6 +586,30 @@ body.no-scroll{overflow:hidden}
 .mreq-card .mreq-del{border:0;background:#F4F7FB;color:#7A8CA5;width:28px;height:28px;border-radius:8px;cursor:pointer;flex:0 0 auto;font-size:12px}
 .mreq-card .mreq-del:hover{background:#FDE7E7;color:#E5484D}
 .btn-sm{padding:7px 12px;font-size:13px}
+/* ── Shipping quote request ("Combien pour l'expédier ?") ── */
+.q-car{display:flex;gap:12px;align-items:center;background:#F4F7FB;border:1px solid #DFE6EE;border-radius:12px;padding:10px;margin:4px 0 6px}
+.q-car img{width:74px;height:56px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:#DFE6EE}
+.q-car-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.q-car-txt b{color:var(--ink,#0A2540);font-size:14px;line-height:1.3}
+.q-car-txt span{color:#3F5473;font-size:12.5px}
+.q-lbl{display:block;font-size:12.5px;font-weight:700;color:#3F5473;margin:12px 0 6px}
+.q-opts{display:flex;flex-direction:column;gap:8px}
+.q-opt{text-align:left;border:1.5px solid #DFE6EE;background:#fff;border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;color:var(--ink,#0A2540);cursor:pointer;transition:.15s;min-height:44px}
+.q-opt:hover{border-color:var(--teal-bright,#1FD8C9)}
+.q-opt.on{border-color:var(--teal-bright,#1FD8C9);background:#F0FCFA;font-weight:600;box-shadow:0 0 0 3px rgba(31,216,201,.13)}
+[dir="rtl"] .q-opt{text-align:right}
+.q-privacy{margin:12px 0 0;font-size:12px;line-height:1.5;color:#3F5473;background:#F0FCFA;border:1px solid #BEEDE8;border-radius:10px;padding:9px 12px}
+.q-done{text-align:center;padding:6px 0 2px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.q-done-ico{width:46px;height:46px;border-radius:50%;background:#1FD8C9;color:#0A2540;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.q-done b{color:var(--ink,#0A2540);font-size:16px}
+.q-done p{margin:0;color:#3F5473;font-size:13.5px;line-height:1.5}
+.q-done .btn{margin-top:6px}
+.q-askall{margin-bottom:14px}
+/* secondary "use this price in my total" link under the agency actions */
+.ct-usethis{display:inline-block;margin-top:8px;font-size:13px;color:#3F5473;text-decoration:underline;text-underline-offset:3px}
+.ct-usethis:hover{color:var(--teal-deep,#0FB5A6)}
+.ct-compare{display:block;text-align:center;margin-top:10px;font-size:13.5px;color:#3F5473;text-decoration:underline;text-underline-offset:3px;padding:8px}
+.ct-compare:hover{color:var(--teal-deep,#0FB5A6)}
 /* Bold estimation warning under the landed price / transport chooser */
 .cost-note-strong{font-weight:800;color:var(--ink,#0A2540);background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:10px 14px;font-size:13.5px;line-height:1.55;margin:12px 0 0}
 /* Photos in chat */

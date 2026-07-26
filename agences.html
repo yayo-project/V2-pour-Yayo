@@ -72,6 +72,11 @@ gtag('config', 'G-NR2LTEVKET');
     <div class="fpills vd-cities" id="agl-cities" style="margin:12px 0 18px"></div>
 
     <div id="agl-loading" class="vd-loading" data-i18n="loading">Chargement…</div>
+    <!-- Ask everyone at once: one tap, several real prices to compare -->
+    <button type="button" class="btn btn-solid btn-block q-askall" id="agl-askall" onclick="askAll()" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg>
+      <span id="agl-askall-txt"></span>
+    </button>
     <div id="agl-list"></div>
     <div id="agl-empty" class="mkt-empty" hidden>
       <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg></div>
@@ -94,6 +99,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/reviews.js"></script>
+<script src="js/quote.js"></script>
 <script>
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 function fmt(n) { return yayoFmt(n); }
@@ -105,8 +111,19 @@ const CAR_ID = P.get("car") || "";
 let CUR = (P.get("city") && DEST[P.get("city")] && P.get("city") !== "dubai") ? P.get("city") : YAYO_CONFIG.DEFAULT_DEST;
 let AGENCIES = [];
 let AG_RV = {};
+let CAR = null;   // the car being shipped — its photo travels with every quote request
 
 function routeFor(a, city) { return (a.routes || []).find(r => r.city === city && r.price > 0); }
+
+// Ask ONE agency for a real price on this exact car
+function askOne(id) {
+  const a = AGENCIES.find(x => String(x.id) === String(id));
+  if (a) yayoQuoteOpen({ car: CAR, city: CUR, agencies: [a] });
+}
+// Ask every agency serving this city, in one tap
+function askAll() {
+  yayoQuoteOpen({ car: CAR, city: CUR, agencies: AGENCIES.filter(a => routeFor(a, CUR)) });
+}
 
 async function aglInit() {
   // back link + car context
@@ -118,10 +135,13 @@ async function aglInit() {
     if (CAR_ID.startsWith("demo")) car = window.YAYO_DEMO.find(c => c.id === CAR_ID);
     else {
       try {
-        const { data } = await yayoSB().from("listings").select("car_name").eq("id", CAR_ID).maybeSingle();
+        // photo + year come along so an agency can price the real vehicle
+        const { data } = await yayoSB().from("listings")
+          .select("id, car_name, year, photo_url, photos").eq("id", CAR_ID).maybeSingle();
         car = data;
       } catch (e) {}
     }
+    CAR = car;
     if (car) {
       const el = document.getElementById("agl-car");
       el.hidden = false;
@@ -180,6 +200,13 @@ function renderList() {
   const empty = document.getElementById("agl-empty");
   const avail = AGENCIES.filter(a => routeFor(a, CUR));
   empty.hidden = avail.length > 0;
+  // "Ask all N" only when there's a car to quote and more than one agency
+  const askAllBtn = document.getElementById("agl-askall");
+  askAllBtn.hidden = !(CAR_ID && avail.length > 1);
+  if (!askAllBtn.hidden) {
+    document.getElementById("agl-askall-txt").textContent =
+      t("q_ask_all").replace("{n}", avail.length).replace("{city}", DEST[CUR].name);
+  }
   list.innerHTML = avail.map(a => {
     const r = routeFor(a, CUR);
     const rv = AG_RV[a.id];
@@ -199,9 +226,10 @@ function renderList() {
       ${r.promise ? `<p class="ct-promise">« ${esc(r.promise)} »</p>` : ""}
       <p class="ct-meta"><b>${fmt(r.price)}</b>${r.days ? " · " + r.days + " " + t("ct_days") : ""}${office ? ` · <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ` + esc(office) : ""}</p>
       <div class="ct-actions">
+        ${CAR_ID ? `<button type="button" class="btn btn-solid" onclick="askOne('${esc(String(a.id))}')">${t("q_ask_one")}</button>` : ""}
         <a class="btn btn-ghost-dark" href="${profileHref}">${t("ct_profile")}</a>
-        ${CAR_ID ? `<a class="btn btn-solid" href="${chooseHref}" onclick="if(typeof yayoTrack==='function')yayoTrack('choose_agency',{agency:'${esc(a.name)}'})">${t("agl_choose")}</a>` : ""}
       </div>
+      ${CAR_ID ? `<a class="ct-usethis" href="${chooseHref}" onclick="if(typeof yayoTrack==='function')yayoTrack('choose_agency',{agency:'${esc(a.name)}'})">${t("agl_choose")}</a>` : ""}
     </div>`;
   }).join("");
 }

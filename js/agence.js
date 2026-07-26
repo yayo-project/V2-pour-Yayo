@@ -112,7 +112,28 @@ async function render() {
       choose.hidden = false;
       choose.href = `voiture.html?id=${encodeURIComponent(FROM_CAR)}&agency=${encodeURIComponent(AG.id)}&city=${encodeURIComponent(city)}`;
     }
+    // ask THIS agency what it really costs to ship THIS car
+    const ask = document.getElementById("ap-ask");
+    if (ask) { ask.hidden = false; loadQuoteCar(); }
   }
+}
+
+// The car (photo + model + year) that a quote request will carry
+let QCAR = null;
+async function loadQuoteCar() {
+  if (String(FROM_CAR).startsWith("demo")) {
+    QCAR = (window.YAYO_DEMO || []).find(c => c.id === FROM_CAR) || null;
+    return;
+  }
+  try {
+    const { data } = await yayoSB().from("listings")
+      .select("id, car_name, year, photo_url, photos").eq("id", FROM_CAR).maybeSingle();
+    QCAR = data || null;
+  } catch (e) { QCAR = null; }
+}
+
+function askThis() {
+  yayoQuoteOpen({ car: QCAR, city: P.get("city") || "", agencies: [AG] });
 }
 
 // ── In-app chat with the agency (same two-way translation as dealers) ──

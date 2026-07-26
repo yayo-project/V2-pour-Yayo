@@ -134,9 +134,14 @@ gtag('config', 'G-NR2LTEVKET');
             <svg class="bd-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
           </button>
           <div id="vd-breakdown" hidden></div>
-          <a class="btn btn-solid btn-block ct-go" id="ct-btn-link" href="agences.html" hidden>
+          <!-- One tap: the car (photo + model + year) goes to the agencies that
+               serve this city, and they answer with their own real price. -->
+          <button type="button" class="btn btn-solid btn-block ct-go" id="q-cta" onclick="askShipping()" hidden>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14l1.5 4.5A2 2 0 006.4 20h11.2a2 2 0 001.9-1.5L21 14M3 14h18M12 3v3M7 9h10l1 5H6z"/></svg>
-            <span id="ct-btn-txt" data-i18n="ct_btn">Choisir l'agence d'export</span>
+            <span id="q-cta-txt" data-i18n="q_cta">Demander le prix du transport</span>
+          </button>
+          <a class="ct-compare" id="ct-btn-link" href="agences.html" hidden>
+            <span id="ct-btn-txt" data-i18n="ct_btn">Comparer les agences d'export</span>
           </a>
           <p class="cost-note-strong" data-i18n="landed_note">Estimation transport + douane + frais. Le prix exact est confirmé avec le dealer et l'agence.</p>
         </div>
@@ -241,6 +246,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/fav.js"></script>
 <script src="js/reviews.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/quote.js"></script>
 <script src="js/voiture.js"></script>
 </body>
 </html>

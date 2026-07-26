@@ -260,6 +260,7 @@ function renderBreakdown() {
   const totalLine = document.getElementById("vd-total-line");
   const toggle = document.getElementById("bd-toggle");
   const goBtn = document.getElementById("ct-btn-link");
+  const askBtn = document.getElementById("q-cta");
   const d = DEST[CUR];
   if (CUR === "dubai") {
     totalLine.innerHTML = `<div class="cost-total"><span>${t("bd_onsite")}</span><span class="val">${fmt(CAR.price)}</span></div>`;
@@ -267,12 +268,20 @@ function renderBreakdown() {
     box.hidden = true;
     toggle.hidden = true;
     goBtn.hidden = true;
+    if (askBtn) askBtn.hidden = true;
     updateTeasers(0, "");
     return;
   }
   toggle.hidden = false;
   goBtn.hidden = false;
   goBtn.href = `agences.html?car=${encodeURIComponent(CAR.id)}&city=${CUR}`;
+  // Asking for a real price only makes sense if someone actually serves the city
+  if (askBtn) {
+    const serving = agenciesFor(CUR);
+    askBtn.hidden = !serving.length;
+    document.getElementById("q-cta-txt").textContent =
+      t("q_cta_city").replace("{city}", d.name);
+  }
   document.getElementById("bd-toggle-txt").textContent = t(box.hidden ? "bd_show_est" : "bd_hide_est");
   document.getElementById("ct-btn-txt").innerHTML = CHOSEN
     ? `${yayoVBadge()} ${escapeHtml(CHOSEN.name)} · ${t("agl_change")}`
@@ -382,6 +391,16 @@ async function loadAgencies() {
 // The agency choice now happens on its own page (agences.html) — clearer on
 // mobile than an inline accordion. This just keeps the button state fresh.
 function renderTransport() { /* button text/href handled in renderBreakdown */ }
+
+// Every verified agency that actually serves this city
+function agenciesFor(city) { return AGENCIES.filter(a => routeFor(a, city)); }
+
+// "Combien pour l'expédier à Kinshasa ?" — one tap sends this car (photo,
+// model, year) to every agency serving the city. They reply with their own
+// real price; they never see Yayo's estimated total.
+function askShipping() {
+  yayoQuoteOpen({ car: CAR, city: CUR, agencies: agenciesFor(CUR) });
+}
 
 function chooseAgency(id) {
   CHOSEN = AGENCIES.find(a => String(a.id) === String(id)) || null;

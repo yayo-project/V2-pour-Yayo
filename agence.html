@@ -110,8 +110,9 @@ gtag('config', 'G-NR2LTEVKET');
 
           <div class="vd-card">
             <div id="ap-trust"></div>
-            <a class="btn btn-solid btn-block" id="ap-choose" hidden href="#"><span data-i18n="agl_choose">Choisir cette agence</span></a>
-            <button class="btn btn-solid btn-block" id="ap-contact" onclick="openAgChat()" data-i18n="ap_contact">💬 Contacter l'agence</button>
+            <button type="button" class="btn btn-solid btn-block" id="ap-ask" hidden onclick="askThis()"><span id="ap-ask-txt" data-i18n="q_ask_one">Demander le prix</span></button>
+            <button class="btn btn-ghost-dark btn-block" id="ap-contact" onclick="openAgChat()" data-i18n="ap_contact">💬 Contacter l'agence</button>
+            <a class="ct-usethis" id="ap-choose" hidden href="#"><span data-i18n="agl_choose">Voir mon total avec ce prix</span></a>
             <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
             <div id="ap-chat" hidden>
               <div class="chat-trust" id="ap-chat-trust"></div>
@@ -145,6 +146,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
 <script src="js/reviews.js"></script>
+<script src="js/quote.js"></script>
 <script src="js/agence.js"></script>
 </body>
 </html>
