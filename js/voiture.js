@@ -448,7 +448,9 @@ async function loadSimilar() {
         .slice(0, 3);
     } catch (e) { pool = []; }
   }
-  if (!pool.length) {
+  // Sample cars are suggested only next to another sample car — never
+  // alongside a real listing, where they would look buyable.
+  if (!pool.length && String(CAR.id).startsWith("demo")) {
     pool = window.YAYO_DEMO.filter(c => c.id !== CAR.id && (c.body === CAR.body || c.car_name.split(" ")[0] === CAR.car_name.split(" ")[0])).slice(0, 3);
   }
   if (!pool.length) return;

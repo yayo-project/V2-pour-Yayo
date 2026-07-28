@@ -55,14 +55,14 @@ async function loadCars() {
         created_at: l.created_at,
         dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified), logo_url: (l.dealers && l.dealers.logo_url) || null }
       }));
-      // While real inventory is small, pad with demo cars so the featured
-      // grid, the arrivals strip AND the budget explorer never look empty.
-      if (list.length < 16) list = list.concat(DEMO_ALL.slice(0, 16 - list.length));
+      // Real cars only. Padding the grid with sample cars made buyers (and
+      // the founder) believe fictional listings were real inventory — a car
+      // nobody can actually buy must never appear next to one they can.
     } else {
-      list = DEMO_ALL;
+      list = [];
     }
   } catch (e) {
-    list = DEMO_ALL;
+    list = [];
   }
   ALL_CARS = list;
   CARS = list.slice(0, YAYO_CONFIG.FEATURED_LIMIT);
@@ -106,9 +106,12 @@ function renderArrivals() {
 function renderBudget() {
   const g = document.getElementById("bud-grid");
   if (!g) return;
-  const cars = ALL_CARS.length ? ALL_CARS : DEMO_ALL;
-  const landed = cars.map(c => landedTotal(c.price, CUR)).sort((a, b) => a - b);
-  if (!landed.length) { g.innerHTML = ""; return; }
+  const sec = document.getElementById("budget");
+  // Budget tiers describe what is really for sale — with no inventory there is
+  // nothing honest to say, so the whole section stays away.
+  const landed = ALL_CARS.map(c => landedTotal(c.price, CUR)).sort((a, b) => a - b);
+  if (!landed.length) { g.innerHTML = ""; if (sec) sec.hidden = true; return; }
+  if (sec) sec.hidden = false;
   const pick = p => landed[Math.min(landed.length - 1, Math.floor(landed.length * p))];
   // round UP to a clean $1000 so every shown amount really includes its cars
   const rnd = v => Math.ceil(v / 1000) * 1000;
@@ -166,6 +169,17 @@ function renderCars() {
   const g = document.getElementById("car-grid");
   if (!g) return;
   const dst = DEST[CUR];
+  // No verified inventory (all dealers pending or suspended): say so plainly
+  // rather than leaving a hole where the cars should be.
+  if (!CARS.length) {
+    g.innerHTML = `
+      <div class="mkt-empty" style="grid-column:1/-1">
+        <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.6-4.2A2 2 0 018.5 5.5h7a2 2 0 011.9 1.3L19 11M4 11h16a1 1 0 011 1v4a1 1 0 01-1 1h-1M4 11a1 1 0 00-1 1v4a1 1 0 001 1h1"/><circle cx="7.5" cy="17" r="1.8"/><circle cx="16.5" cy="17" r="1.8"/></svg></div>
+        <h3>${t("home_no_cars_h")}</h3>
+        <p>${t("home_no_cars_p")}</p>
+      </div>`;
+    return;
+  }
   g.innerHTML = CARS.map(c => `
   <div class="car-card" onclick="openCar('${c.id || ""}')">
     <div class="car-img">

@@ -60,13 +60,13 @@ async function loadCars() {
         photos: yayoPhotoList(l.photos),
         dealer: { name: (l.dealers && l.dealers.name) || "Dealer Yayo", verified: !!(l.dealers && l.dealers.verified), logo_url: (l.dealers && l.dealers.logo_url) || null }
       }));
-      // same demo padding as the landing page (16) so budget-row counts match
-      if (ALL.length < 16) ALL = ALL.concat(DEMO_CARS.slice(0, 16 - ALL.length));
+      // Real cars only — a buyer must never be able to open, favourite or
+      // message about a car that does not exist (see js/app.js).
     } else {
-      ALL = DEMO_CARS;
+      ALL = [];
     }
   } catch (e) {
-    ALL = DEMO_CARS;
+    ALL = [];
   }
   applyFilters();
   yayoLoadVerdicts(ALL, render); // real AI price verdicts, badge appears when ready
