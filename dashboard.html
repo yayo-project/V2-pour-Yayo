@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Yayo</title>
-<meta name="description" content="Espace dealer Yayo : vos annonces, vos statistiques et vos conversations avec les acheteurs africains.">
+<meta name="description" content="Espace vendeur Yayo : vos annonces, vos statistiques et vos conversations avec les acheteurs africains.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@ gtag('config', 'G-NR2LTEVKET');
 </header>
 <div class="mobile-menu" id="mmenu">
   <a href="acheter.html"><b data-i18n="nav_acheter">Acheter</b> <span data-i18n="m_acheter_s">Voitures vérifiées à Dubai</span></a>
-  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Dealers Dubai</span></a>
+  <a href="vendre.html"><b data-i18n="nav_vendre">Vendre</b> <span data-i18n="m_vendre_s">Vendeurs automobiles</span></a>
   <a href="expedier.html"><b data-i18n="nav_expedier">Expédier</b> <span data-i18n="m_expedier_s">Agences de transport</span></a>
   <a href="comment.html"><b data-i18n="nav_comment">Comment ça marche</b> <span data-i18n="m_comment_s">4 étapes simples</span></a>
   <a href="connexion.html?next=dashboard.html" data-auth="login-mobile"><b data-i18n="connexion">Connexion</b> <span data-i18n="m_connexion_s">Mon compte Yayo</span></a>
@@ -65,10 +65,10 @@ gtag('config', 'G-NR2LTEVKET');
     <!-- Buyer: friendly redirect -->
     <div id="dash-buyer" class="mkt-empty" hidden>
       <div class="mkt-empty-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></div>
-      <h3 data-i18n="d_buyer_h">Cet espace est réservé aux dealers et agences</h3>
-      <p data-i18n="d_buyer_p">Votre compte acheteur est 100% gratuit — et le restera. Vous êtes dealer ou agence de transport à Dubai ?</p>
+      <h3 data-i18n="d_buyer_h">Cet espace est réservé aux vendeurs et agences</h3>
+      <p data-i18n="d_buyer_p">Votre compte acheteur est 100% gratuit — et le restera. Vous êtes vendeur automobile ou agence de transport à Dubai ?</p>
       <div class="dash-empty-actions">
-        <a class="btn btn-solid" href="vendre.html" data-i18n="d_buyer_dealer">Devenir dealer</a>
+        <a class="btn btn-solid" href="vendre.html" data-i18n="d_buyer_dealer">Devenir vendeur automobile</a>
         <a class="btn btn-ghost-dark" href="expedier.html" data-i18n="d_buyer_agency">Inscrire mon agence</a>
       </div>
     </div>
@@ -230,7 +230,7 @@ gtag('config', 'G-NR2LTEVKET');
       <div class="dash-head">
         <div>
           <h1 class="dash-title">Admin Yayo</h1>
-          <p class="dash-hello" data-i18n="ad_sub">Vérification des dealers et agences, statistiques de la plateforme.</p>
+          <p class="dash-hello" data-i18n="ad_sub">Vérification des vendeurs et agences, statistiques de la plateforme.</p>
         </div>
         <button class="btn btn-ghost-dark" id="ad-logout" onclick="dashLogout()" data-i18n="logout">Déconnexion</button>
       </div>
@@ -266,7 +266,7 @@ gtag('config', 'G-NR2LTEVKET');
       <!-- DEALERS -->
       <section id="tab-ad-dealers" hidden>
         <div class="vd-card">
-          <h2 class="vd-h" data-i18n="ad_h_dealers">Dealers — vérification</h2>
+          <h2 class="vd-h" data-i18n="ad_h_dealers">Vendeurs — vérification</h2>
           <p class="dash-sub" data-i18n="ad_p_dealers">Vérifiez la licence commerciale, puis accordez le badge Vérifié Yayo.</p>
           <div class="ad-filters">
             <input id="ad-d-search" type="search" data-i18n-ph="ad_search_ph" placeholder="Rechercher par nom ou email…" oninput="adRenderBiz('dealer')">
@@ -289,7 +289,7 @@ gtag('config', 'G-NR2LTEVKET');
               <tbody id="ad-dealer-rows"></tbody>
             </table>
           </div>
-          <p class="dash-empty" id="ad-dealers-empty" hidden data-i18n="ad_no_dealers">Aucun dealer inscrit pour l'instant.</p>
+          <p class="dash-empty" id="ad-dealers-empty" hidden data-i18n="ad_no_dealers">Aucun vendeur inscrit pour l'instant.</p>
           <p class="auth-error" id="ad-dealers-err" hidden></p>
         </div>
       </section>
@@ -337,7 +337,7 @@ gtag('config', 'G-NR2LTEVKET');
             <table class="dash-table">
               <thead><tr>
                 <th data-i18n="ad_th_car">Voiture</th>
-                <th data-i18n="ad_th_dealer">Dealer</th>
+                <th data-i18n="ad_th_dealer">Vendeur</th>
                 <th data-i18n="d_th_price">Prix</th>
                 <th data-i18n="ad_th_views">Vues</th>
                 <th data-i18n="d_th_status">Statut</th>
@@ -425,7 +425,7 @@ gtag('config', 'G-NR2LTEVKET');
           <div class="ad-filters">
             <input id="ad-t-email" type="email" placeholder="email@exemple.com">
             <select id="ad-t-role">
-              <option value="admin_dealers" data-i18n="ad_r_dealers">Dealers & agences</option>
+              <option value="admin_dealers" data-i18n="ad_r_dealers">Vendeurs & agences</option>
               <option value="admin_support" data-i18n="ad_r_support">Utilisateurs & annonces</option>
               <option value="admin_stats" data-i18n="ad_r_stats">Statistiques seulement</option>
               <option value="super_admin" data-i18n="ad_r_super">Super admin (tout)</option>
