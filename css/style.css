@@ -996,6 +996,11 @@ body.no-scroll{overflow:hidden}
 #ct-btn-link.btn{background:#15803D;border-color:#15803D;color:#fff}
 #ct-btn-link.btn:hover{background:#116932;border-color:#116932;color:#fff}
 #ct-btn-link.btn svg{color:#fff}
+/* Website-import pitch on the vendre page — the reason a busy dealer says yes */
+.imp-pitch{background:linear-gradient(180deg,#F0FCFA,#F4F7FB)}
+.imp-pitch .imp-num{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--teal-bright,#1FD8C9);color:#0A2540;font-weight:800;font-size:16px;margin-bottom:12px}
+.imp-honest{max-width:640px;margin:18px auto 20px;text-align:center;font-size:13px;line-height:1.6;color:var(--ink-2,#3F5473);background:#fff;border:1px solid #DFE6EE;border-radius:12px;padding:12px 16px}
+[dir="rtl"] .imp-pitch .imp-num{margin-left:auto}
 /* Shown instead of the agency buttons while no verified agency serves the city */
 .ct-noagency{margin:12px 0 0;font-size:13px;line-height:1.55;color:#6B4A0F;background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:11px 14px}
 .ct-go{margin-top:12px;min-height:48px}
