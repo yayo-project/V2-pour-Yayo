@@ -269,19 +269,25 @@ function renderBreakdown() {
     toggle.hidden = true;
     goBtn.hidden = true;
     if (askBtn) askBtn.hidden = true;
+    setNoAgencyNote(false);
     updateTeasers(0, "");
     return;
   }
   toggle.hidden = false;
-  goBtn.hidden = false;
+  // Neither button means anything until a verified agency actually serves this
+  // city: one would open an empty compare page, the other has nobody to ask.
+  // This re-checks on every render, so both return by themselves the moment an
+  // agency is verified with a route here — nothing to switch back on.
+  const serving = agenciesFor(CUR);
+  goBtn.hidden = !serving.length;
   goBtn.href = `agences.html?car=${encodeURIComponent(CAR.id)}&city=${CUR}`;
-  // Asking for a real price only makes sense if someone actually serves the city
   if (askBtn) {
-    const serving = agenciesFor(CUR);
     askBtn.hidden = !serving.length;
     document.getElementById("q-cta-txt").textContent =
       t("q_cta_city").replace("{city}", d.name);
   }
+  // …and say plainly where the shipping figure comes from meanwhile
+  setNoAgencyNote(!serving.length, d.name);
   document.getElementById("bd-toggle-txt").textContent = t(box.hidden ? "bd_show_est" : "bd_hide_est");
   document.getElementById("ct-btn-txt").innerHTML = CHOSEN
     ? `${yayoVBadge()} ${escapeHtml(CHOSEN.name)} · ${t("agl_change")}`
@@ -390,6 +396,15 @@ async function loadAgencies() {
 
 // The agency choice now happens on its own page (agences.html) — clearer on
 // mobile than an inline accordion. This just keeps the button state fresh.
+// Honest note in place of the buttons: the shipping line in the total is a
+// Yayo estimate, not an agency's price, until someone really serves this city.
+function setNoAgencyNote(show, city) {
+  const el = document.getElementById("vd-noag");
+  if (!el) return;
+  el.hidden = !show;
+  if (show) el.textContent = t("ct_noagency").replace("{city}", city || "");
+}
+
 function renderTransport() { /* button text/href handled in renderBreakdown */ }
 
 // Every verified agency that actually serves this city

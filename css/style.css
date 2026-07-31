@@ -996,6 +996,8 @@ body.no-scroll{overflow:hidden}
 #ct-btn-link.btn{background:#15803D;border-color:#15803D;color:#fff}
 #ct-btn-link.btn:hover{background:#116932;border-color:#116932;color:#fff}
 #ct-btn-link.btn svg{color:#fff}
+/* Shown instead of the agency buttons while no verified agency serves the city */
+.ct-noagency{margin:12px 0 0;font-size:13px;line-height:1.55;color:#6B4A0F;background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:11px 14px}
 .ct-go{margin-top:12px;min-height:48px}
 .ct-go .vseal{width:15px;height:15px;vertical-align:-3px}
 

@@ -256,6 +256,7 @@ fr: {
   rp_kind: "Type de problème", rp_k_bug: "Bug / le site ne marche pas", rp_k_listing: "Annonce suspecte ou fausse", rp_k_business: "Problème avec un vendeur / une agence", rp_k_other: "Autre",
   rp_msg: "Décrivez le problème", rp_msg_ph: "Expliquez ce qui ne va pas…", rp_contact: "Votre email (facultatif — pour vous répondre)", rp_contact_ph: "vous@exemple.com",
   rp_send: "Envoyer le signalement", rp_done: "Merci ! Votre signalement est bien reçu.",
+  ct_noagency: "Aucune agence de transport vérifiée ne dessert encore {city}. Le montant du transport inclus ci-dessus est une estimation Yayo, pas le prix d'une agence.",
   home_no_cars_h: "Nos premières voitures arrivent", home_no_cars_p: "Les vendeurs de Dubai publient leur stock en ce moment. Revenez très bientôt.",
   // Shipping quote request — the car goes to the agency, the total never does
   q_cta: "Demander le prix du transport", q_cta_city: "Combien pour l'expédier à {city} ?",
@@ -730,6 +731,7 @@ en: {
   rp_kind: "Type of problem", rp_k_bug: "Bug / the site doesn't work", rp_k_listing: "Suspicious or fake listing", rp_k_business: "Problem with a dealership / agency", rp_k_other: "Other",
   rp_msg: "Describe the problem", rp_msg_ph: "Tell us what's wrong…", rp_contact: "Your email (optional — so we can reply)", rp_contact_ph: "you@example.com",
   rp_send: "Send report", rp_done: "Thank you! Your report has been received.",
+  ct_noagency: "No verified shipping agency serves {city} yet. The freight amount included above is a Yayo estimate, not an agency's price.",
   home_no_cars_h: "Our first cars are on their way", home_no_cars_p: "Dubai car dealerships are publishing their stock right now. Check back very soon.",
   // Shipping quote request
   q_cta: "Ask for a shipping price", q_cta_city: "What does it cost to ship to {city}?",
@@ -1188,6 +1190,7 @@ ar: {
   rp_kind: "نوع المشكلة", rp_k_bug: "خلل / الموقع لا يعمل", rp_k_listing: "إعلان مشبوه أو مزيف", rp_k_business: "مشكلة مع معرض / وكالة", rp_k_other: "أخرى",
   rp_msg: "صف المشكلة", rp_msg_ph: "اشرح ما الخطأ…", rp_contact: "بريدك الإلكتروني (اختياري — للرد عليك)", rp_contact_ph: "you@example.com",
   rp_send: "إرسال البلاغ", rp_done: "شكراً! تم استلام بلاغك.",
+  ct_noagency: "لا توجد بعد شركة شحن موثّقة تخدم {city}. مبلغ الشحن المُدرج أعلاه تقدير من يايو، وليس سعر شركة شحن.",
   home_no_cars_h: "سياراتنا الأولى في الطريق", home_no_cars_p: "تجّار دبي ينشرون مخزونهم الآن. عُد قريباً جداً.",
   // طلب سعر الشحن
   q_cta: "اطلب سعر الشحن", q_cta_city: "كم تكلفة الشحن إلى {city}؟",
