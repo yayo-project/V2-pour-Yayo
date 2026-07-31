@@ -470,6 +470,7 @@ body.no-scroll{overflow:hidden}
 .dash-st.active{background:var(--teal-tint);color:var(--teal-dark)}
 .dash-st.sold{background:#EEF1F6;color:var(--ink-3)}
 .dash-st.off{background:#FFF6E5;color:#8A6116}
+.dash-st.rejected{background:#FDE8E8;color:#A32020}
 .dash-td-actions{white-space:nowrap}
 .dash-td-actions button{font-size:12px;font-weight:700;color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;margin:2px 3px 2px 0;transition:.15s;background:#fff}
 .dash-td-actions button:hover{border-color:var(--teal);color:var(--teal-dark)}

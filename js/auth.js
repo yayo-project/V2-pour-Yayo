@@ -413,6 +413,22 @@ function yayoNotifyMatch(dealerId) {
   } catch (e) { /* never blocks publishing */ }
 }
 
+// ── Tell a business its application was decided (fire-and-forget) ──
+// Called after an admin verifies or rejects. The function re-reads the decision
+// server-side, so the wording and the recipient can never come from the client.
+async function yayoNotifyDecision(subject, sid) {
+  try {
+    const { data } = await yayoSB().auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if (!token) return;
+    fetch("/.netlify/functions/notify-decision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, subject, sid })
+    }).catch(() => {});
+  } catch (e) { /* never blocks the admin action */ }
+}
+
 // ── Founder alert (fire-and-forget) — "a dealer just registered" etc. ──
 function yayoNotifyAdmin(kind, name, detail) {
   try {

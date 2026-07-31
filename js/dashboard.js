@@ -1837,6 +1837,9 @@ function bizList(type) { return type === "dealer" ? AD_DEALERS : AD_AGS; }
 function bizStatus(x) {
   if (x.suspended) return ["off", t("ad_st_suspended")];
   if (x.verified) return ["active", t("ad_st_verified") + " " + yayoVBadge()];
+  // A rejected application used to look identical to a brand-new one, so junk
+  // signups piled up in the review queue disguised as work to do.
+  if (x.rejected_reason) return ["rejected", t("ad_st_rejected")];
   return ["sold", t("ad_st_pending")];
 }
 function bizActionsHtml(type, x) {
@@ -1858,7 +1861,10 @@ function adRenderBiz(type) {
   const rows = bizList(type).filter(x => {
     if (q && !((x.name || "") + " " + (x.email || "")).toLowerCase().includes(q)) return false;
     if (f === "verified") return x.verified && !x.suspended;
-    if (f === "pending") return !x.verified && !x.suspended;
+    // "pending" = still waiting on a first decision, so rejected ones drop out
+    if (f === "pending") return !x.verified && !x.suspended && !x.rejected_reason;
+    // matches what the badge shows: suspended wins over rejected
+    if (f === "rejected") return !x.verified && !x.suspended && !!x.rejected_reason;
     if (f === "suspended") return !!x.suspended;
     return true;
   });
@@ -1940,7 +1946,10 @@ async function adBizAction(type, id, doRpc, apply) {
 function adVerify(type, id, val) {
   adBizAction(type, id,
     () => adRpc("admin_set_verified", { subject: type, sid: id, val }),
-    x => { x.verified = val; if (val) x.rejected_reason = null; });
+    x => {
+      x.verified = val;
+      if (val) { x.rejected_reason = null; if (!DEMO_ADMIN) yayoNotifyDecision(type, id); }
+    });
 }
 // Rename a business (e.g. a name typed in Arabic script → Latin letters so
 // every buyer can read it). Goes through the audited §28 RPC.
@@ -2019,7 +2028,11 @@ function adReject(type, id) {
   if (reason === null) return;
   adBizAction(type, id,
     () => adRpc("admin_reject", { subject: type, sid: id, reason }),
-    y => { y.verified = false; y.rejected_reason = reason; });
+    y => {
+      y.verified = false; y.rejected_reason = reason;
+      // a genuine business should hear why, not discover it by chance
+      if (!DEMO_ADMIN) yayoNotifyDecision(type, id);
+    });
 }
 function adSuspend(type, id, val) {
   const x = bizList(type).find(r => String(r.id) === String(id));
