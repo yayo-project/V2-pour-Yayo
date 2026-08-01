@@ -709,6 +709,9 @@ async function extractBatch(urls, key) {
 const PREVIEW_HITS = new Map();
 const PREVIEW_MAX = 6;              // per IP
 const PREVIEW_WINDOW = 60 * 60000;  // per hour
+// Fewer car pages than this on a dealer site means we probably matched
+// something that isn't a catalogue — say so rather than promise a number.
+const MIN_PREVIEW_CARS = 12;
 function previewAllowed(ip) {
   const now = Date.now();
   const hits = (PREVIEW_HITS.get(ip) || []).filter(t => now - t < PREVIEW_WINDOW);
@@ -777,13 +780,21 @@ exports.handler = async (event) => {
         if (crawl.length >= 2) urls = crawl;
       }
       if (urls) {
-        // Finding car-shaped pages is not the same as being able to import
-        // them: some sites expose links whose pages carry no usable car. So
-        // read a few for real and only promise what actually came back.
-        let sample = [];
-        try { sample = await extractBatch(urls.slice(0, 3), key); } catch (e) { sample = []; }
-        const good = sample.filter(c => (c.photos || []).length);
-        if (!good.length) return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreadable"}' };
+        // A handful of car-shaped links is usually a mis-detection, not a
+        // catalogue: the sites this is built for carry dozens. Requiring a
+        // real catalogue keeps us from promising cars a site cannot give.
+        if (urls.length < MIN_PREVIEW_CARS) {
+          return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreadable"}' };
+        }
+        // Photos are proof, not the verdict. Reading three pages costs several
+        // seconds and the slowest sites spend the whole budget just finding
+        // their catalogue — so only fetch them if there is time left, and NEVER
+        // call a readable site unreadable because the photo sample ran out.
+        let good = [];
+        if (budgetLeft() > 7000) {
+          try { good = (await extractBatch(urls.slice(0, 3), key)).filter(c => (c.photos || []).length); }
+          catch (e) { good = []; }
+        }
         return done(urls.length, shot(good));
       }
 
