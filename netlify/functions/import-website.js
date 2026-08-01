@@ -103,9 +103,18 @@ async function fetchPage(url, attempt) {
       signal: ctrl.signal, redirect: "follow",
       headers: {
         "User-Agent": UAS[(attempt || 0) % UAS.length],
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9,fr;q=0.8,ar;q=0.7",
-        "Referer": ref
+        "Referer": ref,
+        // Some hosts reject anything that doesn't look like a real browser
+        // navigation. These cost nothing and get us past the simpler filters.
+        "Accept-Encoding": "gzip, deflate, br",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "no-cache"
       }
     });
     if (!res.ok) throw new Error("http " + res.status);
@@ -763,7 +772,10 @@ exports.handler = async (event) => {
       const shot = (cars) => cars.map(c => (c.photos || [])[0]).filter(Boolean).slice(0, 3);
       const done = (count, photos) => ({ statusCode: 200, headers, body: JSON.stringify({ readable: count > 0, count, photos: photos || [] }) });
 
-      let html; try { html = await fetchRetry(purl, 2); }
+      // 3 tries, not 2: some export dealers sit on shared hosts that throttle
+      // datacenter traffic and refuse the first request or two (Target Motors
+      // does exactly this, and was being reported as unreadable).
+      let html; try { html = await fetchRetry(purl, 3); }
       catch (e) { return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreachable"}' }; }
       const aed = /\bAED\b|د\.إ|dirham/i.test(html);
 
@@ -789,16 +801,20 @@ exports.handler = async (event) => {
         if (urls.length < MIN_PREVIEW_CARS) {
           return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreadable"}' };
         }
-        // Photos are proof, not the verdict. Reading three pages costs several
-        // seconds and the slowest sites spend the whole budget just finding
-        // their catalogue — so only fetch them if there is time left, and NEVER
-        // call a readable site unreadable because the photo sample ran out.
-        let good = [];
-        if (budgetLeft() > 7000) {
-          try { good = (await extractBatch(urls.slice(0, 3), key)).filter(c => (c.photos || []).length); }
-          catch (e) { good = []; }
+        // Photos are proof, not the verdict — and the listing page we already
+        // downloaded is full of car thumbnails, so take them from there. That
+        // costs nothing, which is why the slowest sites (albacars, cars24)
+        // used to show a count with no pictures: fetching three more pages
+        // simply didn't fit in the budget.
+        let pics = detailPhotos(html, purl).slice(0, 3);
+        if (pics.length < 3 && budgetLeft() > 7000) {
+          try {
+            const more = (await extractBatch(urls.slice(0, 3), key))
+              .map(c => (c.photos || [])[0]).filter(Boolean);
+            pics = [...new Set(pics.concat(more))].slice(0, 3);
+          } catch (e) { /* keep whatever the listing page gave */ }
         }
-        return done(urls.length, shot(good));
+        return done(urls.length, pics);
       }
 
       const feed = normalize(await carsFromDataFeeds(html, purl), aed).filter(c => c.photos.length);
