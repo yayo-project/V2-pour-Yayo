@@ -761,19 +761,30 @@ exports.handler = async (event) => {
       catch (e) { return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreachable"}' }; }
       const aed = /\bAED\b|د\.إ|dirham/i.test(html);
 
-      // same detection ladder as a real import, so the answer a dealer sees
-      // here is the answer he will get after signing up
+      // The ladder below mirrors a real import STEP FOR STEP, including the
+      // order. An earlier version probed in a different order and told one
+      // dealer 400 cars where the import would find 100 — a preview that
+      // over-promises is worse than no preview.
       const ldCars = normalize(carsFromJsonLd(html, purl), aed).filter(c => c.photos.length);
       if (ldCars.length >= 2) return done(ldCars.length, shot(ldCars));
 
       const wp = await wpCarApiUrls(new URL(purl).origin);
-      let urls = await collectDetailUrls(purl, html);
-      if (wp.length > urls.length) urls = wp;
-      if (urls.length >= 2) {
-        // one tiny batch just for the proof photos; the count is the real total
+      let urls = null;
+      if (wp.length >= 12) urls = wp;                    // same precedence as the import
+      else {
+        let crawl = await collectDetailUrls(purl, html);
+        if (wp.length > crawl.length) crawl = wp;
+        if (crawl.length >= 2) urls = crawl;
+      }
+      if (urls) {
+        // Finding car-shaped pages is not the same as being able to import
+        // them: some sites expose links whose pages carry no usable car. So
+        // read a few for real and only promise what actually came back.
         let sample = [];
         try { sample = await extractBatch(urls.slice(0, 3), key); } catch (e) { sample = []; }
-        return done(urls.length, shot(sample));
+        const good = sample.filter(c => (c.photos || []).length);
+        if (!good.length) return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreadable"}' };
+        return done(urls.length, shot(good));
       }
 
       const feed = normalize(await carsFromDataFeeds(html, purl), aed).filter(c => c.photos.length);
