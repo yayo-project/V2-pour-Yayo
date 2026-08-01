@@ -1,9 +1,9 @@
-// ═══════════════════════════════════════════════
-// YAYO — Service worker (PWA, phase 12)
+﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// YAYO â€” Service worker (PWA, phase 12)
 // Everything same-origin: network first (always fresh after a deploy),
 // cache fallback when offline. Never touches Supabase or Netlify Functions.
-// ═══════════════════════════════════════════════
-const CACHE = "yayo-v47";
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+const CACHE = "yayo-v48";
 const CORE = [
   "index.html", "acheter.html", "voiture.html", "comment.html", "agence.html", "agences.html",
   "vendre.html", "expedier.html", "connexion.html", "favoris.html", "messages.html",
@@ -29,9 +29,9 @@ self.addEventListener("activate", (e) => {
   );
 });
 
-// ── PUSH NOTIFICATIONS (installed PWA) ──
+// â”€â”€ PUSH NOTIFICATIONS (installed PWA) â”€â”€
 // The phone buzzes and rings even when Yayo is closed. The payload carries
-// no message content — just "you have a new message" + where to open it.
+// no message content â€” just "you have a new message" + where to open it.
 self.addEventListener("push", (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = {}; }
@@ -42,7 +42,7 @@ self.addEventListener("push", (e) => {
     badge: "assets/icon-192.png",
     vibrate: [200, 100, 200],          // buzz pattern (Android)
     tag: d.tag || "yayo-message",      // a 2nd message replaces, never spams
-    renotify: true,                    // …but still buzzes again
+    renotify: true,                    // â€¦but still buzzes again
     requireInteraction: false,
     data: { url: d.url || "messages.html" }
   };

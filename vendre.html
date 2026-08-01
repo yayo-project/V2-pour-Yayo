@@ -103,9 +103,20 @@ gtag('config', 'G-NR2LTEVKET');
       </div>
     </div>
     <p class="imp-honest" data-i18n="v_imp_note">La plupart des sites de vendeurs fonctionnent. Si le vôtre ne peut pas être lu automatiquement, vous ajoutez vos voitures à la main en une minute chacune — et l'équipe Yayo vous aide.</p>
-    <div style="text-align:center">
-      <a href="#inscription" class="btn btn-solid" style="font-size:15px;padding:14px 30px" data-i18n="v_imp_cta">Essayer avec mon site</a>
-    </div>
+
+    <!-- Try it for real, before signing up: reads the site and shows how many
+         cars were found. Nothing is published and no account is needed. -->
+    <form class="imp-try" id="imp-try" onsubmit="return previewSite(event)">
+      <label for="imp-try-url" data-i18n="v_try_lbl">Voir vos voitures maintenant — sans créer de compte</label>
+      <div class="imp-try-row">
+        <input id="imp-try-url" type="text" inputmode="url" autocomplete="url" required
+               data-i18n-ph="v_try_ph" placeholder="votre-site.com">
+        <button type="submit" class="btn btn-solid" id="imp-try-btn" data-i18n="v_try_btn">Voir mes voitures</button>
+      </div>
+      <p class="imp-try-sub" data-i18n="v_try_sub">Yayo lit votre site et vous dit combien de voitures il a trouvées. Rien n'est publié.</p>
+    </form>
+
+    <div class="imp-res" id="imp-res" hidden></div>
   </div>
 </section>
 
@@ -346,6 +357,73 @@ let LOGGED_USER = null;
   lg.textContent = t("v_logged_as") + " " + LOGGED_USER.email;
   document.getElementById("v-btn").textContent = t("v_apply_btn");
 })();
+
+// ── "Voir mes voitures" — read the dealer's own site before he signs up ──
+// Calls the same engine a real import uses, but the reply only ever contains a
+// COUNT and up to 3 cover photos: never names, prices or links. So it shows a
+// dealer his own stock without becoming a scraper for anyone else's.
+// A site that cannot be read says so HERE, instead of after a signup.
+const TRY_MAX = 4;   // per browser per day — the server throttles per IP too
+function tryQuota() {
+  try {
+    const k = "yayo-try-" + new Date().toISOString().slice(0, 10);
+    const n = parseInt(localStorage.getItem(k) || "0", 10) + 1;
+    localStorage.setItem(k, String(n));
+    return n <= TRY_MAX;
+  } catch (e) { return true; }
+}
+
+async function previewSite(e) {
+  e.preventDefault();
+  const inp = document.getElementById("imp-try-url");
+  const btn = document.getElementById("imp-try-btn");
+  const box = document.getElementById("imp-res");
+  const url = inp.value.trim();
+  if (!url) return false;
+  if (!tryQuota()) { showTry(`<p class="imp-res-bad">${t("v_try_limit")}</p>`); return false; }
+
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = t("v_try_wait");
+  showTry(`<div class="imp-res-load"><span class="imp-spin"></span><p>${t("v_try_loading")}</p></div>`);
+
+  try {
+    const r = await fetch("/.netlify/functions/import-website", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phase: "preview", url })
+    });
+    const txt = await r.text();
+    let d; try { d = JSON.parse(txt); } catch (ex) { d = { readable: false, reason: "slow" }; }
+
+    if (d.throttled) showTry(`<p class="imp-res-bad">${t("v_try_limit")}</p>`);
+    else if (d.readable && d.count) {
+      // remember it so the dashboard import opens pre-filled after signup
+      try { localStorage.setItem("yayo-import-url", url); } catch (ex) {}
+      const shots = (d.photos || []).map(p =>
+        `<img src="${String(p).replace(/"/g, "&quot;")}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`).join("");
+      showTry(`
+        <p class="imp-res-ok">${t("v_try_found").replace("{n}", d.count)}</p>
+        ${shots ? `<div class="imp-res-shots">${shots}</div>` : ""}
+        <a class="btn btn-solid" href="#inscription">${t("v_try_publish")}</a>`);
+    } else {
+      showTry(`
+        <p class="imp-res-bad">${t(d.reason === "unreachable" ? "v_try_unreachable" : "v_try_unreadable")}</p>
+        <a class="btn btn-ghost-dark" href="#inscription">${t("v_try_anyway")}</a>`);
+    }
+  } catch (ex) {
+    showTry(`<p class="imp-res-bad">${t("v_try_unreachable")}</p>`);
+  }
+  btn.disabled = false;
+  btn.textContent = label;
+  return false;
+}
+
+function showTry(html) {
+  const box = document.getElementById("imp-res");
+  box.hidden = false;
+  box.innerHTML = html;
+}
 
 async function doRegister(e) {
   e.preventDefault();

@@ -473,7 +473,11 @@ function impCall(payload) {
 function impShow(id) { ["imp-start", "imp-loading", "imp-review", "imp-publish", "imp-done"].forEach(s => { document.getElementById(s).hidden = s !== id; }); }
 function openImport() {
   IMP = { cars: [], busy: false, publishing: false, cancelled: false };
-  document.getElementById("imp-url").value = "";
+  // If the dealer already tried his site on the vendre page before signing up,
+  // don't make him type it again — carry it straight into the import.
+  let pre = "";
+  try { pre = localStorage.getItem("yayo-import-url") || ""; } catch (e) {}
+  document.getElementById("imp-url").value = pre;
   document.getElementById("imp-own").checked = false;
   hide("imp-err");
   impShow("imp-start");

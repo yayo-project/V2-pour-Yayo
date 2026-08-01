@@ -703,6 +703,24 @@ async function extractBatch(urls, key) {
   }), false);
 }
 
+// ── Preview throttle ──────────────────────────────────────────────
+// Best-effort, per warm container: enough to stop one person hammering the
+// endpoint, and the preview reveals nothing private anyway (see PHASE P).
+const PREVIEW_HITS = new Map();
+const PREVIEW_MAX = 6;              // per IP
+const PREVIEW_WINDOW = 60 * 60000;  // per hour
+function previewAllowed(ip) {
+  const now = Date.now();
+  const hits = (PREVIEW_HITS.get(ip) || []).filter(t => now - t < PREVIEW_WINDOW);
+  if (hits.length >= PREVIEW_MAX) { PREVIEW_HITS.set(ip, hits); return false; }
+  hits.push(now);
+  PREVIEW_HITS.set(ip, hits);
+  if (PREVIEW_HITS.size > 500) {    // keep the map from growing forever
+    for (const [k, v] of PREVIEW_HITS) if (!v.some(t => now - t < PREVIEW_WINDOW)) PREVIEW_HITS.delete(k);
+  }
+  return true;
+}
+
 exports.handler = async (event) => {
   const headers = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Content-Type": "application/json; charset=utf-8" };
   if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers };
@@ -715,6 +733,55 @@ exports.handler = async (event) => {
   DEADLINE = Date.now() + TOTAL_BUDGET;   // always answer before the gateway kills us
 
   try {
+    // ── PHASE P: PREVIEW (public, no login) ──────────────────────────
+    // Runs on the vendre page so a dealer can watch his own stock be found
+    // BEFORE creating an account — and so a site we cannot read says so
+    // before he signs up rather than after.
+    //
+    // It deliberately returns ONLY a count and up to 3 cover photos: never
+    // names, prices or source URLs. So it cannot be used as a free scraper
+    // for someone else's catalogue, and it discloses nothing that isn't
+    // already public on the site itself. Ownership is not asserted here —
+    // claiming a domain still happens at real import, behind a login, where
+    // the database enforces one website = one dealership.
+    if (body.phase === "preview") {
+      const ip = (event.headers["x-nf-client-connection-ip"] || event.headers["client-ip"] ||
+                  (event.headers["x-forwarded-for"] || "").split(",")[0] || "unknown").trim();
+      if (!previewAllowed(ip)) return { statusCode: 200, headers, body: '{"throttled":true}' };
+
+      let purl = String(body.url || "").trim();
+      if (purl && !/^https?:\/\//i.test(purl)) purl = "https://" + purl;
+      purl = purl.split("#")[0];
+      if (!purl || !isPublicHttp(purl)) return { statusCode: 400, headers, body: '{"error":"valid public http(s) url required"}' };
+
+      const shot = (cars) => cars.map(c => (c.photos || [])[0]).filter(Boolean).slice(0, 3);
+      const done = (count, photos) => ({ statusCode: 200, headers, body: JSON.stringify({ readable: count > 0, count, photos: photos || [] }) });
+
+      let html; try { html = await fetchRetry(purl, 2); }
+      catch (e) { return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreachable"}' }; }
+      const aed = /\bAED\b|د\.إ|dirham/i.test(html);
+
+      // same detection ladder as a real import, so the answer a dealer sees
+      // here is the answer he will get after signing up
+      const ldCars = normalize(carsFromJsonLd(html, purl), aed).filter(c => c.photos.length);
+      if (ldCars.length >= 2) return done(ldCars.length, shot(ldCars));
+
+      const wp = await wpCarApiUrls(new URL(purl).origin);
+      let urls = await collectDetailUrls(purl, html);
+      if (wp.length > urls.length) urls = wp;
+      if (urls.length >= 2) {
+        // one tiny batch just for the proof photos; the count is the real total
+        let sample = [];
+        try { sample = await extractBatch(urls.slice(0, 3), key); } catch (e) { sample = []; }
+        return done(urls.length, shot(sample));
+      }
+
+      const feed = normalize(await carsFromDataFeeds(html, purl), aed).filter(c => c.photos.length);
+      if (feed.length >= 2) return done(feed.length, shot(feed));
+
+      return { statusCode: 200, headers, body: '{"readable":false,"reason":"unreadable"}' };
+    }
+
     // ── PHASE B: EXTRACT a batch of detail URLs (no crawl, bounded work) ──
     if (body.phase === "extract") {
       const urls = Array.isArray(body.urls) ? body.urls : [];

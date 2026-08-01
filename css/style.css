@@ -1000,6 +1000,25 @@ body.no-scroll{overflow:hidden}
 .imp-pitch{background:linear-gradient(180deg,#F0FCFA,#F4F7FB)}
 .imp-pitch .imp-num{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--teal-bright,#1FD8C9);color:#0A2540;font-weight:800;font-size:16px;margin-bottom:12px}
 .imp-honest{max-width:640px;margin:18px auto 20px;text-align:center;font-size:13px;line-height:1.6;color:var(--ink-2,#3F5473);background:#fff;border:1px solid #DFE6EE;border-radius:12px;padding:12px 16px}
+/* Try-it-now: read the dealer's own site before he creates an account */
+.imp-try{max-width:560px;margin:0 auto;text-align:center}
+.imp-try label{display:block;font-size:14px;font-weight:700;color:var(--ink,#0A2540);margin-bottom:10px}
+.imp-try-row{display:flex;gap:10px}
+.imp-try-row input{flex:1;min-width:0;border:1.5px solid #DFE6EE;border-radius:12px;padding:13px 15px;font:inherit;font-size:15px;color:var(--ink,#0A2540);background:#fff;min-height:50px}
+.imp-try-row input:focus{outline:none;border-color:var(--teal-bright,#1FD8C9);box-shadow:0 0 0 3px rgba(31,216,201,.16)}
+.imp-try-row .btn{flex:0 0 auto;min-height:50px;white-space:nowrap}
+.imp-try-sub{margin:9px 0 0;font-size:12.5px;color:var(--ink-3,#7A8CA5)}
+@media(max-width:560px){.imp-try-row{flex-direction:column}.imp-try-row .btn{width:100%}}
+.imp-res{max-width:560px;margin:16px auto 0;text-align:center;background:#fff;border:1px solid #DFE6EE;border-radius:14px;padding:20px 18px}
+.imp-res-ok{margin:0 0 12px;font-size:17px;font-weight:800;color:var(--ink,#0A2540)}
+.imp-res-bad{margin:0 0 12px;font-size:14px;line-height:1.6;color:#6B4A0F;background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:11px 14px}
+.imp-res-shots{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.imp-res-shots img{width:104px;height:78px;object-fit:cover;border-radius:10px;background:#EEF1F6}
+.imp-res-load{display:flex;flex-direction:column;align-items:center;gap:10px}
+.imp-res-load p{margin:0;font-size:13.5px;color:var(--ink-2,#3F5473)}
+.imp-spin{width:26px;height:26px;border-radius:50%;border:3px solid #DFE6EE;border-top-color:var(--teal-bright,#1FD8C9);animation:impspin .8s linear infinite}
+@keyframes impspin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.imp-spin{animation-duration:2.4s}}
 [dir="rtl"] .imp-pitch .imp-num{margin-left:auto}
 /* Shown instead of the agency buttons while no verified agency serves the city */
 .ct-noagency{margin:12px 0 0;font-size:13px;line-height:1.55;color:#6B4A0F;background:#FFF7E6;border:1px solid #F0DCAE;border-radius:10px;padding:11px 14px}
