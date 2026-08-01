@@ -707,7 +707,10 @@ async function extractBatch(urls, key) {
 // Best-effort, per warm container: enough to stop one person hammering the
 // endpoint, and the preview reveals nothing private anyway (see PHASE P).
 const PREVIEW_HITS = new Map();
-const PREVIEW_MAX = 6;              // per IP
+// Deliberately generous: mobile carriers in Africa and the Gulf put many
+// users behind ONE address, so a tight per-IP cap would lock out real dealers
+// who never did anything wrong. This only needs to stop a script hammering it.
+const PREVIEW_MAX = 20;             // per IP
 const PREVIEW_WINDOW = 60 * 60000;  // per hour
 // Fewer car pages than this on a dealer site means we probably matched
 // something that isn't a catalogue — say so rather than promise a number.
