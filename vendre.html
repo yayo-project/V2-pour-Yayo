@@ -261,6 +261,10 @@ gtag('config', 'G-NR2LTEVKET');
       <p class="auth-sub" data-i18n="v_reg_p">Gratuit pour démarrer — choisissez votre formule plus tard.</p>
 
       <form onsubmit="return doRegister(event)">
+        <!-- Bot trap: off-screen, unlabelled, never focusable. A person never
+             fills this; the scripts filling this form every day always do. -->
+        <input type="text" name="company_url" tabindex="-1" autocomplete="off" aria-hidden="true"
+               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div class="form-grid">
           <div class="field">
             <label for="v-company" data-i18n="v_company">Nom de l'entreprise</label>
@@ -268,7 +272,9 @@ gtag('config', 'G-NR2LTEVKET');
           </div>
           <div class="field">
             <label for="v-phone" data-i18n="v_phone">Téléphone (Dubai)</label>
-            <input id="v-phone" type="tel" required placeholder="+971 …">
+            <input id="v-phone" type="tel" required value="+971 " autocomplete="tel"
+                   pattern="\+[0-9 ()\-]{8,20}" placeholder="+971 50 123 4567">
+            <span class="field-hint" data-i18n="v_phone_hint">Avec l'indicatif du pays — c'est ainsi que nous vous joignons pour la vérification.</span>
           </div>
           <div class="field">
             <label for="v-city" data-i18n="v_city_lbl">Ville</label>
@@ -425,6 +431,9 @@ function showTry(html) {
   box.innerHTML = html;
 }
 
+// When the page finished loading — a form completed in seconds is a script
+const FORM_OPENED = Date.now();
+
 async function doRegister(e) {
   e.preventDefault();
   const err = document.getElementById("v-error");
@@ -433,14 +442,25 @@ async function doRegister(e) {
   err.hidden = true; ok.hidden = true; btn.disabled = true;
 
   const company = document.getElementById("v-company").value.trim();
-  const phone = document.getElementById("v-phone").value.trim();
   const city = document.getElementById("v-city").value.trim() || "Dubai";
   const desc = document.getElementById("v-desc").value.trim() || null;
+
+  // Silently drop automated submissions — no hint that they were caught
+  if (yayoLooksAutomated(e.target, FORM_OPENED)) { btn.disabled = false; return false; }
+
+  // A number without a country code can't be called, and every spam signup
+  // we get has one. Insist on the international form.
+  const phone = yayoValidPhone(document.getElementById("v-phone").value);
+  if (!phone) {
+    err.hidden = false; err.textContent = t("v_err_phone");
+    document.getElementById("v-phone").focus();
+    btn.disabled = false; return false;
+  }
 
   try {
     if (LOGGED_USER) {
       // Already logged in (buyer) → apply with the existing account
-      const { error: mErr } = await yayoSB().auth.updateUser({ data: { role: "dealer", company, phone } });
+      const { error: mErr } = await yayoSB().auth.updateUser({ data: { role: "dealer", company, phone, city, desc } });
       if (mErr) throw mErr;
       const { error: iErr } = await yayoSB().from("dealers").insert({
         name: company, email: LOGGED_USER.email, whatsapp: phone, city, description: desc, verified: false
@@ -452,7 +472,7 @@ async function doRegister(e) {
     }
     const email = document.getElementById("v-email").value.trim();
     const pass = document.getElementById("v-pass").value;
-    const { data, error } = await yayoSignUpEmail(email, pass, { role: "dealer", company, phone });
+    const { data, error } = await yayoSignUpEmail(email, pass, { role: "dealer", company, phone, city, desc });
     if (error) {
       err.hidden = false;
       err.textContent = error.message.includes("already registered")
@@ -461,11 +481,12 @@ async function doRegister(e) {
       btn.disabled = false;
       return false;
     }
-    // Pending profile row — the §15 trigger guarantees verified stays false
-    try {
-      await yayoSB().from("dealers").insert({ name: company, email, whatsapp: phone, city, description: desc, verified: false });
-    } catch (ignored) {}
-    yayoNotifyAdmin("dealer_signup", company, phone + " · " + city + " · " + email);
+    // NO dealer row is written here. It used to be created the instant the
+    // form was submitted, so a bot with a harvested address landed straight in
+    // the verification queue without ever proving it owned that address. The
+    // row is now created by the dashboard on the first CONFIRMED sign-in, from
+    // the details carried in the account itself.
+    if (data && data.session) yayoNotifyAdmin("dealer_signup", company, phone + " · " + city + " · " + email);
     if (data && data.session) { location.href = "dashboard.html"; return false; }
     ok.hidden = false;
     ok.textContent = t("v_ok_pending");

@@ -413,6 +413,27 @@ function yayoNotifyMatch(dealerId) {
   } catch (e) { /* never blocks publishing */ }
 }
 
+// ── Signup hygiene: keep bots out of the verification queue ──────────
+// A business we cannot telephone is a business we cannot verify, so the
+// number must carry its country code. Returns the cleaned number, or null.
+function yayoValidPhone(p) {
+  const s = String(p || "").replace(/[\s()\-./]/g, "");
+  return /^\+[1-9]\d{7,14}$/.test(s) ? s : null;
+}
+
+// Two silent bot traps, no puzzle for the human:
+//  1. a hidden field a real person never sees, and never fills
+//  2. the clock — nobody types a company name, phone and password in 4 seconds
+// Returns true when the submission looks automated.
+function yayoLooksAutomated(formEl, openedAt) {
+  try {
+    const hp = formEl.querySelector('input[name="company_url"]');
+    if (hp && hp.value.trim()) return true;
+    if (openedAt && Date.now() - openedAt < 4000) return true;
+  } catch (e) {}
+  return false;
+}
+
 // ── Tell a business its application was decided (fire-and-forget) ──
 // Called after an admin verifies or rejects. The function re-reads the decision
 // server-side, so the wording and the recipient can never come from the client.

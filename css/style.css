@@ -996,6 +996,8 @@ body.no-scroll{overflow:hidden}
 #ct-btn-link.btn{background:#15803D;border-color:#15803D;color:#fff}
 #ct-btn-link.btn:hover{background:#116932;border-color:#116932;color:#fff}
 #ct-btn-link.btn svg{color:#fff}
+/* Small explanation under a form field (e.g. why we need the country code) */
+.field-hint{display:block;margin-top:5px;font-size:12px;line-height:1.5;color:var(--ink-3,#7A8CA5)}
 /* Website-import pitch on the vendre page — the reason a busy dealer says yes */
 .imp-pitch{background:linear-gradient(180deg,#F0FCFA,#F4F7FB)}
 .imp-pitch .imp-num{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:var(--teal-bright,#1FD8C9);color:#0A2540;font-weight:800;font-size:16px;margin-bottom:12px}

@@ -137,11 +137,16 @@ async function init() {
     let { data } = await sb.from("dealers").select("*").eq("email", USER.email).maybeSingle();
     if (!data && role === "dealer") {
       // Registered dealer without a profile row yet — create it (admin activates later)
+      // Created HERE, on the first confirmed sign-in — not at signup, so an
+      // unconfirmed bot address never reaches the verification queue.
+      const md = USER.user_metadata || {};
       const ins = await sb.from("dealers").insert({
-        name: (USER.user_metadata && USER.user_metadata.company) || USER.email.split("@")[0],
+        name: md.company || USER.email.split("@")[0],
         email: USER.email,
-        whatsapp: (USER.user_metadata && USER.user_metadata.phone) || null,
-        city: "Dubai", verified: false
+        whatsapp: md.phone || null,
+        city: md.city || "Dubai",
+        description: md.desc || null,
+        verified: false
       }).select("*").single();
       data = ins.data;
     }
@@ -1251,11 +1256,16 @@ async function agencyInit() {
     // Agency row linked STRICTLY by email (no name matching — see dealer note)
     let { data } = await sb.from("shipping_agencies").select("*").eq("email", USER.email).maybeSingle();
     if (!data) {
+      // Created HERE, on the first confirmed sign-in — not at signup, so an
+      // unconfirmed bot address never reaches the verification queue.
+      const md = USER.user_metadata || {};
       const ins = await sb.from("shipping_agencies").insert({
-        name: (USER.user_metadata && USER.user_metadata.company) || USER.email.split("@")[0],
+        name: md.company || USER.email.split("@")[0],
         email: USER.email,
-        whatsapp: (USER.user_metadata && USER.user_metadata.phone) || null,
-        country: "Dubai UAE", verified: false
+        whatsapp: md.phone || null,
+        country: "Dubai UAE",
+        routes: md.desc ? JSON.stringify({ v: 2, description: md.desc, offices: {}, routes: [] }) : null,
+        verified: false
       }).select("*").single();
       data = ins.data;
     }
