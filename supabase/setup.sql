@@ -1687,3 +1687,45 @@ begin
   return newid;
 end $$;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 39) A PRICE IS A NUMBER
+-- listings.price was stored as text, so every list ordered by
+-- price ordered it alphabetically: "9530" came after "108918".
+-- That is why hiding "everything above $100 000" from the admin
+-- table missed the worst rows — the table was showing an order
+-- that was not the order of the money.
+-- Converts the column, keeping every existing value.
+-- ═══════════════════════════════════════════════════════════
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'listings'
+      and column_name = 'price' and data_type in ('text','character varying')
+  ) then
+    alter table public.listings
+      alter column price type numeric
+      using nullif(regexp_replace(coalesce(price, ''), '[^0-9.]', '', 'g'), '')::numeric;
+  end if;
+end $$;
+
+create index if not exists listings_price_idx on public.listings (price);
+
+-- Correct one imported price (the reader used to read a filter's maximum
+-- instead of the car's own price). Audited like every admin action; also
+-- brings the car back if it was hidden while its price was wrong.
+create or replace function public.admin_set_listing_price(lid uuid, val numeric, unhide boolean default true)
+returns void language plpgsql security definer set search_path = public as $$
+declare old_price numeric;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers','admin_support']);
+  if val is null or val <= 0 then raise exception 'price must be positive'; end if;
+  select price into old_price from listings where id = lid;
+  update listings set price = val, hidden = case when unhide then false else hidden end where id = lid;
+  perform _yayo_log('set_price', 'listing', lid::text,
+    coalesce(old_price::text, '-') || ' → ' || val::text);
+end $$;
+
+grant execute on function public.admin_set_listing_price(uuid, numeric, boolean) to authenticated;
+

@@ -1067,6 +1067,17 @@ body.no-scroll{overflow:hidden}
 .bmiss p{font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:14px}
 .bmiss .btn{margin-bottom:10px}
 .bmiss-note{font-size:12px;color:var(--ink-3);margin-bottom:0}
+/* Re-reading imported prices (admin) */
+.pfx-box{max-width:560px}
+.pfx-row{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--line);border-radius:11px;margin-bottom:7px;font-size:13px;cursor:pointer;background:#fff}
+.pfx-row.on{border-color:var(--teal);background:var(--teal-tint)}
+.pfx-name{flex:1;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pfx-was{color:var(--ink-3);text-decoration:line-through;white-space:nowrap}
+.pfx-arrow{color:var(--ink-3)}
+.pfx-now{font-weight:800;color:var(--teal-dark);white-space:nowrap}
+#pfx-list{max-height:46vh;overflow-y:auto;margin:12px 0}
+/* a price the reader does not believe */
+.imp-doubt{font-size:11.5px;font-weight:700;color:#8A6116;background:#FFF6E5;border-radius:8px;padding:5px 8px;margin-bottom:6px;line-height:1.4}
 /* Open a seller account on the spot (admin) */
 .ad-new-btn{padding:9px 16px;font-size:13.5px;white-space:nowrap}
 .nd-msg{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;font:inherit;font-size:12.5px;line-height:1.55;color:var(--ink);background:#F8FAFC;resize:vertical;margin-bottom:10px}

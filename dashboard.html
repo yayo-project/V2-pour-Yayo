@@ -338,6 +338,12 @@ gtag('config', 'G-NR2LTEVKET');
           <p class="dash-sub" data-i18n="ad_p_listings">Masquez ou supprimez une annonce fausse ou inappropriée.</p>
           <div class="ad-filters">
             <input id="ad-l-search" type="search" data-i18n-ph="ad_search_ph" placeholder="Rechercher…" oninput="adRenderListings()">
+            <select id="ad-l-sort" onchange="adRenderListings()">
+              <option value="recent" data-i18n="ad_l_recent">Plus récentes</option>
+              <option value="price-desc" data-i18n="ad_l_pdesc">Prix décroissant</option>
+              <option value="price-asc" data-i18n="ad_l_pasc">Prix croissant</option>
+              <option value="views" data-i18n="ad_l_views">Plus vues</option>
+            </select>
           </div>
           <div class="dash-table-wrap">
             <table class="dash-table">

@@ -27,6 +27,11 @@
 // Truly empty / JS-only with nothing readable → { spa:true } (add manually).
 
 const AED_PER_USD = 3.6725;
+// What a used car exported from Dubai can plausibly cost. Anything outside
+// this is a number read off the wrong part of the page (a filter maximum, a
+// finance calculator, a monthly instalment) — the dealer confirms it himself.
+const PRICE_MAX_USD = 400000;
+const PRICE_MIN_USD = 900;
 const MAX_INDEX_PAGES = 10;   // category/inventory pages crawled during DISCOVER
 const MAX_DETAIL_URLS = 400;  // detail URLs collected before we stop discovering
 const MAX_EXTRACT = 12;       // detail pages accepted per EXTRACT call
@@ -581,10 +586,71 @@ function detailPhotos(html, pageUrl) {
   }
   return [...set].slice(0, 15);
 }
-// a compact price-region snippet so Groq parses little text, not the whole DOM
-function priceSnippet(text) {
+// ── Reading the RIGHT price off a car page ────────────────────────
+// A dealer page shows more money than the car's own price: a search
+// filter's maximum ("up to AED 16,000,000"), a finance calculator, a
+// monthly instalment. Taking the first amount on the page imported a
+// Toyota Vios at $231,450 (that was the filter slider) and a Ferrari at
+// $4,356,705 (a hidden calculator field). So: read the element that is
+// *declared* to be the price, and only then fall back to text.
+const PRICE_NOISE = /(filter|filtre|range|slider|min[-_ ]?price|max[-_ ]?price|price[-_ ]?(min|max|from|to)|search|recherche|widget|sidebar|compare|calculator|calculateur|finance|loan|emi|installment|mensual|monthly|par mois|\/mo\b|down[-_ ]?payment|شهري|قسط)/i;
+
+// every amount a page declares as ITS price, best first
+function priceCandidates(html) {
+  const out = [];
+  const add = (raw, weight) => {
+    const digits = String(raw).replace(/[^\d]/g, "");
+    const n = parseInt(digits, 10);
+    if (!(n > 0)) return;
+    // A model year sits right next to the price in most themes ("2027 Ferrari
+    // … AED 4 400 000") and would win as "the smallest amount". No car costs
+    // 2 027 of anything, so anything below a floor is not a price.
+    if (/^(19|20)\d{2}$/.test(digits)) return;
+    if (n < 3000) return;
+    out.push({ n, weight });
+  };
+  // 1. machine-readable: schema.org / Open Graph / data attributes
+  let m;
+  const meta = /<meta[^>]+(?:itemprop|property|name)\s*=\s*["'](?:price|product:price:amount|og:price:amount)["'][^>]*content\s*=\s*["']([^"']+)["']/gi;
+  while ((m = meta.exec(html))) add(m[1], 0);
+  const dataAttr = /data-(?:price|amount|regular-price|sale-price)\s*=\s*["']([\d.,\s]+)["']/gi;
+  while ((m = dataAttr.exec(html))) { if (!PRICE_NOISE.test(m[0])) add(m[1], 1); }
+  // 2. the region after an opening tag whose class says "price". Take EVERY
+  //    amount in it, because a discounted car is marked up as the old price
+  //    struck through next to the real one — and the real one is the smaller.
+  //    <input> is skipped on purpose: a price you can type into is a finance
+  //    calculator, not the car (one of those imported a Ferrari at $4.3M).
+  const open = /<(?!input|select|option|textarea)[a-z]+[^>]*class\s*=\s*["'][^"']*price[^"']*["'][^>]*>/gi;
+  while ((m = open.exec(html))) {
+    if (PRICE_NOISE.test(m[0])) continue;
+    const region = html.slice(m.index, m.index + 400).replace(/<[^>]+>/g, " ");
+    // Anchor on the currency and take at most three groups of digits:
+    // "AED4 400 000" next to a "296 GTB" would otherwise read as one
+    // 4 400 000 296 amount.
+    let nums = region.match(/(?:AED|USD|\$|د\.إ)\s*\d{1,3}(?:[\s.,]\d{3}){0,2}(?!\d)/g);
+    if (!nums) nums = region.match(/\b\d{4,8}\b/g);
+    (nums || []).slice(0, 4).forEach(n => add(n, 2));
+  }
+  return out;
+}
+
+// The text a page shows around its price, for the AI to parse — now taken
+// from the best declared candidate instead of "the first amount on the page".
+function priceSnippet(text, html) {
+  if (html) {
+    // Of the amounts a page declares as its price, the SMALLEST plausible one
+    // is the car's: a filter maximum is by construction larger than any car,
+    // and a struck-through "before" price is larger than what you pay now.
+    // (Monthly instalments, the one thing that would be smaller, are excluded
+    // by PRICE_NOISE before we get here.)
+    const plausible = priceCandidates(html).map(c => c.n).filter(n => n >= 900);
+    if (plausible.length) return String(Math.min(...plausible));
+  }
+  // fall back to the old text scan, but never on an obviously noisy region
   const idx = text.search(/AED|USD|\$|درهم|price|prix|السعر/i);
-  return idx < 0 ? "" : text.slice(Math.max(0, idx - 40), idx + 160);
+  if (idx < 0) return "";
+  const around = text.slice(Math.max(0, idx - 40), idx + 160);
+  return PRICE_NOISE.test(around) ? "" : around;
 }
 
 // ── Groq (specs/price parsing only; photos are deterministic) ─
@@ -647,6 +713,14 @@ function normalize(cars, aedHintGlobal) {
       price_missing: missing, price_usd: usd,
       source_url: c.source_url || null, import_method: c.import_method || "llm"
     };
+    // A number that cannot be a used car in Dubai is a number we read off the
+    // wrong part of the page. Never publish it silently: hand it to the dealer
+    // as "check this price", exactly like a car whose price was hidden.
+    if (cand.price_usd != null && (cand.price_usd > PRICE_MAX_USD || cand.price_usd < PRICE_MIN_USD)) {
+      cand.price_doubt = cand.price_usd;   // shown as a suggestion, not applied
+      cand.price_usd = null;
+      cand.price_missing = true;
+    }
     // fill make/model/year from the name when still empty
     if (!cand.make || !cand.year) { const d = deriveMakeModelYear(cand.name); cand.make = cand.make || d.make; cand.model = cand.model || d.model; cand.year = cand.year || d.year; }
     cand.fingerprint = cand.source_url ? "u:" + cand.source_url : "f:" + [cand.make, cand.model, cand.year, cand.price_original].join("|").toLowerCase();
@@ -677,7 +751,7 @@ async function extractBatch(urls, key) {
     try {
       const html = await fetchRetry(u, 2);
       const text = stripHtml(html);
-      return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
+      return { url: u, name: pickName(html), photos: detailPhotos(html, u), priceText: priceSnippet(text, html), aed: /\bAED\b|د\.إ|dirham/i.test(html) };
     } catch (e) { return null; }
   // A real car listing ALWAYS has at least one photo. Requiring one keeps
   // category/marketing pages ("SUV under 3k a month") out of the review
@@ -829,6 +903,36 @@ exports.handler = async (event) => {
       if (!urls.length) return { statusCode: 400, headers, body: '{"error":"urls[] required"}' };
       const cars = await extractBatch(urls, key);
       return { statusCode: 200, headers, body: JSON.stringify({ count: cars.length, cars }) };
+    }
+
+    // ── PHASE R: RECHECK the price of cars already imported ──
+    // The first version of the reader could pick a filter maximum instead of
+    // the car's price. This re-reads the pages those cars came from and
+    // reports what they really say — nothing is written here; the admin sees
+    // old → new and decides.
+    if (body.phase === "recheck") {
+      const urls = (Array.isArray(body.urls) ? body.urls : []).filter(u => isPublicHttp(u)).slice(0, 8);
+      if (!urls.length) return { statusCode: 400, headers, body: '{"error":"urls[] required"}' };
+      const out = await inBatches(urls, 4, async (u) => {
+        if (budgetLeft() < 1500) return null;
+        try {
+          const html = await fetchRetry(u, 2);
+          const aed = /\bAED\b|د\.إ|dirham/i.test(html);
+          const cands = priceCandidates(html);
+          const best = cands.find(c => c.n >= 900);
+          if (!best) return { url: u, price_usd: null };
+          const usd = aed ? Math.round(best.n / AED_PER_USD) : best.n;
+          return {
+            url: u,
+            price_usd: usd,
+            price_original: best.n,
+            currency: aed ? "AED" : "USD",
+            // still out of range → the page itself is unreadable for price
+            doubt: usd > PRICE_MAX_USD || usd < PRICE_MIN_USD
+          };
+        } catch (e) { return { url: u, price_usd: null, unreachable: true }; }
+      });
+      return { statusCode: 200, headers, body: JSON.stringify({ cars: out.filter(Boolean) }) };
     }
 
     // ── PHASE A: DISCOVER ──

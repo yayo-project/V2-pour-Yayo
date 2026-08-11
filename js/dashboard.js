@@ -660,6 +660,8 @@ function impRenderReview(cars, siteTotal) {
   IMP.cars = cars.map((c, i) => ({
     name: c.name, make: c.make, model: c.model, year: c.year, mileage: c.mileage,
     price_usd: c.price_usd, price_missing: !!c.price_missing,
+    // a number the reader does not trust (see PRICE_MAX_USD in the importer)
+    price_doubt: c.price_doubt || null,
     photos: (c.photos || []).slice(0, IMPORT_PHOTOS_MAX), source_url: c.source_url || null,
     import_method: c.import_method || "import",
     locked: i >= slots,
@@ -692,7 +694,8 @@ function impCardsHtml() {
         ${c.locked
           ? `<div class="imp-card-lock">${t("imp_card_locked")}</div>`
           : c.price_missing
-            ? `<div class="imp-price-row"><span>${t("imp_add_price")}</span><span class="imp-cur">$</span><input type="number" min="0" inputmode="numeric" class="imp-price-in" oninput="impPrice(${i}, this.value)" value="${c.price_usd || ""}"></div>`
+            ? `${c.price_doubt ? `<div class="imp-doubt">${t("imp_price_doubt").replace("{p}", fmt(c.price_doubt))}</div>` : ""}
+               <div class="imp-price-row"><span>${c.price_doubt ? t("imp_fix_price") : t("imp_add_price")}</span><span class="imp-cur">$</span><input type="number" min="0" inputmode="numeric" class="imp-price-in" oninput="impPrice(${i}, this.value)" value="${c.price_usd || ""}"></div>`
             : `<div class="imp-card-price">${fmt(c.price_usd)}</div>`}
       </div>
     </div>`).join("");
@@ -1850,6 +1853,10 @@ function adFail(errId, e) {
   const el = document.getElementById(errId);
   el.hidden = false;
   el.textContent = t("au_err_generic") + (e.message || e);
+  // The error line sits under the table. With 300 listings on screen it is a
+  // kilometre below the button that failed, so an action that did not work
+  // looked like a button that does nothing. Say it where the eyes are.
+  try { if (typeof yayoToast === "function") yayoToast(t("au_err_generic") + (e.message || e)); } catch (e2) {}
 }
 
 // ── Reports (Signalements) — nouveau → en cours → résolu ──
@@ -1977,6 +1984,7 @@ function bizActionsHtml(type, x) {
     <button onclick="adOpenBiz('${type}','${x.id}')">${t("ad_act_profile")}</button>
     <button onclick="adRename('${type}','${x.id}')">${t("ad_act_rename")}</button>
     ${type === "dealer" ? `<button onclick="adImportFor('${x.id}')">${t("ad_act_import")}</button>` : ""}
+    ${type === "dealer" ? `<button onclick="adFixPrices('${x.id}')">${t("ad_act_fixprices")}</button>` : ""}
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
@@ -2128,6 +2136,117 @@ function adRename(type, id) {
     () => adRpc("admin_rename_business", { subject: type, sid: id, newname: newname.trim() }),
     y => { y.name = newname.trim(); });
 }
+// ── Re-read the real prices of a dealer's imported cars ──────────
+// The first reader could take a filter's maximum instead of the car's price
+// (a Vios arrived at $231,450). This goes back to each source page, reads
+// what it really says, and shows old → new before anything is written.
+let PRICE_FIX = [];
+
+async function adFixPrices(id) {
+  const x = bizList("dealer").find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  const old = document.getElementById("sold-modal");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.id = "sold-modal";
+  div.className = "sold-modal";
+  div.innerHTML = `
+    <div class="sold-box pfx-box">
+      <h3>${t("ad_pfx_h")} — ${escapeHtml(x.name)}</h3>
+      <p id="pfx-sub">${t("ad_pfx_reading")}</p>
+      <div class="imp-bar"><i id="pfx-bar"></i></div>
+      <div id="pfx-list"></div>
+      <p class="auth-error" id="pfx-err" hidden></p>
+      <button type="button" class="btn btn-solid btn-block" id="pfx-apply" hidden onclick="adFixPricesApply('${x.id}')"></button>
+      <button type="button" class="sold-cancel" onclick="PRICE_FIX=[];document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
+    </div>`;
+  document.body.appendChild(div);
+
+  PRICE_FIX = [];
+  try {
+    const { data, error } = await yayoSB().from("listings")
+      .select("id, car_name, price, source_url, hidden")
+      .eq("dealer_id", x.id).not("source_url", "is", null).limit(500);
+    if (error) throw error;
+    const cars = data || [];
+    if (!cars.length) { document.getElementById("pfx-sub").textContent = t("ad_pfx_none"); return; }
+    const byUrl = new Map(cars.map(c => [c.source_url, c]));
+    const urls = [...byUrl.keys()];
+    for (let i = 0; i < urls.length; i += 8) {
+      const bar = document.getElementById("pfx-bar");
+      if (!bar) return;                                   // admin closed it
+      bar.style.width = Math.max(4, (i / urls.length) * 100) + "%";
+      document.getElementById("pfx-sub").textContent =
+        t("ad_pfx_progress").replace("{i}", i).replace("{n}", urls.length);
+      const r = await impCall({ phase: "recheck", urls: urls.slice(i, i + 8) });
+      (r.cars || []).forEach(res => {
+        const car = byUrl.get(res.url);
+        if (!car || res.price_usd == null || res.doubt) return;
+        // only offer real changes (ignore rounding noise under $50)
+        if (Math.abs(Number(car.price) - res.price_usd) < 50) return;
+        PRICE_FIX.push({ id: car.id, name: car.car_name, was: Number(car.price), now: res.price_usd, hidden: car.hidden, pick: true });
+      });
+      const list = document.getElementById("pfx-list");
+      if (list) list.innerHTML = adFixRows();
+    }
+    const bar = document.getElementById("pfx-bar");
+    if (bar) bar.style.width = "100%";
+    document.getElementById("pfx-sub").textContent = PRICE_FIX.length
+      ? t("ad_pfx_found").replace("{n}", PRICE_FIX.length)
+      : t("ad_pfx_clean");
+    const btn = document.getElementById("pfx-apply");
+    if (PRICE_FIX.length && btn) {
+      btn.hidden = false;
+      btn.textContent = t("ad_pfx_apply").replace("{n}", PRICE_FIX.length);
+    }
+  } catch (e) {
+    const el = document.getElementById("pfx-err");
+    if (el) { el.hidden = false; el.textContent = (e.message || e); }
+  }
+}
+
+function adFixRows() {
+  return PRICE_FIX.map((c, i) => `
+    <label class="pfx-row${c.pick ? " on" : ""}" id="pfx-row-${i}">
+      <input type="checkbox" ${c.pick ? "checked" : ""} onchange="adFixPick(${i}, this.checked)">
+      <span class="pfx-name">${escapeHtml(c.name)}</span>
+      <span class="pfx-was">${fmt(c.was)}</span>
+      <span class="pfx-arrow">→</span>
+      <span class="pfx-now">${fmt(c.now)}</span>
+    </label>`).join("");
+}
+function adFixPick(i, on) {
+  PRICE_FIX[i].pick = on;
+  const row = document.getElementById("pfx-row-" + i);
+  if (row) row.classList.toggle("on", on);
+  const btn = document.getElementById("pfx-apply");
+  const n = PRICE_FIX.filter(c => c.pick).length;
+  if (btn) { btn.disabled = !n; btn.textContent = t("ad_pfx_apply").replace("{n}", n); }
+}
+
+async function adFixPricesApply(dealerId) {
+  const picks = PRICE_FIX.filter(c => c.pick);
+  if (!picks.length) return;
+  const btn = document.getElementById("pfx-apply");
+  btn.disabled = true; btn.textContent = t("ad_pfx_working");
+  let ok = 0, failed = 0;
+  for (const c of picks) {
+    try {
+      await adRpc("admin_set_listing_price", { lid: c.id, val: c.now, unhide: true });
+      ok++;
+      const row = AD_LISTINGS.find(l => String(l.id) === String(c.id));
+      if (row) { row.price = c.now; row.hidden = false; }
+    } catch (e) { failed++; }
+  }
+  document.getElementById("pfx-sub").textContent =
+    t("ad_pfx_done").replace("{n}", ok) + (failed ? " · " + t("ad_pfx_failed").replace("{n}", failed) : "");
+  document.getElementById("pfx-list").innerHTML = "";
+  btn.hidden = true;
+  PRICE_FIX = [];
+  if (adCan("listings")) adRenderListings();
+}
+
 // ── Listing limits (data, not code): edit plan / limits per dealer ──
 // Compact label for lists: "∞ promo → 18/10" or "10" or "promo 25 → 18/10"
 function adLimitLabel(x) {
@@ -2359,7 +2478,14 @@ function adDeleteBiz(type, id) {
 // ── Listings (all cars on the platform) ──
 function adRenderListings() {
   const q = (document.getElementById("ad-l-search").value || "").toLowerCase();
+  const sortEl = document.getElementById("ad-l-sort");
+  const sort = sortEl ? sortEl.value : "recent";
   const rows = AD_LISTINGS.filter(l => !q || ((l.car_name || "") + " " + ((l.dealers && l.dealers.name) || "")).toLowerCase().includes(q));
+  // Number(), always: the price arrives as a string and "9530" sorts after
+  // "108918" alphabetically — which is how expensive cars hid in plain sight.
+  if (sort === "price-desc") rows.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+  else if (sort === "price-asc") rows.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+  else if (sort === "views") rows.sort((a, b) => (b.views || 0) - (a.views || 0));
   document.getElementById("ad-lst-rows").innerHTML = rows.map(l => {
     const st = l.hidden ? ["off", t("ad_st_hidden")] : l.sold ? ["sold", t("d_st_sold")] : l.active ? ["active", t("d_st_active")] : ["sold", t("d_st_off")];
     return `
