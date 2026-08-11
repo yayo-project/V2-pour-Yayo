@@ -45,12 +45,30 @@ exports.handler = async (event) => {
   } catch (e) { return { statusCode: 401, headers, body: '{"error":"not signed in"}' }; }
   if (!email) return { statusCode: 401, headers, body: '{"error":"no email"}' };
 
+  const svc = { apikey: SERVICE, Authorization: "Bearer " + SERVICE };
   let dealerId;
-  try {
-    const d = await timedFetch(SB_URL + "/rest/v1/dealers?email=eq." + encodeURIComponent(email) + "&select=id&limit=1", { headers: { apikey: SERVICE, Authorization: "Bearer " + SERVICE } });
-    const rows = await d.json();
-    dealerId = rows && rows[0] && rows[0].id;
-  } catch (e) { /* fall through */ }
+
+  // An admin may import a dealer's stock FOR him (a showroom owner met in
+  // person will not do it himself the first day). Only then is a target id
+  // accepted — and only after checking, server-side, that the caller really
+  // is an admin. Everyone else can still only write into their own folder.
+  const wanted = String(body.dealer_id || "");
+  if (wanted && /^[0-9a-f-]{20,40}$/i.test(wanted)) {
+    try {
+      const a = await timedFetch(SB_URL + "/rest/v1/admin_users?email=eq." + encodeURIComponent(email) + "&select=role&limit=1", { headers: svc });
+      const rows = await a.json();
+      const role = rows && rows[0] && rows[0].role;
+      if (role === "super_admin" || role === "admin_dealers") dealerId = wanted;
+    } catch (e) { /* fall through to the caller's own folder */ }
+  }
+
+  if (!dealerId) {
+    try {
+      const d = await timedFetch(SB_URL + "/rest/v1/dealers?email=eq." + encodeURIComponent(email) + "&select=id&limit=1", { headers: svc });
+      const rows = await d.json();
+      dealerId = rows && rows[0] && rows[0].id;
+    } catch (e) { /* fall through */ }
+  }
   if (!dealerId) return { statusCode: 403, headers, body: '{"error":"no dealer for this account"}' };
 
   // re-host in small parallel groups; keep input order, drop failures

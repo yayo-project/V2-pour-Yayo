@@ -277,7 +277,7 @@ gtag('config', 'G-NR2LTEVKET');
               <option value="rejected" data-i18n="ad_f_rejected">Refusés</option>
               <option value="suspended" data-i18n="ad_f_suspended">Suspendus</option>
             </select>
-            <button type="button" class="btn btn-solid ad-new-btn" onclick="adCreateDealer()" data-i18n="ad_new_btn">＋ Créer un compte vendeur</button>
+            <button type="button" class="btn btn-solid ad-new-btn" onclick="adCreateBiz('dealer')" data-i18n="ad_new_btn">＋ Créer un compte vendeur</button>
           </div>
           <div id="ad-d-detail"></div>
           <div class="dash-table-wrap">
@@ -310,6 +310,7 @@ gtag('config', 'G-NR2LTEVKET');
               <option value="rejected" data-i18n="ad_f_rejected">Refusés</option>
               <option value="suspended" data-i18n="ad_f_suspended">Suspendus</option>
             </select>
+            <button type="button" class="btn btn-solid ad-new-btn" onclick="adCreateBiz('agency')" data-i18n="ad_new_abtn">＋ Créer un compte agence</button>
           </div>
           <div id="ad-a-detail"></div>
           <div class="dash-table-wrap">
@@ -700,7 +701,7 @@ gtag('config', 'G-NR2LTEVKET');
 
     <!-- Step A: paste the URL -->
     <div id="imp-start">
-      <h3 data-i18n="imp_h">Importer vos voitures depuis votre site</h3>
+      <h3 id="imp-h" data-i18n="imp_h">Importer vos voitures depuis votre site</h3>
       <p class="imp-sub" data-i18n="imp_p">Collez le lien de votre site web — Yayo lit vos voitures et les prépare ici, comme si vous les aviez ajoutées à la main.</p>
       <input id="imp-url" type="url" inputmode="url" data-i18n-ph="imp_url_ph" placeholder="https://mon-site.com" autocomplete="off">
       <label class="imp-own"><input type="checkbox" id="imp-own"> <span data-i18n="imp_own">Je confirme que ce site m'appartient.</span></label>

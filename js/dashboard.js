@@ -484,6 +484,14 @@ const IMPORT_BATCH = 12;      // detail pages per extract call
 const IMPORT_PUB_CONC = 3;    // cars published in parallel
 const IMPORT_PHOTOS_MAX = 8;  // photos re-hosted per car
 let IMP = { cars: [], busy: false };
+// When an admin imports a dealer's stock FOR him, this holds that dealer.
+// null = the normal case: a dealer importing his own site.
+let IMP_FOR = null;
+function impDealer() { return IMP_FOR || DEALER; }
+function impHave() {
+  return IMP_FOR ? (IMP_FOR._srcUrls || new Set())
+                 : new Set(LISTINGS.map(l => l.source_url).filter(Boolean));
+}
 
 // A very slow dealer site can make the reader hit the gateway timeout, which
 // answers with an HTML error page — turn that into a clear message, not a crash.
@@ -497,6 +505,7 @@ function impCall(payload) {
 }
 function impShow(id) { ["imp-start", "imp-loading", "imp-review", "imp-publish", "imp-done"].forEach(s => { document.getElementById(s).hidden = s !== id; }); }
 function openImport() {
+  IMP_FOR = null;
   IMP = { cars: [], busy: false, publishing: false, cancelled: false };
   // If the dealer already tried his site on the vendre page before signing up,
   // don't make him type it again — carry it straight into the import.
@@ -504,10 +513,36 @@ function openImport() {
   try { pre = localStorage.getItem("yayo-import-url") || ""; } catch (e) {}
   document.getElementById("imp-url").value = pre;
   document.getElementById("imp-own").checked = false;
+  document.querySelector(".imp-own").hidden = false;
   hide("imp-err");
   impShow("imp-start");
   document.getElementById("imp-modal").hidden = false;
   applyI18n(document.getElementById("imp-modal"));
+  document.getElementById("imp-h").textContent = t("imp_h");
+}
+
+// ── Admin: put a dealer's stock online FOR him ───────────────────
+// The dealer met at Al Aweer gave his website and a handshake; he is not
+// going to sit down and import it himself. Same engine, same review
+// screen, same limits — only the destination inventory differs.
+async function adImportFor(id) {
+  const x = bizList("dealer").find(r => String(r.id) === String(id));
+  if (!x) return;
+  openImport();
+  IMP_FOR = x;
+  // what he already has, so a re-import continues instead of duplicating
+  if (DEMO_ADMIN) { IMP_FOR._srcUrls = new Set(); IMP_FOR._used = 0; }
+  else try {
+    const { data } = await yayoSB().from("listings")
+      .select("source_url, sold, dormant").eq("dealer_id", x.id).limit(1000);
+    IMP_FOR._srcUrls = new Set((data || []).map(l => l.source_url).filter(Boolean));
+    IMP_FOR._used = (data || []).filter(l => !l.sold && !l.dormant).length;
+  } catch (e) { IMP_FOR._srcUrls = new Set(); IMP_FOR._used = 0; }
+  document.getElementById("imp-url").value = x.import_domain ? "https://" + x.import_domain : "";
+  // the ownership tick is the DEALER's declaration — meaningless for an admin
+  document.querySelector(".imp-own").hidden = true;
+  document.getElementById("imp-own").checked = true;
+  document.getElementById("imp-h").textContent = t("imp_for_h").replace("{name}", x.name);
 }
 // Cancel / ✕ must ALWAYS work. Only a running publish asks for confirmation
 // (closing mid-publish would leave the dealer unsure what was saved).
@@ -523,7 +558,7 @@ async function impRead() {
   const url = document.getElementById("imp-url").value.trim();
   const err = document.getElementById("imp-err");
   if (!url) { err.hidden = false; err.textContent = t("imp_need_url"); return; }
-  if (!document.getElementById("imp-own").checked) { err.hidden = false; err.textContent = t("imp_need_own"); return; }
+  if (!IMP_FOR && !document.getElementById("imp-own").checked) { err.hidden = false; err.textContent = t("imp_need_own"); return; }
   hide("imp-err");
 
   // OWNERSHIP: one website belongs to one dealer. Claim it before reading so
@@ -531,7 +566,15 @@ async function impRead() {
   // this at the database level, so it cannot be bypassed.)
   let domain = "";
   try { domain = new URL(/^https?:\/\//i.test(url) ? url : "https://" + url).hostname.replace(/^www\./i, ""); } catch (e) {}
-  if (!DEMO && domain) {
+  // An admin importing FOR a dealer claims nothing in his own name: the site
+  // is checked against — and claimed for — that dealer's account (§37).
+  if (IMP_FOR && domain && IMP_FOR.import_domain && IMP_FOR.import_domain !== domain) {
+    err.hidden = false;
+    err.textContent = t("imp_site_mismatch")
+      .replace("{name}", IMP_FOR.name).replace("{site}", IMP_FOR.import_domain);
+    return;
+  }
+  if (!DEMO && !IMP_FOR && domain) {
     try {
       const { data, error } = await yayoSB().rpc("yayo_claim_import_domain", { dom: domain });
       const say = msg => { const e2 = document.getElementById("imp-err"); e2.hidden = false; e2.textContent = msg; };
@@ -563,7 +606,7 @@ async function impRead() {
       impBar("imp-bar-fill", 100);
     } else if (disc.method === "details" && Array.isArray(disc.urls)) {
       // skip cars already imported so RE-IMPORT continues through the catalogue
-      const have = new Set(LISTINGS.map(l => l.source_url).filter(Boolean));
+      const have = impHave();
       const todo = disc.urls.filter(u => !have.has(u)).slice(0, IMPORT_READ_CAP);
       if (!todo.length) return impFail(t("imp_all_done"));
       for (let i = 0; i < todo.length; i += IMPORT_BATCH) {
@@ -592,7 +635,7 @@ function impFail(msg) {
 
 function impRenderReview(cars, siteTotal) {
   // dedupe within the batch + against listings already on Yayo
-  const have = new Set(LISTINGS.map(l => l.source_url).filter(Boolean));
+  const have = impHave();
   const seen = new Set();
   cars = cars.filter(c => {
     const fp = c.source_url || (c.fingerprint || (c.name + "|" + c.price_usd));
@@ -600,8 +643,8 @@ function impRenderReview(cars, siteTotal) {
     seen.add(fp); return true;
   });
   // effective limit → how many can go live now (unlimited during promo)
-  const L = yayoDealerLimit(DEALER);
-  const used = LISTINGS.filter(l => !l.sold && !l.dormant).length;
+  const L = yayoDealerLimit(impDealer());
+  const used = IMP_FOR ? (IMP_FOR._used || 0) : LISTINGS.filter(l => !l.sold && !l.dormant).length;
   const slots = L.limit < 0 ? Infinity : Math.max(0, L.limit - used);
 
   IMP.cars = cars.map((c, i) => ({
@@ -673,12 +716,17 @@ function impUpdateConfirm() {
 
 async function impRehost(urls) {
   if (!urls.length) return [];
-  if (DEMO) return urls;                 // demo: keep original photo urls
+  // demo (dealer demo, or an admin exploring): keep the original photo urls
+  if (DEMO || DEMO_ADMIN) return urls;
   try {
     const { data } = await yayoSB().auth.getSession();
     const token = data && data.session && data.session.access_token;
     if (!token) return [];
-    const res = await fetch(REHOST_FN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, urls }) });
+    const res = await fetch(REHOST_FN, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      // an admin importing for a dealer writes into THAT dealer's folder
+      body: JSON.stringify(IMP_FOR ? { token, urls, dealer_id: IMP_FOR.id } : { token, urls })
+    });
     const j = await res.json();
     return Array.isArray(j.photos) ? j.photos : [];
   } catch (e) { return []; }
@@ -708,8 +756,19 @@ async function impConfirm() {
         photo_url: photos[0], photos, description: null,
         source_url: c.source_url, import_method: c.import_method, imported_at: new Date().toISOString()
       };
+      // demo mode saves nothing anywhere — it only shows what would happen
+      if (DEMO_ADMIN) { ok++; return; }
       if (DEMO) { LISTINGS.unshift({ ...payload, id: "demo-imp-" + Date.now() + Math.random(), active: true, sold: false, dealer: { name: DEALER.name } }); ok++; return; }
       const sb = yayoSB();
+      // Publishing into someone else's inventory goes through the audited §37
+      // RPC — the row-level rules rightly forbid a direct insert.
+      if (IMP_FOR) {
+        const { error: rErr } = await sb.rpc("admin_import_listing", { p_dealer: IMP_FOR.id, p: payload });
+        if (rErr && /YAYO_IMPORT_NOT_YOURS/.test(rErr.message || "")) { blocked = true; failed++; return; }
+        if (rErr) { failed++; return; }
+        ok++;
+        return;
+      }
       const insert = (pl) => sb.from("listings").insert({ ...pl, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: true, sold: false });
       let { error } = await insert(payload);
       if (error && /column|source_url|import_method|imported_at|make|model|photos/i.test(error.message || "")) {
@@ -732,19 +791,28 @@ async function impConfirm() {
   IMP.busy = false;
   IMP.publishing = false;
   // one call for the whole batch — buyers waiting for any of these cars hear once
-  if (!DEMO && ok) yayoNotifyMatch(DEALER.id);
-  if (!DEMO) await loadListings();
-  renderListings(); renderStats(); renderStartChecklist();
+  if (!DEMO && !DEMO_ADMIN && ok) yayoNotifyMatch(impDealer().id);
+  if (IMP_FOR) {
+    // admin view: refresh the tables that just changed, not the dealer's own
+    if (ok && !DEMO_ADMIN) {
+      IMP_FOR._used = (IMP_FOR._used || 0) + ok;
+      try { await adminInit(); adRenderBiz("dealer"); if (adCan("listings")) adRenderListings(); } catch (e) {}
+    }
+  } else {
+    if (!DEMO) await loadListings();
+    renderListings(); renderStats(); renderStartChecklist();
+  }
   impShow("imp-done");
   document.getElementById("imp-done-h").textContent = t("imp_done_h").replace("{n}", ok);
   document.getElementById("imp-done-sub").textContent = blocked
     ? t("imp_taken")
-    : (failed ? t("imp_done_some").replace("{n}", failed) : t("imp_done_all"));
+    : (failed ? t("imp_done_some").replace("{n}", failed)
+              : (IMP_FOR ? t("imp_done_all_for").replace("{name}", IMP_FOR.name) : t("imp_done_all")));
 
   // Tell the founder who imported which site, and whether ownership was
   // automatically evident (dealer's email domain matches the website).
-  if (!DEMO && ok && IMP.domain) {
-    const mail = (DEALER.email || "").split("@")[1] || "";
+  if (!DEMO && !DEMO_ADMIN && ok && IMP.domain) {
+    const mail = ((impDealer() || {}).email || "").split("@")[1] || "";
     const proof = mail && (IMP.domain === mail.toLowerCase() || IMP.domain.endsWith("." + mail.toLowerCase()))
       ? "email vérifié" : "pas de preuve automatique";
     try { yayoNotifyAdmin("import", DEALER.name, IMP.domain + " — " + ok + " voitures — " + proof); } catch (e) {}
@@ -1894,6 +1962,7 @@ function bizActionsHtml(type, x) {
   return `
     <button onclick="adOpenBiz('${type}','${x.id}')">${t("ad_act_profile")}</button>
     <button onclick="adRename('${type}','${x.id}')">${t("ad_act_rename")}</button>
+    ${type === "dealer" ? `<button onclick="adImportFor('${x.id}')">${t("ad_act_import")}</button>` : ""}
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
@@ -2075,7 +2144,8 @@ async function adLimitsSave(id) {
 // founder takes his card, opens the account in front of him and hands
 // him the login — his stock is online the same day. Meeting him IS the
 // verification, so the account is created verified.
-function adCreateDealer() {
+function adCreateBiz(type) {
+  const ag = type === "agency";
   const old = document.getElementById("sold-modal");
   if (old) old.remove();
   const div = document.createElement("div");
@@ -2083,22 +2153,25 @@ function adCreateDealer() {
   div.className = "sold-modal";
   div.innerHTML = `
     <div class="sold-box">
-      <h3>${t("ad_new_h")}</h3>
-      <p>${t("ad_new_p")}</p>
+      <h3>${t(ag ? "ad_new_ah" : "ad_new_h")}</h3>
+      <p>${t(ag ? "ad_new_ap" : "ad_new_p")}</p>
       <div class="field"><label>${t("ad_new_name")}</label>
-        <input id="nd-name" type="text" autocomplete="off" placeholder="Mohamed Hakim Motors"></div>
+        <input id="nd-name" type="text" autocomplete="off" placeholder="${ag ? "Al Noor Shipping" : "Mohamed Hakim Motors"}"></div>
       <div class="field"><label>${t("ad_new_email")}</label>
         <input id="nd-email" type="email" autocomplete="off" placeholder="nom@gmail.com"></div>
       <div class="field"><label>${t("ad_new_pass")}</label>
         <input id="nd-pass" type="text" autocomplete="off" value="${escapeHtml(adSuggestPass())}"></div>
       <div class="field"><label>${t("ad_new_phone")}</label>
         <input id="nd-phone" type="tel" autocomplete="off" placeholder="+9715…"></div>
-      <div class="field"><label>${t("ad_new_city")}</label>
-        <input id="nd-city" type="text" autocomplete="off" value="Dubai"></div>
-      <div class="field"><label>${t("ad_new_site")}</label>
-        <input id="nd-site" type="text" autocomplete="off" placeholder="monsite.com"></div>
+      <div class="field"><label>${t(ag ? "ad_new_country" : "ad_new_city")}</label>
+        <input id="nd-city" type="text" autocomplete="off" value="${ag ? "Dubai UAE" : "Dubai"}"></div>
+      ${ag
+        ? `<div class="field"><label>${t("ad_new_desc")}</label>
+             <input id="nd-desc" type="text" autocomplete="off" placeholder="Dubai → Kinshasa, Douala…"></div>`
+        : `<div class="field"><label>${t("ad_new_site")}</label>
+             <input id="nd-site" type="text" autocomplete="off" placeholder="monsite.com"></div>`}
       <p class="auth-error" id="nd-err" hidden></p>
-      <button type="button" class="btn btn-solid btn-block" id="nd-save" onclick="adCreateSave()">${t("ad_new_save")}</button>
+      <button type="button" class="btn btn-solid btn-block" id="nd-save" onclick="adCreateSave('${ag ? "agency" : "dealer"}')">${t("ad_new_save")}</button>
       <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
     </div>`;
   document.body.appendChild(div);
@@ -2111,11 +2184,13 @@ function adSuggestPass() {
   return w[Math.floor(Math.random() * w.length)] + (100 + Math.floor(Math.random() * 900));
 }
 
-async function adCreateSave() {
-  const g = id => (document.getElementById(id).value || "").trim();
+async function adCreateSave(type) {
+  const ag = type === "agency";
+  const g = id => { const el = document.getElementById(id); return el ? (el.value || "").trim() : ""; };
   const name = g("nd-name"), email = g("nd-email").toLowerCase();
   const pass = document.getElementById("nd-pass").value;
-  const phone = g("nd-phone"), city = g("nd-city") || "Dubai", site = g("nd-site");
+  const phone = g("nd-phone"), city = g("nd-city") || (ag ? "Dubai UAE" : "Dubai");
+  const site = g("nd-site"), desc = g("nd-desc");
   const err = document.getElementById("nd-err");
   err.hidden = true;
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || pass.length < 6) {
@@ -2133,19 +2208,25 @@ async function adCreateSave() {
       const r = await fetch("/.netlify/functions/create-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email, password: pass, name, phone, city })
+        body: JSON.stringify({ token, email, password: pass, name, phone, city, role: ag ? "agency" : "dealer" })
       });
       const d = await r.json();
       if (d.error) throw new Error(d.error);
       existed = !!d.exists;
-      // 2. the seller record — audited RPC, same path as every admin action
-      await adRpc("admin_create_dealer", {
-        p_name: name, p_email: email, p_phone: phone, p_city: city, p_site: site
-      });
-      const { data } = await yayoSB().from("dealers").select("*")
+      // 2. the business record — audited RPC, same path as every admin action
+      if (ag) {
+        await adRpc("admin_create_agency", {
+          p_name: name, p_email: email, p_phone: phone, p_country: city, p_desc: desc || null
+        });
+      } else {
+        await adRpc("admin_create_dealer", {
+          p_name: name, p_email: email, p_phone: phone, p_city: city, p_site: site
+        });
+      }
+      const { data } = await yayoSB().from(ag ? "shipping_agencies" : "dealers").select("*")
         .order("created_at", { ascending: false }).limit(500);
-      if (data) AD_DEALERS = data;
-      adRenderBiz("dealer");
+      if (data) { if (ag) AD_AGS = data; else AD_DEALERS = data; }
+      adRenderBiz(ag ? "agency" : "dealer");
     }
     adCreateDone(name, email, pass, existed);
   } catch (e) {

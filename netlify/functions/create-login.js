@@ -37,6 +37,8 @@ exports.handler = async (event) => {
   const name = String(body.name || "").trim();
   const phone = String(body.phone || "").trim();
   const city = String(body.city || "Dubai").trim();
+  // a seller or a shipping agency — nothing else can be created this way
+  const role = body.role === "agency" ? "agency" : "dealer";
 
   if (!token) return { statusCode: 401, headers, body: '{"error":"not signed in"}' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { statusCode: 400, headers, body: '{"error":"bad email"}' };
@@ -73,7 +75,7 @@ exports.handler = async (event) => {
         email,
         password,
         email_confirm: true,
-        user_metadata: { role: "dealer", company: name, phone, city }
+        user_metadata: { role, company: name, phone, city }
       })
     });
     const txt = await r.text();

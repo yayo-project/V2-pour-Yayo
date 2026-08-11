@@ -1397,3 +1397,105 @@ end $$;
 
 grant execute on function public.admin_create_dealer(text, text, text, text, text) to authenticated;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 37) ADMIN WORKS ON BEHALF OF A BUSINESS
+-- Two things the founder needs after opening an account for a
+-- dealer he met in person:
+--   • put that dealer's stock online FOR him (he will not do it
+--     himself the first day) — admin_import_listing
+--   • open an account for a shipping AGENCY the same way —
+--     admin_create_agency
+-- Both are audited like every other admin action.
+-- ═══════════════════════════════════════════════════════════
+
+-- Publish one imported car into someone else's inventory.
+-- The listing tables are protected by row-level rules that (rightly)
+-- only let a business touch its OWN cars, so an admin cannot simply
+-- insert one from the browser. This runs with the database's own
+-- authority after checking the caller is an admin — and it still
+-- goes through the ownership trigger (§31) and the listing-limit
+-- trigger (§30), so nothing is bypassed except the "it must be your
+-- own account" rule.
+create or replace function public.admin_import_listing(p_dealer uuid, p jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare newid uuid; dom text; cur text;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if p_dealer is null then raise exception 'dealer required'; end if;
+
+  -- an imported car must come from the website this dealer owns; if he has
+  -- no website claimed yet, claim it now (unless another account owns it)
+  if coalesce(p->>'source_url', '') <> '' then
+    dom := lower(regexp_replace(regexp_replace(p->>'source_url', '^https?://', ''), '^www\.', ''));
+    dom := split_part(split_part(split_part(dom, '/', 1), '?', 1), ':', 1);
+    select import_domain into cur from dealers where id = p_dealer;
+    if coalesce(cur, '') = '' and dom <> '' and not exists (
+      select 1 from dealers where lower(import_domain) = dom and id <> p_dealer
+    ) then
+      update dealers set import_domain = dom, import_claimed_at = now() where id = p_dealer;
+    end if;
+  end if;
+
+  insert into listings (
+    dealer_id, car_name, make, model, price, year, mileage, condition, color,
+    photo_url, photos, description, city, export_africa, active, sold,
+    source_url, import_method, imported_at
+  ) values (
+    p_dealer,
+    p->>'car_name', p->>'make', p->>'model',
+    nullif(p->>'price', '')::numeric,
+    nullif(p->>'year', '')::int,
+    nullif(p->>'mileage', '')::int,
+    coalesce(p->>'condition', 'Très bon état'),
+    p->>'color',
+    p->>'photo_url',
+    coalesce(p->'photos', '[]'::jsonb),
+    p->>'description',
+    coalesce(nullif(p->>'city', ''), 'Dubai'),
+    true, true, false,
+    nullif(p->>'source_url', ''),
+    coalesce(nullif(p->>'import_method', ''), 'import'),
+    now()
+  ) returning id into newid;
+
+  return newid;
+end $$;
+
+grant execute on function public.admin_import_listing(uuid, jsonb) to authenticated;
+
+-- Open an account for a shipping agency met in person — the mirror of
+-- admin_create_dealer (§36). Same handshake-is-verification logic.
+create or replace function public.admin_create_agency(
+  p_name text, p_email text, p_phone text, p_country text, p_desc text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare newid uuid;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if coalesce(p_name, '') = '' or coalesce(p_email, '') = '' then
+    raise exception 'name and email are required';
+  end if;
+
+  select id into newid from shipping_agencies where lower(email) = lower(p_email) limit 1;
+  if newid is null then
+    insert into shipping_agencies (name, email, whatsapp, country, routes, verified)
+    values (p_name, lower(p_email), nullif(p_phone, ''),
+            coalesce(nullif(p_country, ''), 'Dubai UAE'),
+            jsonb_build_object('v', 2, 'description', p_desc, 'offices', '{}'::jsonb, 'routes', '[]'::jsonb)::text,
+            true)
+    returning id into newid;
+  else
+    update shipping_agencies set
+      name = p_name,
+      whatsapp = coalesce(nullif(p_phone, ''), whatsapp),
+      country = coalesce(nullif(p_country, ''), country),
+      verified = true, suspended = false, rejected_reason = null
+    where id = newid;
+  end if;
+
+  perform _yayo_log('create_agency', 'agency', newid::text, p_name || ' · ' || lower(p_email));
+  return newid;
+end $$;
+
+grant execute on function public.admin_create_agency(text, text, text, text, text) to authenticated;
+
