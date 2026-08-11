@@ -462,10 +462,22 @@ async function doRegister(e) {
       // Already logged in (buyer) → apply with the existing account
       const { error: mErr } = await yayoSB().auth.updateUser({ data: { role: "dealer", company, phone, city, desc } });
       if (mErr) throw mErr;
-      const { error: iErr } = await yayoSB().from("dealers").insert({
-        name: company, email: LOGGED_USER.email, whatsapp: phone, city, description: desc, verified: false
-      });
-      if (iErr && !/duplicate/i.test(iErr.message || "")) throw iErr;
+      // Look before filing. Pressing this button twice used to create a
+      // SECOND application for the same business — the queue filled with
+      // ghosts and the dealer's dashboard lost track of which one was his.
+      const { data: had } = await yayoSB().from("dealers")
+        .select("id").eq("email", LOGGED_USER.email).limit(1);
+      if (had && had.length) {
+        // already applied → update the details, never a new application
+        await yayoSB().from("dealers")
+          .update({ name: company, whatsapp: phone, city, description: desc })
+          .eq("id", had[0].id);
+      } else {
+        const { error: iErr } = await yayoSB().from("dealers").insert({
+          name: company, email: LOGGED_USER.email, whatsapp: phone, city, description: desc, verified: false
+        });
+        if (iErr && !/duplicate/i.test(iErr.message || "")) throw iErr;
+      }
       yayoNotifyAdmin("dealer_signup", company, phone + " · " + city + " · " + (LOGGED_USER.email || ""));
       location.href = "dashboard.html";
       return false;

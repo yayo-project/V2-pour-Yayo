@@ -288,11 +288,26 @@ async function doRegister(e) {
     if (LOGGED_USER) {
       const { error: mErr } = await yayoSB().auth.updateUser({ data: { role: "agency", company, phone, desc } });
       if (mErr) throw mErr;
-      const { error: iErr } = await yayoSB().from("shipping_agencies").insert({
-        name: company, email: LOGGED_USER.email, whatsapp: phone, country: "Dubai UAE",
-        routes: JSON.stringify({ v: 2, description: desc, offices: {}, routes: [] }), verified: false
-      });
-      if (iErr && !/duplicate/i.test(iErr.message || "")) throw iErr;
+      // Look before filing — see the same guard in vendre.html: a second
+      // press must update the application, not create another one.
+      const { data: had } = await yayoSB().from("shipping_agencies")
+        .select("id, routes").eq("email", LOGGED_USER.email).limit(1);
+      if (had && had.length) {
+        let routes = had[0].routes;
+        try {
+          const j = typeof routes === "string" ? JSON.parse(routes) : (routes || {});
+          routes = JSON.stringify(Object.assign({ v: 2, offices: {}, routes: [] }, j, { description: desc }));
+        } catch (ex) { routes = JSON.stringify({ v: 2, description: desc, offices: {}, routes: [] }); }
+        await yayoSB().from("shipping_agencies")
+          .update({ name: company, whatsapp: phone, routes })
+          .eq("id", had[0].id);
+      } else {
+        const { error: iErr } = await yayoSB().from("shipping_agencies").insert({
+          name: company, email: LOGGED_USER.email, whatsapp: phone, country: "Dubai UAE",
+          routes: JSON.stringify({ v: 2, description: desc, offices: {}, routes: [] }), verified: false
+        });
+        if (iErr && !/duplicate/i.test(iErr.message || "")) throw iErr;
+      }
       yayoNotifyAdmin("agency_signup", company, phone + " · " + (LOGGED_USER.email || ""));
       location.href = "dashboard.html";
       return false;

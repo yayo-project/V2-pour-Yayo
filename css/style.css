@@ -1047,6 +1047,9 @@ body.no-scroll{overflow:hidden}
 .sold-box .field label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:4px}
 .sold-box .field input,.sold-box .field select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff}
 .sold-box .btn-block{margin-top:4px}
+/* Open a seller account on the spot (admin) */
+.ad-new-btn{padding:9px 16px;font-size:13.5px;white-space:nowrap}
+.nd-msg{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;font:inherit;font-size:12.5px;line-height:1.55;color:var(--ink);background:#F8FAFC;resize:vertical;margin-bottom:10px}
 /* ═══ IMPORT FROM WEBSITE (step 4) ═══ */
 .imp-overlay{position:fixed;inset:0;z-index:1300;background:rgba(7,27,51,.55);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
 .imp-overlay[hidden]{display:none}

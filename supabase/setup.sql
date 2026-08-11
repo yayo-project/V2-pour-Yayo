@@ -1215,3 +1215,185 @@ alter table public.car_request_matches enable row level security;
 drop policy if exists car_request_matches_admin_select on public.car_request_matches;
 create policy car_request_matches_admin_select on public.car_request_matches
   for select to authenticated using (coalesce(public.yayo_admin_role(), '') <> '');
+-- ═══════════════════════════════════════════════════════════
+-- 35) ONE BUSINESS ACCOUNT PER EMAIL
+-- A real dealership (IBITISAM MOTORS FZCO) ended up with FOUR
+-- records: two because the signup form filed a new application
+-- on every press, then two more because the dashboard's lookup
+-- expected exactly one record, silently answered "none" when it
+-- found two, and created another one on each visit — a loop that
+-- would never have stopped, and that hid his cars behind an
+-- empty duplicate.
+-- This section repairs the damage, then makes it structurally
+-- impossible: merge each email group onto ONE survivor (verified
+-- first, then the one holding the cars, then the oldest), move
+-- everything that pointed at a duplicate onto the survivor, keep
+-- whatever the survivor was missing, delete the rest — and add a
+-- unique index so no future code mistake can create a second one.
+-- Safe to re-run: with no duplicates left it does nothing.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public._yayo_merge_dupes()
+returns text language plpgsql security definer set search_path = public as $$
+declare
+  g record; keep uuid; dupes uuid[]; n int := 0;
+  v_logo text; v_lic text; v_dom text; v_claim timestamptz;
+  v_wa text; v_desc text; v_city text; v_photos jsonb;
+begin
+  -- ── dealers ──
+  for g in
+    select lower(email) as em from dealers
+    where coalesce(email, '') <> '' group by lower(email) having count(*) > 1
+  loop
+    select d.id into keep from dealers d
+      where lower(d.email) = g.em
+      order by d.verified desc nulls last,
+               (select count(*) from listings l where l.dealer_id = d.id) desc,
+               d.created_at asc nulls last
+      limit 1;
+    select array_agg(d.id) into dupes from dealers d where lower(d.email) = g.em and d.id <> keep;
+
+    -- everything that pointed at a duplicate now points at the survivor
+    update listings      set dealer_id = keep where dealer_id = any(dupes);
+    update conversations set dealer_id = keep where dealer_id = any(dupes);
+    begin update leads set dealer_id = keep where dealer_id = any(dupes); exception when others then null; end;
+    begin update reviews set subject_id = keep where subject_type = 'dealer' and subject_id = any(dupes); exception when others then null; end;
+
+    -- remember anything the survivor is missing (logo, licence, website…)
+    select
+      (select d.logo_url          from dealers d where d.id = any(dupes) and d.logo_url is not null           order by d.created_at desc limit 1),
+      (select d.license_path      from dealers d where d.id = any(dupes) and d.license_path is not null       order by d.created_at desc limit 1),
+      (select d.import_domain     from dealers d where d.id = any(dupes) and d.import_domain is not null      order by d.created_at desc limit 1),
+      (select d.import_claimed_at from dealers d where d.id = any(dupes) and d.import_claimed_at is not null  order by d.created_at desc limit 1),
+      (select d.whatsapp          from dealers d where d.id = any(dupes) and coalesce(d.whatsapp,'') <> ''    order by d.created_at desc limit 1),
+      (select d.description       from dealers d where d.id = any(dupes) and coalesce(d.description,'') <> '' order by d.created_at desc limit 1),
+      (select d.city              from dealers d where d.id = any(dupes) and coalesce(d.city,'') <> ''        order by d.created_at desc limit 1),
+      (select d.photos            from dealers d where d.id = any(dupes) and coalesce(d.photos,'[]'::jsonb) <> '[]'::jsonb order by d.created_at desc limit 1)
+      into v_logo, v_lic, v_dom, v_claim, v_wa, v_desc, v_city, v_photos;
+
+    -- delete FIRST: the website link is unique, so the survivor can only
+    -- inherit it once the duplicate holding it is gone
+    delete from dealers where id = any(dupes);
+    n := n + coalesce(array_length(dupes, 1), 0);
+
+    update dealers set
+      logo_url          = coalesce(logo_url, v_logo),
+      license_path      = coalesce(license_path, v_lic),
+      import_domain     = coalesce(import_domain, v_dom),
+      import_claimed_at = coalesce(import_claimed_at, v_claim),
+      whatsapp          = coalesce(nullif(whatsapp, ''), v_wa),
+      description       = coalesce(nullif(description, ''), v_desc),
+      city              = coalesce(nullif(city, ''), v_city),
+      -- photos defaults to '[]', so it is never null: test for EMPTY
+      photos            = case when coalesce(photos, '[]'::jsonb) = '[]'::jsonb
+                               then coalesce(v_photos, photos) else photos end
+    where id = keep;
+  end loop;
+
+  -- ── shipping agencies (same story, same cure) ──
+  for g in
+    select lower(email) as em from shipping_agencies
+    where coalesce(email, '') <> '' group by lower(email) having count(*) > 1
+  loop
+    select a.id into keep from shipping_agencies a
+      where lower(a.email) = g.em
+      order by a.verified desc nulls last, a.created_at asc nulls last
+      limit 1;
+    select array_agg(a.id) into dupes from shipping_agencies a where lower(a.email) = g.em and a.id <> keep;
+
+    update conversations set agency_id = keep where agency_id = any(dupes);
+    begin update shipments set agency_id = keep where agency_id = any(dupes); exception when others then null; end;
+    begin update reviews set subject_id = keep where subject_type = 'agency' and subject_id = any(dupes); exception when others then null; end;
+
+    select
+      (select a.logo_url     from shipping_agencies a where a.id = any(dupes) and a.logo_url is not null       order by a.created_at desc limit 1),
+      (select a.license_path from shipping_agencies a where a.id = any(dupes) and a.license_path is not null   order by a.created_at desc limit 1),
+      (select a.whatsapp     from shipping_agencies a where a.id = any(dupes) and coalesce(a.whatsapp,'') <> '' order by a.created_at desc limit 1),
+      (select a.photos       from shipping_agencies a where a.id = any(dupes) and coalesce(a.photos,'[]'::jsonb) <> '[]'::jsonb order by a.created_at desc limit 1)
+      into v_logo, v_lic, v_wa, v_photos;
+
+    delete from shipping_agencies where id = any(dupes);
+    n := n + coalesce(array_length(dupes, 1), 0);
+
+    update shipping_agencies set
+      logo_url     = coalesce(logo_url, v_logo),
+      license_path = coalesce(license_path, v_lic),
+      whatsapp     = coalesce(nullif(whatsapp, ''), v_wa),
+      photos       = case when coalesce(photos, '[]'::jsonb) = '[]'::jsonb
+                          then coalesce(v_photos, photos) else photos end
+    where id = keep;
+  end loop;
+
+  return n || ' duplicate(s) merged';
+end $$;
+
+select public._yayo_merge_dupes();
+
+-- the structural guarantee: a second record with the same email
+-- can no longer be created, by any client, ever
+create unique index if not exists dealers_email_uniq
+  on public.dealers (lower(email)) where coalesce(email, '') <> '';
+create unique index if not exists agencies_email_uniq
+  on public.shipping_agencies (lower(email)) where coalesce(email, '') <> '';
+
+-- ═══════════════════════════════════════════════════════════
+-- 36) ADMIN CREATES A SELLER ACCOUNT
+-- A dealer met in person (Al Aweer, a showroom visit) rarely
+-- fills a form. The founder opens the account for him, hands him
+-- the login, and his stock is online the same day. The auth login
+-- itself is created by the create-login function (service key);
+-- this RPC creates the seller record, marks it verified — a
+-- handshake IS the verification here — starts the 3-month
+-- unlimited promo, claims his website so the import works, and
+-- writes the whole thing to the audit log like every other admin
+-- action. Idempotent: run twice on the same email and it updates
+-- instead of duplicating (see §35).
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_create_dealer(
+  p_name text, p_email text, p_phone text, p_city text, p_site text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare newid uuid; dom text;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if coalesce(p_name, '') = '' or coalesce(p_email, '') = '' then
+    raise exception 'name and email are required';
+  end if;
+
+  -- "https://www.mohamedhakim.com/cars" → "mohamedhakim.com"
+  dom := lower(trim(coalesce(p_site, '')));
+  dom := regexp_replace(dom, '^https?://', '');
+  dom := regexp_replace(dom, '^www\.', '');
+  dom := split_part(split_part(split_part(dom, '/', 1), '?', 1), ':', 1);
+  if dom = '' then dom := null; end if;
+
+  select id into newid from dealers where lower(email) = lower(p_email) limit 1;
+  if newid is null then
+    insert into dealers (name, email, whatsapp, city, verified, plan, promo_limit, promo_until)
+    values (p_name, lower(p_email), nullif(p_phone, ''), coalesce(nullif(p_city, ''), 'Dubai'),
+            true, 'starter', -1, (current_date + interval '3 months')::date)
+    returning id into newid;
+  else
+    update dealers set
+      name = p_name,
+      whatsapp = coalesce(nullif(p_phone, ''), whatsapp),
+      city = coalesce(nullif(p_city, ''), city),
+      verified = true, suspended = false, rejected_reason = null,
+      promo_limit = coalesce(promo_limit, -1),
+      promo_until = coalesce(promo_until, (current_date + interval '3 months')::date)
+    where id = newid;
+  end if;
+
+  -- claim his website unless another account already owns it (§31)
+  if dom is not null and not exists (
+    select 1 from dealers where lower(import_domain) = dom and id <> newid
+  ) then
+    update dealers set import_domain = dom, import_claimed_at = coalesce(import_claimed_at, now())
+    where id = newid;
+  end if;
+
+  perform _yayo_log('create_dealer', 'dealer', newid::text,
+    p_name || ' · ' || lower(p_email) || coalesce(' · ' || dom, ''));
+  return newid;
+end $$;
+
+grant execute on function public.admin_create_dealer(text, text, text, text, text) to authenticated;
+

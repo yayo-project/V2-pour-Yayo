@@ -134,7 +134,20 @@ async function init() {
   // land in that dealer's dashboard.)
   try {
     const sb = yayoSB();
-    let { data } = await sb.from("dealers").select("*").eq("email", USER.email).maybeSingle();
+    // Take the FIRST match, never "exactly one". maybeSingle() answers null
+    // when it finds two rows — which used to look like "this dealer has no
+    // profile yet" and created ANOTHER one on every single visit (IBITISAM
+    // MOTORS ended up with four). Verified first, then oldest, so even if
+    // stale duplicates still exist the dealer lands on the row holding his
+    // cars. §35 merges them and forbids new ones.
+    const { data: rows, error: selErr } = await sb.from("dealers").select("*")
+      .eq("email", USER.email)
+      .order("verified", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(1);
+    // A FAILED lookup is not an empty lookup — never create a row on an error
+    if (selErr) throw selErr;
+    let data = rows && rows[0];
     if (!data && role === "dealer") {
       // Registered dealer without a profile row yet — create it (admin activates later)
       // Created HERE, on the first confirmed sign-in — not at signup, so an
@@ -149,6 +162,13 @@ async function init() {
         verified: false
       }).select("*").single();
       data = ins.data;
+      // Two tabs opening at once, or a reload mid-creation: §35's unique index
+      // rejects the second insert. Read the winner instead of failing.
+      if (!data && ins.error) {
+        const again = await sb.from("dealers").select("*").eq("email", USER.email).limit(1);
+        data = again.data && again.data[0];
+        if (!data) throw ins.error;
+      }
     }
     DEALER = data || null;
   } catch (e) { DEALER = null; }
@@ -1255,8 +1275,15 @@ function buildAgencyPayload() {
 async function agencyInit() {
   try {
     const sb = yayoSB();
-    // Agency row linked STRICTLY by email (no name matching — see dealer note)
-    let { data } = await sb.from("shipping_agencies").select("*").eq("email", USER.email).maybeSingle();
+    // Agency row linked STRICTLY by email (no name matching — see dealer note).
+    // First match, not "exactly one" — see the dealer lookup above for why.
+    const { data: rows, error: selErr } = await sb.from("shipping_agencies").select("*")
+      .eq("email", USER.email)
+      .order("verified", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (selErr) throw selErr;
+    let data = rows && rows[0];
     if (!data) {
       // Created HERE, on the first confirmed sign-in — not at signup, so an
       // unconfirmed bot address never reaches the verification queue.
@@ -1270,6 +1297,11 @@ async function agencyInit() {
         verified: false
       }).select("*").single();
       data = ins.data;
+      if (!data && ins.error) {
+        const again = await sb.from("shipping_agencies").select("*").eq("email", USER.email).limit(1);
+        data = again.data && again.data[0];
+        if (!data) throw ins.error;
+      }
     }
     AGENCY = data || null;
   } catch (e) { AGENCY = null; }
@@ -2036,6 +2068,135 @@ async function adLimitsSave(id) {
   adBizAction("dealer", id,
     () => adRpc("admin_set_limits", { sid: id, p_plan: plan, p_normal: isNaN(normal) ? null : normal, p_promo: promo, p_until: until }),
     x => { x.plan = plan; if (!isNaN(normal)) x.normal_limit = normal; x.promo_limit = promo; x.promo_until = until; });
+}
+
+// ── Open a seller account for someone met in person ──────────────
+// A showroom owner at Al Aweer will not go home and fill a form. The
+// founder takes his card, opens the account in front of him and hands
+// him the login — his stock is online the same day. Meeting him IS the
+// verification, so the account is created verified.
+function adCreateDealer() {
+  const old = document.getElementById("sold-modal");
+  if (old) old.remove();
+  const div = document.createElement("div");
+  div.id = "sold-modal";
+  div.className = "sold-modal";
+  div.innerHTML = `
+    <div class="sold-box">
+      <h3>${t("ad_new_h")}</h3>
+      <p>${t("ad_new_p")}</p>
+      <div class="field"><label>${t("ad_new_name")}</label>
+        <input id="nd-name" type="text" autocomplete="off" placeholder="Mohamed Hakim Motors"></div>
+      <div class="field"><label>${t("ad_new_email")}</label>
+        <input id="nd-email" type="email" autocomplete="off" placeholder="nom@gmail.com"></div>
+      <div class="field"><label>${t("ad_new_pass")}</label>
+        <input id="nd-pass" type="text" autocomplete="off" value="${escapeHtml(adSuggestPass())}"></div>
+      <div class="field"><label>${t("ad_new_phone")}</label>
+        <input id="nd-phone" type="tel" autocomplete="off" placeholder="+9715…"></div>
+      <div class="field"><label>${t("ad_new_city")}</label>
+        <input id="nd-city" type="text" autocomplete="off" value="Dubai"></div>
+      <div class="field"><label>${t("ad_new_site")}</label>
+        <input id="nd-site" type="text" autocomplete="off" placeholder="monsite.com"></div>
+      <p class="auth-error" id="nd-err" hidden></p>
+      <button type="button" class="btn btn-solid btn-block" id="nd-save" onclick="adCreateSave()">${t("ad_new_save")}</button>
+      <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById("nd-name").focus();
+}
+
+// A password he can read out over the phone but nobody can guess
+function adSuggestPass() {
+  const w = ["dubai", "yayo", "auto", "moteur", "export", "sahara", "atlas", "cedre"];
+  return w[Math.floor(Math.random() * w.length)] + (100 + Math.floor(Math.random() * 900));
+}
+
+async function adCreateSave() {
+  const g = id => (document.getElementById(id).value || "").trim();
+  const name = g("nd-name"), email = g("nd-email").toLowerCase();
+  const pass = document.getElementById("nd-pass").value;
+  const phone = g("nd-phone"), city = g("nd-city") || "Dubai", site = g("nd-site");
+  const err = document.getElementById("nd-err");
+  err.hidden = true;
+  if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || pass.length < 6) {
+    err.hidden = false; err.textContent = t("ad_new_err"); return;
+  }
+  const btn = document.getElementById("nd-save");
+  btn.disabled = true; btn.textContent = t("ad_new_working");
+  let existed = false;
+  try {
+    if (!DEMO_ADMIN) {
+      const { data: s } = await yayoSB().auth.getSession();
+      const token = s && s.session && s.session.access_token;
+      if (!token) throw new Error("session");
+      // 1. the login (only the server holds the key that can create one)
+      const r = await fetch("/.netlify/functions/create-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email, password: pass, name, phone, city })
+      });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error);
+      existed = !!d.exists;
+      // 2. the seller record — audited RPC, same path as every admin action
+      await adRpc("admin_create_dealer", {
+        p_name: name, p_email: email, p_phone: phone, p_city: city, p_site: site
+      });
+      const { data } = await yayoSB().from("dealers").select("*")
+        .order("created_at", { ascending: false }).limit(500);
+      if (data) AD_DEALERS = data;
+      adRenderBiz("dealer");
+    }
+    adCreateDone(name, email, pass, existed);
+  } catch (e) {
+    err.hidden = false; err.textContent = t("ad_new_fail") + (e.message || e);
+    btn.disabled = false; btn.textContent = t("ad_new_save");
+  }
+}
+
+// The message the founder sends him. English + Arabic, because that is what
+// a Dubai showroom reads — the admin's own language is irrelevant here.
+function adLoginMessage(name, email, pass) {
+  return [
+    `Yayo — ${name}`,
+    "",
+    "Your Yayo seller account is ready. Sign in here:",
+    "https://yayo.digital/connexion.html",
+    "Email: " + email,
+    "Password: " + pass,
+    "",
+    "Please change this password after your first sign-in (Dashboard → Profile).",
+    "",
+    "— — —",
+    "",
+    "حسابك على يايو جاهز. سجّل الدخول من هنا:",
+    "https://yayo.digital/connexion.html",
+    "البريد: " + email,
+    "كلمة المرور: " + pass,
+    "",
+    "يرجى تغيير كلمة المرور بعد أول تسجيل دخول."
+  ].join("\n");
+}
+
+function adCreateDone(name, email, pass, existed) {
+  const box = document.querySelector("#sold-modal .sold-box");
+  if (!box) return;
+  const msg = adLoginMessage(name, email, pass);
+  box.innerHTML = `
+    <h3>${t("ad_new_done")}</h3>
+    <p>${existed ? t("ad_new_existed") : t("ad_new_done_p")}</p>
+    <textarea id="nd-msg" class="nd-msg" rows="10" readonly>${escapeHtml(msg)}</textarea>
+    <button type="button" class="btn btn-solid btn-block" id="nd-copy" onclick="adCopyLogin()">${t("ad_new_copy")}</button>
+    <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("ad_act_close")}</button>`;
+}
+
+function adCopyLogin() {
+  const ta = document.getElementById("nd-msg");
+  const btn = document.getElementById("nd-copy");
+  const done = () => { btn.textContent = t("ad_new_copied"); };
+  try {
+    navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); document.execCommand("copy"); done(); });
+  } catch (e) { ta.select(); document.execCommand("copy"); done(); }
 }
 
 function adReject(type, id) {
