@@ -680,8 +680,9 @@ async function impConfirm() {
       const photos = await impRehost(c.photos);
       if (!photos.length) { failed++; return; }   // a listing needs at least one photo
       const mm = c.make && c.model ? { make: c.make, model: c.model } : splitCarName(c.name);
+      const mMake = mm.make || c.make || null;
       const payload = {
-        car_name: c.name, make: mm.make || c.make || null, model: mm.model || c.model || null,
+        car_name: c.name, make: mMake, model: yayoCleanModel(mm.model || c.model, mMake, c.year),
         price: c.price_usd, year: c.year || null, mileage: c.mileage || null,
         condition: "Très bon état", color: null,
         photo_url: photos[0], photos, description: null,
@@ -844,12 +845,13 @@ async function saveListing(e) {
 
   const mm = lfCarName();
   if (!mm.make || !mm.model) { err.hidden = false; err.textContent = t("d_f_make_need"); return false; }
+  const lfYear = parseInt(document.getElementById("lf-year").value, 10) || null;
   const payload = {
     car_name: mm.name,
     make: mm.make,
-    model: mm.model,
+    model: yayoCleanModel(mm.model, mm.make, lfYear),
     price: lfPriceUsd(),
-    year: parseInt(document.getElementById("lf-year").value, 10) || null,
+    year: lfYear,
     mileage: parseInt(document.getElementById("lf-km").value, 10) || null,
     condition: document.getElementById("lf-cond").value,
     color: document.getElementById("lf-color").value.trim() || null,

@@ -57,6 +57,30 @@ function yayoFmt(n) {
 
 // AED ↔ USD: the dirham is PEGGED to the dollar (fixed official rate since
 // 1997), so this conversion is exact and never needs a live feed.
+// The model column must hold the MODEL — not the whole advert title. Imports
+// were writing "LAND CRUISER LC300 VXR 3.5L TWIN TURBO 2026" into it: the make
+// repeated at the front, the year repeated at the end. That makes the column
+// useless for filtering by model, and it gets worse with every car imported.
+// Codes like LC300 / VXR keep their capitals — only the noise is removed.
+function yayoCleanModel(model, make, year) {
+  let s = String(model || "").replace(/\s+/g, " ").trim();
+  if (!s) return null;
+  // the make already has its own column, so drop it from the front
+  const mk = String(make || "").trim();
+  if (mk) {
+    const esc = x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // full make first: stripping only the first word turns "Mercedes-Benz C200"
+    // into "Benz C200". Single-word makes fall through to the same branch.
+    const before = s;
+    s = s.replace(new RegExp("^" + esc(mk) + "\\b[\\s-]*", "i"), "");
+    if (s === before) s = s.replace(new RegExp("^" + esc(mk.split(/[\s-]/)[0]) + "\\b[\\s-]*", "i"), "");
+  }
+  // the year has its own column too — remove it wherever it sits
+  if (year) s = s.replace(new RegExp("\\b" + year + "\\b", "g"), " ");
+  s = s.replace(/\b(19|20)\d{2}\b\s*$/, "");
+  return s.replace(/[\s,\-–·|]+$/, "").replace(/\s+/g, " ").trim() || null;
+}
+
 // Dealers may type prices in AED; buyers always see USD (stored in USD).
 const AED_PER_USD = 3.6725;
 function yayoAedToUsd(aed) { return Math.round((Number(aed) || 0) / AED_PER_USD); }
