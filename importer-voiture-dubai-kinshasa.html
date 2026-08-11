@@ -152,11 +152,16 @@ document.addEventListener("DOMContentLoaded", seoCalc);
 // for organic visitors. Section stays hidden until real cars exist.
 (async () => {
   try {
-    const { data } = await yayoSB().from("listings")
-      .select("id,car_name,price,year,mileage,photo_url,dealers!inner(name,verified,suspended)")
+    // "approved" = allowed to trade (the badge is a separate thing, §38).
+    // Asking for a column that does not exist is an error, not an empty
+    // answer, so fall back to the old flag until §38 has been run.
+    const ask = (col) => yayoSB().from("listings")
+      .select("id,car_name,price,year,mileage,photo_url,dealer_id,dealers!inner(name,verified," + col + ",suspended)")
       .eq("active", true).eq("sold", false).eq("hidden", false)
-      .eq("dealers.verified", true).eq("dealers.suspended", false)
+      .eq("dealers." + col, true).eq("dealers.suspended", false)
       .order("created_at", { ascending: false }).limit(6);
+    let { data, error } = await ask("approved");
+    if (error) ({ data } = await ask("verified"));
     if (!data || !data.length) return;
     const esc = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     document.getElementById("seo-cars-h").hidden = false;

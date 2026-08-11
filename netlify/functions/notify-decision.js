@@ -17,7 +17,10 @@ function esc(s) { return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&
 
 // FR + EN + AR stacked: Supabase/Brevo don't know the recipient's language,
 // and a business in Dubai may read any of the three.
-function html(approved, name, reason) {
+// stage: "verified" (badge earned) | "active" (may trade, licence still
+// missing) | "rejected"
+function html(stage, name, reason) {
+  const approved = stage !== "rejected";
   const btn = `<p style="text-align:center;margin:6px 0 20px">
       <a href="${SITE}/dashboard.html" style="display:inline-block;background:#1FD8C9;color:#0A2540;font-weight:800;font-size:15px;padding:12px 30px;border-radius:12px;text-decoration:none">Yayo</a></p>`;
   const block = (title, body, dir) =>
@@ -26,14 +29,20 @@ function html(approved, name, reason) {
        <p style="margin:0;font-size:13.5px;line-height:1.6;color:#3F5473">${body}</p></td></tr>`;
 
   const why = reason ? esc(reason) : "";
-  const fr = approved
+  const fr = stage === "verified"
     ? ["Votre compte est vérifié ✅", "Félicitations — votre entreprise est maintenant visible par les acheteurs sur Yayo, avec le badge Vérifié."]
+    : stage === "active"
+    ? ["Votre compte est actif ✅", "Vos voitures sont maintenant visibles par les acheteurs et ils peuvent vous écrire.<br>Il reste une étape : envoyez votre licence commerciale depuis l'onglet Profil pour obtenir le badge <b>Vérifié</b> — les acheteurs font beaucoup plus confiance à un vendeur vérifié."]
     : ["Votre demande n'a pas été validée", `Motif : « ${why} ».<br>Corrigez ce point puis renvoyez votre licence commerciale depuis l'onglet Profil de votre tableau de bord — nous réexaminerons votre dossier.`];
-  const en = approved
+  const en = stage === "verified"
     ? ["Your account is verified ✅", "Congratulations — your business is now visible to buyers on Yayo, with the Verified badge."]
+    : stage === "active"
+    ? ["Your account is active ✅", "Your cars are now visible to buyers and they can write to you.<br>One step left: send your trade licence from the Profile tab to earn the <b>Verified</b> badge — buyers trust a verified seller far more."]
     : ["Your application was not approved", `Reason: “${why}”.<br>Please fix this, then re-upload your trade licence from the Profile tab of your dashboard — we will review it again.`];
-  const ar = approved
+  const ar = stage === "verified"
     ? ["تم توثيق حسابك ✅", "تهانينا — أصبح نشاطك ظاهراً للمشترين على يايو مع شارة التوثيق."]
+    : stage === "active"
+    ? ["حسابك مفعّل ✅", "أصبحت سياراتك ظاهرة للمشترين ويمكنهم مراسلتك.<br>تبقّت خطوة واحدة: أرسل رخصتك التجارية من تبويب الملف للحصول على شارة <b>التوثيق</b> — ثقة المشترين بالبائع الموثّق أكبر بكثير."]
     : ["لم تتم الموافقة على طلبك", `السبب: «${why}».<br>يرجى تصحيح ذلك ثم إعادة رفع الرخصة التجارية من تبويب الملف في لوحة التحكم — وسنراجع طلبك مجدداً.`];
 
   return `
@@ -102,13 +111,14 @@ exports.handler = async (event) => {
   const table = subject === "agency" ? "shipping_agencies" : "dealers";
   let biz;
   try {
-    const r = await fetch(SB_URL + `/rest/v1/${table}?id=eq.${sid}&select=name,email,verified,rejected_reason&limit=1`, { headers: svc });
+    const r = await fetch(SB_URL + `/rest/v1/${table}?id=eq.${sid}&select=name,email,verified,approved,rejected_reason&limit=1`, { headers: svc });
     biz = (await r.json())[0];
   } catch (e) { /* fall through */ }
   if (!biz || !biz.email) return { statusCode: 200, headers, body: '{"skipped":"no recipient"}' };
 
-  const approved = !!biz.verified;
-  if (!approved && !biz.rejected_reason) return { statusCode: 200, headers, body: '{"skipped":"nothing decided"}' };
+  // three outcomes worth an email: badge earned, allowed to trade, refused
+  const stage = biz.verified ? "verified" : (biz.approved ? "active" : (biz.rejected_reason ? "rejected" : ""));
+  if (!stage) return { statusCode: 200, headers, body: '{"skipped":"nothing decided"}' };
   if (!BREVO) return { statusCode: 200, headers, body: '{"skipped":"no BREVO_API_KEY"}' };
 
   try {
@@ -118,10 +128,12 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         sender: { name: "Yayo", email: "contact@yayo.digital" },
         to: [{ email: biz.email }],
-        subject: approved
+        subject: stage === "verified"
           ? "Votre compte Yayo est vérifié ✅ · Your account is verified · تم توثيق حسابك"
+          : stage === "active"
+          ? "Votre compte Yayo est actif ✅ · Your Yayo account is active · حسابك مفعّل"
           : "Votre demande Yayo · Your Yayo application · طلبك على يايو",
-        htmlContent: html(approved, biz.name, biz.rejected_reason)
+        htmlContent: html(stage, biz.name, biz.rejected_reason)
       })
     });
     if (!r.ok) throw new Error("brevo " + r.status);

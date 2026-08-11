@@ -126,6 +126,38 @@ function yayoLandedTotal(price, destKey, shipOverride) {
   return price + ship + yayoCustoms(price, ship, destKey).total + d.fees;
 }
 
+// ── Live on Yayo vs. carrying the badge — two different things ──
+// "approved" = an admin let this business trade: its cars are visible and
+// buyers can write to it. "verified" = the trade licence was checked, which
+// is what earns the blue badge. A dealership the founder met in person is
+// approved on the spot; the badge still has to be earned.
+// Falls back to the old single flag while §38 has not been run yet.
+function yayoBizLive(b) {
+  if (!b || b.suspended) return false;
+  return (b.approved === undefined || b.approved === null) ? !!b.verified : !!b.approved;
+}
+
+// Deal cars round-robin between businesses: newest from dealer A, newest from
+// B, newest from C, then A again. Without this, one dealership importing 400
+// cars in an afternoon owns every page of the site and the others are never
+// discovered. Order INSIDE each dealership is preserved.
+function yayoSpread(list, keyOf) {
+  const groups = new Map();
+  list.forEach(item => {
+    const k = String((keyOf ? keyOf(item) : item.dealer_id) || "?");
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(item);
+  });
+  const queues = [...groups.values()];
+  const out = [];
+  let any = true;
+  while (any) {
+    any = false;
+    for (const q of queues) if (q.length) { out.push(q.shift()); any = true; }
+  }
+  return out;
+}
+
 // Skeleton shimmer cards shown while real listings load (premium loading feel)
 function yayoSkelCards(n) {
   return Array.from({ length: n }, () => `

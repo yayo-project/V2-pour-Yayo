@@ -24,7 +24,7 @@ async function loadAgency() {
       let { data } = await yayoSB().from("shipping_agencies")
         .select("*").eq("id", AG_ID).maybeSingle();
       // pending/suspended agencies are not public until admin approval
-      if (data && (!data.verified || data.suspended)) data = null;
+      if (data && !yayoBizLive(data)) data = null;
       if (data) {
         let d = data.routes;
         if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }

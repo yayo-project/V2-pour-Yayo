@@ -35,15 +35,16 @@ async function loadCars() {
       .eq("active", true)
       .eq("sold", false)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(1000);
 
     if (!error && data && data.length > 0) {
-      // buyers only ever see listings from ADMIN-VERIFIED dealers
+      // buyers only ever see listings from businesses an admin let trade
       // (pending/suspended dealers prepare in their dashboard, invisible here)
       // dormant = asleep because the dealer's plan shrank (§32) — not for buyers
-      data = data.filter(l => !l.hidden && !l.dormant && l.dealers && l.dealers.verified && !l.dealers.suspended);
+      data = data.filter(l => !l.hidden && !l.dormant && yayoBizLive(l.dealers));
       list = data.map(l => ({
         id: l.id,
+        dealer_id: l.dealer_id,
         car_name: l.car_name,
         mileage: l.mileage,
         fuel: l.fuel || "",
@@ -64,13 +65,41 @@ async function loadCars() {
   } catch (e) {
     list = [];
   }
-  ALL_CARS = list;
-  CARS = list.slice(0, YAYO_CONFIG.FEATURED_LIMIT);
-  ARRIVALS = list.slice(YAYO_CONFIG.FEATURED_LIMIT, YAYO_CONFIG.FEATURED_LIMIT + 10);
+  // one dealership importing 400 cars must not own the whole page
+  ALL_CARS = yayoSpread(list);
+  CARS = ALL_CARS.slice(0, YAYO_CONFIG.FEATURED_LIMIT);
+  ARRIVALS = ALL_CARS.slice(YAYO_CONFIG.FEATURED_LIMIT, YAYO_CONFIG.FEATURED_LIMIT + 10);
   renderCars();
   renderArrivals();
   renderBudget();
+  renderSellers(list);
   yayoLoadVerdicts(CARS, renderCars); // real AI price verdicts, badge appears when ready
+}
+
+// ── Nos vendeurs: browse by dealership, not only by car ──────────
+// Without this there is no way to discover a dealership at all: a buyer only
+// ever meets cars, and whoever imported last fills the page.
+function renderSellers(list) {
+  const sec = document.getElementById("sellers");
+  const strip = document.getElementById("sel-strip");
+  if (!sec || !strip) return;
+  const by = new Map();
+  list.forEach(c => {
+    const id = String(c.dealer_id || "");
+    if (!id) return;
+    if (!by.has(id)) by.set(id, { id, name: c.dealer.name, logo: c.dealer.logo_url, verified: c.dealer.verified, n: 0 });
+    by.get(id).n++;
+  });
+  const sellers = [...by.values()].sort((a, b) => b.n - a.n);
+  // one lonely dealership is not a choice — don't pretend it is
+  if (sellers.length < 2) { sec.hidden = true; return; }
+  sec.hidden = false;
+  strip.innerHTML = sellers.map(s => `
+    <a class="sel-card" href="acheter.html?dealer=${encodeURIComponent(s.id)}">
+      ${yayoAvatarHtml(s.name, s.logo, true)}
+      <div class="sel-name">${escapeHtml(s.name)}${s.verified ? " " + yayoVBadge() : ""}</div>
+      <div class="sel-count">${s.n} ${s.n > 1 ? t("count_cars") : t("count_car")}</div>
+    </a>`).join("");
 }
 
 // ── Arrivées récentes: horizontal swipe strip of the next-newest cars ──

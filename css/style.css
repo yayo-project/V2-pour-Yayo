@@ -471,6 +471,8 @@ body.no-scroll{overflow:hidden}
 .dash-st.sold{background:#EEF1F6;color:var(--ink-3)}
 .dash-st.off{background:#FFF6E5;color:#8A6116}
 .dash-st.rejected{background:#FDE8E8;color:#A32020}
+/* trading, but the trade licence has not been checked yet (§38) */
+.dash-st.live{background:#E7F0FB;color:#1B5FA8}
 .dash-td-actions{white-space:nowrap}
 .dash-td-actions button{font-size:12px;font-weight:700;color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:5px 10px;margin:2px 3px 2px 0;transition:.15s;background:#fff}
 .dash-td-actions button:hover{border-color:var(--teal);color:var(--teal-dark)}
@@ -1047,6 +1049,24 @@ body.no-scroll{overflow:hidden}
 .sold-box .field label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:4px}
 .sold-box .field input,.sold-box .field select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px;background:#fff}
 .sold-box .btn-block{margin-top:4px}
+/* Nos vendeurs — browse by dealership, not only by car */
+.sel-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sel-card{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-decoration:none;box-shadow:0 2px 10px rgba(10,37,64,.05);transition:.16s}
+.sel-card:hover{border-color:var(--teal);transform:translateY(-2px);box-shadow:0 10px 24px rgba(10,37,64,.10)}
+.sel-name{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.3;display:flex;align-items:center;gap:4px;justify-content:center;flex-wrap:wrap}
+.sel-count{font-size:12px;color:var(--ink-3);font-weight:600}
+/* Viewing one dealership's stock */
+.mkt-dealer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:12px}
+.mkt-d-name{font-size:14.5px;font-weight:800;color:var(--ink);display:inline-flex;align-items:center;gap:5px}
+.mkt-d-count{font-size:12.5px;color:var(--ink-3);font-weight:600}
+.mkt-d-clear{margin-inline-start:auto;border:1px solid var(--line);background:#fff;border-radius:50px;padding:8px 14px;font:inherit;font-size:12.5px;font-weight:700;color:var(--teal-dark);cursor:pointer;min-height:36px}
+.mkt-d-clear:hover{border-color:var(--teal)}
+/* Budget nobody can meet — explained, with a way out */
+.bmiss{background:#fff;border:1.5px solid var(--teal);border-radius:16px;padding:22px 18px;text-align:center}
+.bmiss h3{font-size:16.5px;font-weight:800;color:var(--ink);margin-bottom:6px;line-height:1.35}
+.bmiss p{font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:14px}
+.bmiss .btn{margin-bottom:10px}
+.bmiss-note{font-size:12px;color:var(--ink-3);margin-bottom:0}
 /* Open a seller account on the spot (admin) */
 .ad-new-btn{padding:9px 16px;font-size:13.5px;white-space:nowrap}
 .nd-msg{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;font:inherit;font-size:12.5px;line-height:1.55;color:var(--ink);background:#F8FAFC;resize:vertical;margin-bottom:10px}

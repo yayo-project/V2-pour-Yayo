@@ -32,7 +32,7 @@ async function loadCar() {
         .eq("id", CAR_ID).maybeSingle();
       if (data && (data.hidden || data.dormant)) data = null; // hidden by admin, or asleep after a plan change (§32)
       // pending/suspended dealer = listing not public yet (admin approval first)
-      if (data && !(data.dealers && data.dealers.verified && !data.dealers.suspended)) data = null;
+      if (data && !yayoBizLive(data.dealers)) data = null;
       if (!error && data) {
         // view counter (best effort) + traffic funnel event
         try { yayoSB().rpc("yayo_view", { lid: CAR_ID }).then(() => {}, () => {}); } catch (e2) {}
@@ -104,10 +104,12 @@ function render() {
   const pics = (d.photos || []).slice(0, 3);
   gal.hidden = !pics.length;
   gal.innerHTML = pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("");
-  // The trust pill next to the dealer name — big, blue, unmissable
+  // The trust pill next to the dealer name — big, blue, unmissable.
+  // No licence checked yet = no badge, and no invented substitute for one:
+  // just the plain fact that he sells on Yayo from Dubai.
   document.getElementById("vd-dealer-badge").innerHTML = d.verified
     ? yayoVPill(t("d_verified")) + " · Dubai"
-    : "Dubai";
+    : t("d_seller_on") + " · Dubai";
   // Full-width "Vérifié par Yayo" band on the seller card…
   document.getElementById("vd-trust").innerHTML = d.verified ? yayoVBand(t("vband_d")) : "";
   // …and again above the chat, so the buyer sees WHO they are talking to
@@ -368,9 +370,8 @@ async function loadAgencies() {
   if (String(CAR_ID).startsWith("demo") || CAR_ID === "") { AGENCIES = DEMO_AGENCIES; renderTransport(); return; }
   try {
     const { data } = await yayoSB().from("shipping_agencies")
-      .select("*")
-      .eq("verified", true).limit(30);
-    AGENCIES = (data || []).filter(a => !a.suspended).map(a => {
+      .select("*").limit(60);
+    AGENCIES = (data || []).filter(a => yayoBizLive(a)).map(a => {
       let d = a.routes;
       if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }
       const routes = Array.isArray(d) ? d : (d && Array.isArray(d.routes) ? d.routes : []);
@@ -443,17 +444,24 @@ async function loadSimilar() {
   let pool = [];
   if (!String(CAR.id).startsWith("demo")) {
     try {
-      const { data } = await yayoSB().from("listings")
-        .select("id, car_name, price, mileage, fuel, year, photo_url, photos, make, dealers!inner(verified, suspended)")
+      // asking for a column that does not exist is an error, not an empty
+      // answer — so fall back to the old one while §38 has not been run
+      // NOTE: no "fuel" column on listings — asking for it made this query
+      // fail every time, which is why real cars never showed similar ones.
+      const ask = (cols) => yayoSB().from("listings")
+        .select("id, car_name, price, mileage, year, photo_url, photos, make, dealer_id, dealers!inner(" + cols + ")")
         .eq("active", true).eq("hidden", false).eq("dormant", false)
-        .eq("dealers.verified", true).eq("dealers.suspended", false)
-        .neq("id", CAR.id).limit(9);
+        .eq("dealers.suspended", false)
+        .neq("id", CAR.id).limit(60);
+      let { data, error } = await ask("verified, approved, suspended");
+      if (error) ({ data } = await ask("verified, suspended"));
       const firstWord = (CAR.car_name || "").split(" ")[0].toLowerCase();
-      pool = (data || [])
+      pool = yayoSpread((data || []).filter(l => yayoBizLive(l.dealers)))
         .map(l => ({
           id: l.id, car_name: l.car_name, price: Number(l.price) || 0,
-          mileage: l.mileage, fuel: l.fuel || "", year: l.year,
-          photo_url: l.photo_url, photos: yayoPhotoList(l.photos), verified: true
+          mileage: l.mileage, fuel: "", year: l.year,
+          photo_url: l.photo_url, photos: yayoPhotoList(l.photos),
+          verified: !!(l.dealers && l.dealers.verified)
         }))
         .sort((a, b) => {
           const am = a.car_name.toLowerCase().startsWith(firstWord) ? 0 : 1;

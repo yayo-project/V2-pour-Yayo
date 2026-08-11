@@ -1499,3 +1499,191 @@ end $$;
 
 grant execute on function public.admin_create_agency(text, text, text, text, text) to authenticated;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 38) TRADING IS NOT THE SAME AS BEING VERIFIED
+-- One flag was doing two jobs: it made a business visible to
+-- buyers AND it granted the blue badge. So a dealership the
+-- founder opened an account for in person got a badge nobody
+-- had earned — no trade licence had ever been checked.
+-- Split in two:
+--   approved → his cars are visible, buyers can write to him
+--   verified → the licence was checked: THE BADGE
+-- A business met in person is approved on the spot; the badge
+-- still has to be earned. Existing businesses keep exactly what
+-- they have today (approved is backfilled from verified), so
+-- nothing disappears from the site when this runs.
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers            add column if not exists approved boolean not null default false;
+alter table public.shipping_agencies  add column if not exists approved boolean not null default false;
+
+-- whoever is live today stays live
+update public.dealers           set approved = true where verified and not approved;
+update public.shipping_agencies set approved = true where verified and not approved;
+
+-- The status guard (§15) now covers the new flag too: a business can no more
+-- approve itself than it could verify itself.
+create or replace function public.yayo_guard_verification()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(public.yayo_admin_role(), '') in ('super_admin','admin_dealers') then
+    return new;  -- admins may change anything
+  end if;
+  if TG_OP = 'INSERT' then
+    -- every new application starts pending, never pre-approved
+    new.verified := false;
+    new.suspended := false;
+    new.approved := false;
+    new.rejected_reason := null;
+  else
+    -- non-admins can edit their profile but NOT their status
+    new.verified := old.verified;
+    new.suspended := old.suspended;
+    new.approved := old.approved;
+    new.rejected_reason := old.rejected_reason;
+  end if;
+  return new;
+end $$;
+
+-- Let a business trade (or stop it) without touching the badge
+create or replace function public.admin_set_approved(subject text, sid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set approved = val,
+      rejected_reason = case when val then null else rejected_reason end,
+      -- withdrawing permission to trade withdraws the badge with it
+      verified = case when val then verified else false end
+    where id = sid;
+    if val then
+      update dealers set promo_limit = -1, promo_until = (current_date + interval '3 months')::date
+        where id = sid and promo_until is null;
+    end if;
+  else
+    update shipping_agencies set approved = val,
+      rejected_reason = case when val then null else rejected_reason end,
+      verified = case when val then verified else false end
+    where id = sid;
+  end if;
+  perform _yayo_log(case when val then 'approve' else 'unapprove' end, subject, sid::text, null);
+end $$;
+
+grant execute on function public.admin_set_approved(text, uuid, boolean) to authenticated;
+
+-- Granting the badge implies the business may trade (a badge on someone
+-- invisible would mean nothing); removing the badge leaves him trading.
+create or replace function public.admin_set_verified(subject text, sid uuid, val boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set verified = val,
+      approved = case when val then true else approved end,
+      rejected_reason = case when val then null else rejected_reason end
+    where id = sid;
+    if val then
+      update dealers set promo_limit = -1, promo_until = (current_date + interval '3 months')::date
+        where id = sid and promo_until is null;
+    end if;
+  else
+    update shipping_agencies set verified = val,
+      approved = case when val then true else approved end,
+      rejected_reason = case when val then null else rejected_reason end
+    where id = sid;
+  end if;
+  perform _yayo_log(case when val then 'verify' else 'unverify' end, subject, sid::text, null);
+end $$;
+
+-- Rejecting takes away the right to trade as well as the badge
+create or replace function public.admin_reject(subject text, sid uuid, reason text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if subject = 'dealer' then
+    update dealers set verified = false, approved = false, rejected_reason = reason where id = sid;
+  else
+    update shipping_agencies set verified = false, approved = false, rejected_reason = reason where id = sid;
+  end if;
+  perform _yayo_log('reject', subject, sid::text, reason);
+end $$;
+
+-- An account opened by an admin for someone met in person: allowed to trade
+-- immediately (that is the whole point), but NOT badged — the licence still
+-- has to arrive. Replaces the §36 / §37 versions.
+create or replace function public.admin_create_dealer(
+  p_name text, p_email text, p_phone text, p_city text, p_site text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare newid uuid; dom text;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if coalesce(p_name, '') = '' or coalesce(p_email, '') = '' then
+    raise exception 'name and email are required';
+  end if;
+
+  dom := lower(trim(coalesce(p_site, '')));
+  dom := regexp_replace(dom, '^https?://', '');
+  dom := regexp_replace(dom, '^www\.', '');
+  dom := split_part(split_part(split_part(dom, '/', 1), '?', 1), ':', 1);
+  if dom = '' then dom := null; end if;
+
+  select id into newid from dealers where lower(email) = lower(p_email) limit 1;
+  if newid is null then
+    insert into dealers (name, email, whatsapp, city, approved, verified, plan, promo_limit, promo_until)
+    values (p_name, lower(p_email), nullif(p_phone, ''), coalesce(nullif(p_city, ''), 'Dubai'),
+            true, false, 'starter', -1, (current_date + interval '3 months')::date)
+    returning id into newid;
+  else
+    update dealers set
+      name = p_name,
+      whatsapp = coalesce(nullif(p_phone, ''), whatsapp),
+      city = coalesce(nullif(p_city, ''), city),
+      approved = true, suspended = false, rejected_reason = null,
+      promo_limit = coalesce(promo_limit, -1),
+      promo_until = coalesce(promo_until, (current_date + interval '3 months')::date)
+    where id = newid;
+  end if;
+
+  if dom is not null and not exists (
+    select 1 from dealers where lower(import_domain) = dom and id <> newid
+  ) then
+    update dealers set import_domain = dom, import_claimed_at = coalesce(import_claimed_at, now())
+    where id = newid;
+  end if;
+
+  perform _yayo_log('create_dealer', 'dealer', newid::text,
+    p_name || ' · ' || lower(p_email) || coalesce(' · ' || dom, ''));
+  return newid;
+end $$;
+
+create or replace function public.admin_create_agency(
+  p_name text, p_email text, p_phone text, p_country text, p_desc text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare newid uuid;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if coalesce(p_name, '') = '' or coalesce(p_email, '') = '' then
+    raise exception 'name and email are required';
+  end if;
+
+  select id into newid from shipping_agencies where lower(email) = lower(p_email) limit 1;
+  if newid is null then
+    insert into shipping_agencies (name, email, whatsapp, country, routes, approved, verified)
+    values (p_name, lower(p_email), nullif(p_phone, ''),
+            coalesce(nullif(p_country, ''), 'Dubai UAE'),
+            jsonb_build_object('v', 2, 'description', p_desc, 'offices', '{}'::jsonb, 'routes', '[]'::jsonb)::text,
+            true, false)
+    returning id into newid;
+  else
+    update shipping_agencies set
+      name = p_name,
+      whatsapp = coalesce(nullif(p_phone, ''), whatsapp),
+      country = coalesce(nullif(p_country, ''), country),
+      approved = true, suspended = false, rejected_reason = null
+    where id = newid;
+  end if;
+
+  perform _yayo_log('create_agency', 'agency', newid::text, p_name || ' · ' || lower(p_email));
+  return newid;
+end $$;
+

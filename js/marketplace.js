@@ -42,13 +42,14 @@ async function loadCars() {
       .select("*, dealers(*)")
       .eq("active", true).eq("sold", false)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(1000);
     if (!error && data && data.length > 0) {
-      // buyers only ever see listings from ADMIN-VERIFIED dealers
+      // buyers only ever see listings from businesses an admin let trade
       // dormant = asleep because the dealer's plan shrank (§32) — not for buyers
-      data = data.filter(l => !l.hidden && !l.dormant && l.dealers && l.dealers.verified && !l.dealers.suspended);
+      data = data.filter(l => !l.hidden && !l.dormant && yayoBizLive(l.dealers));
       ALL = data.map(l => ({
         id: l.id,
+        dealer_id: l.dealer_id,
         car_name: l.car_name,
         year: l.year,
         mileage: l.mileage,
@@ -62,6 +63,9 @@ async function loadCars() {
       }));
       // Real cars only — a buyer must never be able to open, favourite or
       // message about a car that does not exist (see js/app.js).
+      // Deal the cars between dealerships so the newest importer does not own
+      // every page (the default "Plus récentes" order is built from this).
+      ALL = yayoSpread(ALL);
     } else {
       ALL = [];
     }
@@ -72,8 +76,14 @@ async function loadCars() {
   yayoLoadVerdicts(ALL, render); // real AI price verdicts, badge appears when ready
 }
 
+// Browsing ONE dealership's stock (from "Nos vendeurs" on the landing page).
+// Kept out of the filter panel on purpose: it is a place you arrive at, with
+// one obvious way back to everything.
+let ONLY_DEALER = "";
+
 function readParams() {
   const p = new URLSearchParams(location.search);
+  ONLY_DEALER = p.get("dealer") || "";
   document.getElementById("mkt-q").value = p.get("q") || "";
   document.getElementById("f-min").value = p.get("min") || "";
   document.getElementById("f-max").value = p.get("max") || "";
@@ -105,6 +115,7 @@ function writeParams() {
   if (brands.length) p.set("brand", brands.join(","));
   if (fuels.length) p.set("fuel", fuels.join(","));
   if (bodies.length) p.set("body", bodies.join(","));
+  if (ONLY_DEALER) p.set("dealer", ONLY_DEALER);
   const s = p.toString();
   history.replaceState(null, "", s ? "?" + s : location.pathname);
 }
@@ -147,6 +158,7 @@ function applyFilters() {
   if (BUDGET && BUDGET.city && BUDGET.city !== CUR) setDestKey(BUDGET.city);
 
   FILTERED = ALL.filter(c => {
+    if (ONLY_DEALER && String(c.dealer_id) !== ONLY_DEALER) return false;
     if (BUDGET) {
       if (landedTotal(c.price, CUR) > BUDGET.amount) return false;
     } else if (q) {
@@ -171,6 +183,56 @@ function applyFilters() {
   render();
 }
 
+// "Vous regardez le stock de X" + one tap back to every car
+function renderDealerBanner() {
+  const el = document.getElementById("mkt-dealer");
+  if (!el) return;
+  if (!ONLY_DEALER) { el.hidden = true; return; }
+  const one = ALL.find(c => String(c.dealer_id) === ONLY_DEALER);
+  const n = ALL.filter(c => String(c.dealer_id) === ONLY_DEALER).length;
+  if (!one) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = `
+    ${yayoAvatarHtml(one.dealer.name, one.dealer.logo_url)}
+    <span class="mkt-d-name">${escapeHtml(one.dealer.name)}${one.dealer.verified ? " " + yayoVBadge() : ""}</span>
+    <span class="mkt-d-count">${n} ${n > 1 ? t("count_cars") : t("count_car")}</span>
+    <button type="button" class="mkt-d-clear" onclick="clearDealer()">${t("mkt_all_sellers")}</button>`;
+}
+function clearDealer() {
+  ONLY_DEALER = "";
+  applyFilters();
+}
+
+// A budget search that matched nothing: say WHY, in money, and offer the exit
+function renderBudgetMiss() {
+  const el = document.getElementById("mkt-budget-miss");
+  if (!el) return false;
+  el.hidden = true;
+  if (!BUDGET || CUR === "dubai" || !ALL.length) return false;
+  const pool = ONLY_DEALER ? ALL.filter(c => String(c.dealer_id) === ONLY_DEALER) : ALL;
+  if (!pool.length) return false;
+  const cheapest = Math.min(...pool.map(c => landedTotal(c.price, CUR)));
+  if (!(cheapest > BUDGET.amount)) return false;      // empty for another reason
+  const inDubai = pool.filter(c => Number(c.price) <= BUDGET.amount).length;
+  el.hidden = false;
+  el.innerHTML = `
+    <h3>${t("bmiss_h").replace("{b}", fmt(BUDGET.amount)).replace("{city}", DEST[CUR].name)}</h3>
+    <p>${t("bmiss_p").replace("{low}", fmt(cheapest)).replace("{city}", DEST[CUR].name)}</p>
+    ${inDubai ? `<button type="button" class="btn btn-solid" onclick="budgetInDubai()">${
+      t("bmiss_btn").replace("{n}", inDubai).replace("{b}", fmt(BUDGET.amount))}</button>` : ""}
+    <p class="bmiss-note">${t("bmiss_note")}</p>`;
+  document.getElementById("mkt-empty").hidden = true;
+  return true;
+}
+// "show me what I can afford at the Dubai price instead"
+function budgetInDubai() {
+  const amount = BUDGET ? BUDGET.amount : 0;
+  document.getElementById("mkt-q").value = "";
+  document.getElementById("f-max").value = amount || "";
+  setDestKey("dubai");
+  applyFilters();
+}
+
 function render() {
   const g = document.getElementById("car-grid");
   const empty = document.getElementById("mkt-empty");
@@ -182,9 +244,15 @@ function render() {
     : `${FILTERED.length} ${FILTERED.length > 1 ? t("count_cars") : t("count_car")} · ${CUR === "dubai" ? t("a_dubai") : t("count_rendu") + " " + dst.name}`;
   count.textContent = BUDGET ? `${base} · ${t("bud_lbl")} ≤ ${fmt(BUDGET.amount)}` : base;
 
+  renderDealerBanner();
   const req = document.getElementById("mkt-req");
   if (FILTERED.length === 0) {
     g.innerHTML = ""; empty.hidden = false;
+    // A budget that matches nothing must EXPLAIN itself. Typing "10000" next
+    // to a grid of $5 000 cars and getting an empty page reads as a broken
+    // site — but the budget is matched on the DELIVERED price, which for the
+    // cheapest car is more than double its Dubai price.
+    if (renderBudgetMiss()) { if (req) req.hidden = true; return; }
     // no match + they actually searched something → offer to record the demand
     if (req) {
       if (LAST_Q) {
@@ -197,6 +265,8 @@ function render() {
   }
   empty.hidden = true;
   if (req) req.hidden = true;
+  const miss = document.getElementById("mkt-budget-miss");
+  if (miss) miss.hidden = true;
 
   g.innerHTML = FILTERED.map(c => `
   <div class="car-card" onclick="openCar('${c.id || ""}')">

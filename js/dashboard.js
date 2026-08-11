@@ -229,7 +229,8 @@ function enterDealer() {
 function renderBadge() {
   const b = document.getElementById("dash-badge");
   b.className = DEALER.verified ? "vpill" : "dash-badge wait";
-  b.innerHTML = DEALER.verified ? "<b>" + t("d_verified") + "</b>" + yayoVBadge() : t("d_not_verified");
+  b.innerHTML = DEALER.verified ? "<b>" + t("d_verified") + "</b>" + yayoVBadge()
+    : (DEALER.approved ? t("d_active") : t("d_not_verified"));
 }
 
 // "En cours de vérification" banner — pending businesses can prepare their
@@ -241,9 +242,18 @@ function renderPendingBanner(kind) {
   if (!box) return;
   box.hidden = !!biz.verified;
   if (biz.verified) return;
+  const h = box.querySelector("h3");
   let txt = t("pend_p");
   if (biz.license_path) txt = t("pend_lic_ok") + " " + t("pend_p");
   if (biz.rejected_reason) txt = t("pend_rejected") + " « " + biz.rejected_reason + " ». " + t("pend_reapply");
+  // Trading already, badge not yet: a different message entirely — nothing is
+  // blocked, there is simply a badge left to earn.
+  if (biz.approved && !biz.rejected_reason) {
+    if (h) h.textContent = t("act_h");
+    txt = biz.license_path ? t("pend_lic_ok") + " " + t("act_wait") : t("act_p");
+  } else if (h) {
+    h.textContent = t("pend_h");
+  }
   p.textContent = txt;
 }
 
@@ -1387,7 +1397,8 @@ function enterAgency() {
   document.getElementById("ag-name").textContent = AGENCY.name;
   const b = document.getElementById("ag-badge");
   b.className = AGENCY.verified ? "vpill" : "dash-badge wait";
-  b.innerHTML = AGENCY.verified ? "<b>" + t("ag_verified") + "</b>" + yayoVBadge() : t("d_not_verified");
+  b.innerHTML = AGENCY.verified ? "<b>" + t("ag_verified") + "</b>" + yayoVBadge()
+    : (AGENCY.approved ? t("d_active") : t("d_not_verified"));
   renderPendingBanner("agency");
   renderAgencyOverview();
   A_LOGO = AGENCY.logo_url ? { url: AGENCY.logo_url } : null;
@@ -1953,6 +1964,9 @@ function bizList(type) { return type === "dealer" ? AD_DEALERS : AD_AGS; }
 function bizStatus(x) {
   if (x.suspended) return ["off", t("ad_st_suspended")];
   if (x.verified) return ["active", t("ad_st_verified") + " " + yayoVBadge()];
+  // Trading without the badge: an account opened in person, whose trade
+  // licence has not been checked yet. Live for buyers, but nothing claimed.
+  if (x.approved) return ["live", t("ad_st_active")];
   // A rejected application used to look identical to a brand-new one, so junk
   // signups piled up in the review queue disguised as work to do.
   if (x.rejected_reason) return ["rejected", t("ad_st_rejected")];
@@ -1965,6 +1979,7 @@ function bizActionsHtml(type, x) {
     ${type === "dealer" ? `<button onclick="adImportFor('${x.id}')">${t("ad_act_import")}</button>` : ""}
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
+    <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
     <button onclick="adVerify('${type}','${x.id}',${x.verified ? "false" : "true"})">${x.verified ? t("ad_unverify") : t("ad_verify")}</button>
     ${x.verified ? "" : `<button onclick="adReject('${type}','${x.id}')">${t("ad_act_reject")}</button>`}
     <button onclick="adSuspend('${type}','${x.id}',${x.suspended ? "false" : "true"})">${x.suspended ? t("ad_act_unsuspend") : t("ad_act_suspend")}</button>
@@ -1978,8 +1993,10 @@ function adRenderBiz(type) {
   const rows = bizList(type).filter(x => {
     if (q && !((x.name || "") + " " + (x.email || "")).toLowerCase().includes(q)) return false;
     if (f === "verified") return x.verified && !x.suspended;
+    // trading, but no licence checked → the queue of badges still to earn
+    if (f === "active") return x.approved && !x.verified && !x.suspended;
     // "pending" = still waiting on a first decision, so rejected ones drop out
-    if (f === "pending") return !x.verified && !x.suspended && !x.rejected_reason;
+    if (f === "pending") return !x.verified && !x.approved && !x.suspended && !x.rejected_reason;
     // matches what the badge shows: suspended wins over rejected
     if (f === "rejected") return !x.verified && !x.suspended && !!x.rejected_reason;
     if (f === "suspended") return !!x.suspended;
@@ -2060,12 +2077,34 @@ async function adBizAction(type, id, doRpc, apply) {
   } catch (e) { adFail(errId, e); }
 }
 
+// Let a business trade — WITHOUT giving it the badge. This is the state for
+// a dealership met in person: his cars are live, but nothing is claimed about
+// papers nobody has read.
+function adApprove(type, id, val) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (!val && !adConfirm("ad_c_unapprove", x.name)) return;
+  adBizAction(type, id,
+    () => adRpc("admin_set_approved", { subject: type, sid: id, val }),
+    y => {
+      y.approved = val;
+      if (val) y.rejected_reason = null; else y.verified = false;
+      if (!DEMO_ADMIN) yayoNotifyDecision(type, id);
+    });
+}
+
 function adVerify(type, id, val) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  // The badge means "we read his trade licence". Granting it to someone who
+  // never sent one is exactly the mistake this split exists to prevent — so
+  // say it out loud instead of doing it silently.
+  if (val && x && !x.license_path && !confirm(t("ad_verify_nolicense").replace("{name}", x.name))) return;
   adBizAction(type, id,
     () => adRpc("admin_set_verified", { subject: type, sid: id, val }),
-    x => {
-      x.verified = val;
-      if (val) { x.rejected_reason = null; if (!DEMO_ADMIN) yayoNotifyDecision(type, id); }
+    y => {
+      y.verified = val;
+      if (val) { y.approved = true; y.rejected_reason = null; }
+      if (!DEMO_ADMIN) yayoNotifyDecision(type, id);
     });
 }
 // Rename a business (e.g. a name typed in Arabic script → Latin letters so
@@ -2287,7 +2326,7 @@ function adReject(type, id) {
   adBizAction(type, id,
     () => adRpc("admin_reject", { subject: type, sid: id, reason }),
     y => {
-      y.verified = false; y.rejected_reason = reason;
+      y.verified = false; y.approved = false; y.rejected_reason = reason;
       // a genuine business should hear why, not discover it by chance
       if (!DEMO_ADMIN) yayoNotifyDecision(type, id);
     });
