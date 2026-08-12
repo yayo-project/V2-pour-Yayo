@@ -528,22 +528,39 @@ function embeddedInventoryUrl(html, baseUrl) {
   return null;
 }
 function urlsFromXml(xml) { const o = []; const re = /<loc>\s*([^<\s]+)\s*<\/loc>/gi; let m; while ((m = re.exec(xml))) o.push(m[1]); return o; }
+// The sitemap is the whole catalogue for the price of one request — the
+// cheapest thing we can do and the highest yield. Child sitemaps are fetched
+// TOGETHER: reading them one after another on a slow host burned the entire
+// time budget and returned 46 of Naz Motors' 463 trucks.
 async function sitemapDetailUrls(origin) {
   const roots = ["/sitemap.xml", "/sitemap_index.xml", "/wp-sitemap.xml"];
-  let queue = [];
-  for (const p of roots) { try { queue.push(await fetchPage(origin + p)); break; } catch (e) {} }
-  const details = new Set(); let hops = 0;
-  while (queue.length && hops < 10 && details.size < MAX_DETAIL_URLS) {
-    const xml = queue.shift(); hops++;
+  let first = null;
+  for (const p of roots) { try { first = await fetchPage(origin + p); break; } catch (e) {} }
+  if (!first) return [];
+
+  const details = new Set();
+  const harvest = (xml) => {
     for (const u of urlsFromXml(xml)) {
-      if (/\.xml(\?|$)/i.test(u)) {
-        if (/listing|vehicle|car|product|post|item/i.test(u) && queue.length < 8) { try { queue.push(await fetchPage(u)); } catch (e) {} }
-      } else if (!JUNK.test(u)) {
-        try { const p = new URL(u); if (DETAIL_QUERY.test(p.search) || pathKind(p.pathname) === "detail") details.add(u.split("#")[0]); } catch (e) {}
-      }
+      if (/\.xml(\?|$)/i.test(u) || JUNK.test(u)) continue;
+      try {
+        const p = new URL(u);
+        if (DETAIL_QUERY.test(p.search) || pathKind(p.pathname) === "detail") details.add(u.split("#")[0]);
+      } catch (e) {}
     }
+  };
+  harvest(first);
+
+  // an index of child sitemaps: read the ones that can hold cars, in parallel
+  const children = urlsFromXml(first)
+    .filter(u => /\.xml(\?|$)/i.test(u))
+    .filter(u => /listing|vehicle|voiture|annonce|car|auto|product|post|item|ad[_-]|stock|inventory/i.test(u))
+    .filter(u => !/attachment|image|media|category|cat[_-]|tag|author|user|brand|make|color|type|year|body|transmission|engine|condition|warranty|insurance|assemble|country/i.test(u))
+    .slice(0, 6);
+  if (children.length && budgetLeft() > 3000) {
+    const xmls = await Promise.all(children.map(u => fetchPage(u).catch(() => null)));
+    xmls.forEach(x => { if (x) harvest(x); });
   }
-  return [...details];
+  return [...details].slice(0, MAX_DETAIL_URLS);
 }
 // entry page + its index/category pages + sitemap → all detail URLs.
 // Sitemap and category pages are fetched in parallel to stay inside budget.
@@ -564,12 +581,20 @@ async function collectDetailUrls(entryUrl, entryHtml) {
   d0.forEach(u => details.add(u));
   // the entry page alone may already be enough; only dig deeper if there is time
   if (budgetLeft() < 4000) return [...details].slice(0, MAX_DETAIL_URLS);
-  const [sitemap, ...idxHtmls] = await Promise.all([
-    sitemapDetailUrls(new URL(entryUrl).origin).catch(() => []),
-    ...indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
-  ]);
-  (sitemap || []).forEach(u => details.add(u));
-  idxHtmls.forEach(x => { if (x && x.h) classifyLinks(x.h, x.u).details.forEach(u => details.add(u)); });
+
+  // The sitemap first, on its own: one request that can return the entire
+  // catalogue. Racing it against the category crawl let the crawl eat the
+  // budget and cost us 400 of one dealer's 463 trucks.
+  try { (await sitemapDetailUrls(new URL(entryUrl).origin)).forEach(u => details.add(u)); } catch (e) {}
+
+  // Only walk the category pages when the sitemap did not carry the catalogue
+  // (plenty of dealer sites have no useful sitemap at all).
+  if (details.size < 40 && budgetLeft() > 4000) {
+    const idxHtmls = await Promise.all(
+      indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
+    );
+    idxHtmls.forEach(x => { if (x && x.h) classifyLinks(x.h, x.u).details.forEach(u => details.add(u)); });
+  }
   // Nothing of his own? He may simply be showing his stock from somewhere else.
   if (details.size < 2) (await framedDetailUrls(entryUrl, entryHtml)).forEach(u => details.add(u));
   return [...details].slice(0, MAX_DETAIL_URLS);
