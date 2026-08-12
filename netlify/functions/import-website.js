@@ -587,9 +587,10 @@ async function collectDetailUrls(entryUrl, entryHtml) {
   // budget and cost us 400 of one dealer's 463 trucks.
   try { (await sitemapDetailUrls(new URL(entryUrl).origin)).forEach(u => details.add(u)); } catch (e) {}
 
-  // Only walk the category pages when the sitemap did not carry the catalogue
-  // (plenty of dealer sites have no useful sitemap at all).
-  if (details.size < 40 && budgetLeft() > 4000) {
+  // Then walk the category pages as well — some sites list cars the sitemap
+  // never mentions (Alba Cars: 59 in the sitemap, 176 on the pages). Running
+  // second is what matters: whatever the sitemap found is already safe.
+  if (budgetLeft() > 4000) {
     const idxHtmls = await Promise.all(
       indexes.slice(0, MAX_INDEX_PAGES).map(u => fetchPage(u).then(h => ({ u, h })).catch(() => null))
     );
