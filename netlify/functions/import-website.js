@@ -665,6 +665,22 @@ function detailPhotos(html, pageUrl) {
 // *declared* to be the price, and only then fall back to text.
 const PRICE_NOISE = /(filter|filtre|range|slider|min[-_ ]?price|max[-_ ]?price|price[-_ ]?(min|max|from|to)|search|recherche|widget|sidebar|compare|calculator|calculateur|finance|loan|emi|installment|mensual|monthly|par mois|\/mo\b|down[-_ ]?payment|شهري|قسط)/i;
 
+// The container a car-dealer theme puts THE car's price in. Everything else
+// on the page — the "similar cars" strip, the finance widget, a promo banner —
+// also contains money, and mixing them up gave six different BMWs the same
+// price. When this container exists, it is the only place we look.
+const OWN_PRICE_BOX = /class\s*=\s*["'][^"']*(single-car-prices|single-listing-price|single-regular-sale-price|listing-price|vehicle-price|car-price|product-price|price-box|price-wrap)[^"']*["']/i;
+
+function ownPriceRegion(html) {
+  const m = html.match(OWN_PRICE_BOX);
+  if (!m) return null;
+  const region = html.slice(m.index, m.index + 900);
+  // "AED 80 000 … Sale Price AED 850 000" — a sale ABOVE the normal price is
+  // a typo in the dealer's own data, so the lower of the two is what he sells
+  // at. Handled by taking the smallest amount in this block.
+  return region;
+}
+
 // every amount a page declares as ITS price, best first
 function priceCandidates(html) {
   const out = [];
@@ -708,8 +724,14 @@ function priceCandidates(html) {
 // from the best declared candidate instead of "the first amount on the page".
 function priceSnippet(text, html) {
   if (html) {
-    // Of the amounts a page declares as its price, the SMALLEST plausible one
-    // is the car's: a filter maximum is by construction larger than any car,
+    // First choice: the block the page itself marks as THIS car's price.
+    const own = ownPriceRegion(html);
+    if (own) {
+      const mine = priceCandidates(own).map(c => c.n).filter(n => n >= 900);
+      if (mine.length) return String(Math.min(...mine));
+    }
+    // Otherwise: of the amounts the page declares as a price, the SMALLEST
+    // plausible one. A filter maximum is by construction larger than any car,
     // and a struck-through "before" price is larger than what you pay now.
     // (Monthly instalments, the one thing that would be smaller, are excluded
     // by PRICE_NOISE before we get here.)
