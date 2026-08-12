@@ -988,14 +988,15 @@ exports.handler = async (event) => {
         try {
           const html = await fetchRetry(u, 2);
           const aed = /\bAED\b|د\.إ|dirham/i.test(html);
-          const cands = priceCandidates(html);
-          const best = cands.find(c => c.n >= 900);
-          if (!best) return { url: u, price_usd: null };
-          const usd = aed ? Math.round(best.n / AED_PER_USD) : best.n;
+          // the SAME rule the importer uses, or a re-check would "correct"
+          // prices to numbers a fresh import would never have produced
+          const best = parseInt(String(priceSnippet(stripHtml(html), html)).replace(/[^\d]/g, ""), 10);
+          if (!(best > 0)) return { url: u, price_usd: null };
+          const usd = aed ? Math.round(best / AED_PER_USD) : best;
           return {
             url: u,
             price_usd: usd,
-            price_original: best.n,
+            price_original: best,
             currency: aed ? "AED" : "USD",
             // still out of range → the page itself is unreadable for price
             doubt: usd > PRICE_MAX_USD || usd < PRICE_MIN_USD
