@@ -48,6 +48,11 @@ function budgetLeft() { return DEADLINE ? Math.max(0, DEADLINE - Date.now()) : F
 
 // A URL segment that talks about cars ("used-cars", "listings", "vehicules"…)
 const CAR_SEG = /(listing|vehicle|vehicule|voiture|annonce|inventory|inventaire|stock|product|item|car|auto|used|occasion|preowned|pre-owned)/i;
+// Short words that only mean "a car ad" when they are the WHOLE segment.
+// nazmotor.com files every truck under /ad/<slug>/ — as a substring "ad"
+// would also match "download", "admin" and "adventure", so it is matched
+// exactly or not at all.
+const CAR_SEG_EXACT = /^(ad|ads|advert|adverts|annonces|unit|units|detail|details)$/i;
 // …but these are SERVICE / content pages, never a car ("car-care", "book_car")
 const SERVICE_SEG = /(care|wash|detail(ing)?|service|repair|maintenance|warrant|insurance|finance|loan|lease|rental|rent|hire|part|accessor|blog|news|tip|guide|about|contact|team|career|job|privacy|terms|polic|faq|valuation|sell|trade|export|import|shipping|showroom|branch|location|book|reserve|payment|checkout|quote|test-?drive|compare|favou?rite|profile|login|register|search)/i;
 // A query that identifies ONE car, e.g. product.php?product=slug, ?vid=123.
@@ -71,7 +76,7 @@ function pathKind(pathname) {
   // nested, e.g. /buy-used-cars/vehicle/1424-audi-q8 — the slug sits two
   // levels down, and stopping at the first segment mislabels it a category.
   for (let i = 0; i < segs.length; i++) {
-    if (!CAR_SEG.test(segs[i]) || SERVICE_SEG.test(segs[i])) continue;
+    if (!(CAR_SEG.test(segs[i]) || CAR_SEG_EXACT.test(segs[i])) || SERVICE_SEG.test(segs[i])) continue;
     sawCarSeg = true;
     const next = segs[i + 1];
     if (next && !SERVICE_SEG.test(next) && sluggy(next)) return "detail";
@@ -478,7 +483,13 @@ async function carsFromDataFeeds(entryHtml, url) {
 }
 
 // ── link classification & discovery crawl ─────────────────────
-function classifyLinks(html, baseUrl) {
+// A car page on a classifieds portal is named after the car and carries the
+// ad's id — "/2017-mercedes-benz-e43-amg-912138.html". There is no /car/ or
+// /listing/ segment to recognise, so this shape is only trusted on a page we
+// were sent to deliberately (a dealer's own page on that portal).
+const PORTAL_DETAIL = /\/[a-z0-9]+(?:-[a-z0-9]+){2,}-\d{4,}(?:\.html?)?$/i;
+
+function classifyLinks(html, baseUrl, portal) {
   const details = new Set(), indexes = new Set();
   const host = new URL(baseUrl).host;
   const re = /<a[^>]*href\s*=\s*["']([^"'\s]+)["']/gi;
@@ -492,9 +503,29 @@ function classifyLinks(html, baseUrl) {
     try { const p = new URL(u); path = p.pathname; query = p.search; } catch (e) { continue; }
     const kind = pathKind(path);
     if (DETAIL_QUERY.test(query) || kind === "detail") details.add(u);
+    else if (portal && PORTAL_DETAIL.test(path) && !SERVICE_SEG.test(path)) details.add(u);
     else if (kind === "index" || INDEX_QUERY.test(query)) indexes.add(u);
   }
   return { details: [...details], indexes: [...indexes], host };
+}
+
+// Some dealer websites hold no stock at all: the shop window is an <iframe>
+// onto the dealer's own page on a classifieds portal (Ibitisam Motors is a
+// Dubicars frame from top to bottom). The cars are still his — follow the
+// frame to find them.
+function embeddedInventoryUrl(html, baseUrl) {
+  const re = /<iframe[^>]*src\s*=\s*["']([^"'\s]+)["']/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const u = absUrl(m[1], baseUrl);
+    if (!u || sameHost(u, baseUrl)) continue;            // its own frames: not inventory
+    let p; try { p = new URL(u); } catch (e) { continue; }
+    if (/youtube|vimeo|google|facebook|instagram|maps|recaptcha|tawk|whatsapp/i.test(p.host)) continue;
+    // the frame usually carries display options — the plain page is the one
+    // with every car and real links on it
+    return p.origin + p.pathname;
+  }
+  return null;
 }
 function urlsFromXml(xml) { const o = []; const re = /<loc>\s*([^<\s]+)\s*<\/loc>/gi; let m; while ((m = re.exec(xml))) o.push(m[1]); return o; }
 async function sitemapDetailUrls(origin) {
@@ -516,6 +547,17 @@ async function sitemapDetailUrls(origin) {
 }
 // entry page + its index/category pages + sitemap → all detail URLs.
 // Sitemap and category pages are fetched in parallel to stay inside budget.
+// The dealer's stock lives on another site he embeds — read it there.
+async function framedDetailUrls(entryUrl, entryHtml) {
+  const framed = embeddedInventoryUrl(entryHtml, entryUrl);
+  if (!framed || budgetLeft() < 4000) return [];
+  try {
+    const html = await fetchPage(framed);
+    const { details } = classifyLinks(html, framed, true);
+    return details;
+  } catch (e) { return []; }
+}
+
 async function collectDetailUrls(entryUrl, entryHtml) {
   const details = new Set();
   const { details: d0, indexes } = classifyLinks(entryHtml, entryUrl);
@@ -528,6 +570,8 @@ async function collectDetailUrls(entryUrl, entryHtml) {
   ]);
   (sitemap || []).forEach(u => details.add(u));
   idxHtmls.forEach(x => { if (x && x.h) classifyLinks(x.h, x.u).details.forEach(u => details.add(u)); });
+  // Nothing of his own? He may simply be showing his stock from somewhere else.
+  if (details.size < 2) (await framedDetailUrls(entryUrl, entryHtml)).forEach(u => details.add(u));
   return [...details].slice(0, MAX_DETAIL_URLS);
 }
 
