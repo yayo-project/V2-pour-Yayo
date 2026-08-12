@@ -1,2 +1,6 @@
 .claude/
 {css,js,assets}/
+
+# scratch folder for testing the importer against saved pages — never commit
+_pt/
+
