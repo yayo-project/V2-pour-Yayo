@@ -1756,3 +1756,38 @@ end $$;
 
 grant execute on function public.admin_set_logo(text, uuid, text) to authenticated;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 41) THE ADMIN CAN ADD A BUSINESS'S SHOWROOM PHOTOS
+-- The mirror of §40 for the gallery: a buyer 5 000 km away
+-- judges a seller on the photos of his showroom (or an agency
+-- on its warehouse and trucks). A dealer signed up in person
+-- will not upload them himself, so the founder can do it for
+-- him. Same guard: only images already uploaded to Yayo.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_set_photos(subject text, sid uuid, urls jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare u text; n int := 0;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if urls is null or jsonb_typeof(urls) <> 'array' then
+    raise exception 'urls must be a json array';
+  end if;
+  for u in select jsonb_array_elements_text(urls) loop
+    n := n + 1;
+    if u not like 'https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/%' then
+      raise exception 'photos must be uploaded Yayo images';
+    end if;
+  end loop;
+  if n > 12 then raise exception 'too many photos'; end if;
+
+  if subject = 'dealer' then
+    update dealers set photos = urls where id = sid;
+  else
+    update shipping_agencies set photos = urls where id = sid;
+  end if;
+  perform _yayo_log('set_photos', subject, sid::text, n || ' photo(s)');
+end $$;
+
+grant execute on function public.admin_set_photos(text, uuid, jsonb) to authenticated;
+

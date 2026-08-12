@@ -227,6 +227,128 @@ function yayoShuffle(a) {
   return out;
 }
 
+// ── Full-screen photo viewer ─────────────────────────────────────
+// A buyer deciding whether to trust a seller 5 000 km away needs to SEE the
+// showroom, not a 90-pixel thumbnail. Tap any photo: it fills the screen,
+// tap again (or double-tap on a phone) to magnify and drag around.
+// yayoZoom(urls, startIndex)
+const YZ_SCALE = 2.4;   // how much a tap magnifies the photo
+
+function yayoZoom(urls, start) {
+  const list = (Array.isArray(urls) ? urls : [urls]).filter(Boolean);
+  if (!list.length) return;
+  let i = Math.max(0, Math.min(start || 0, list.length - 1));
+  let zoomed = false;
+
+  const old = document.getElementById("yayo-zoom");
+  if (old) old.remove();
+  const box = document.createElement("div");
+  box.id = "yayo-zoom";
+  box.className = "yz";
+  box.innerHTML = `
+    <button class="yz-x" aria-label="Fermer">✕</button>
+    ${list.length > 1 ? `<button class="yz-nav yz-prev" aria-label="←">‹</button>
+                         <button class="yz-nav yz-next" aria-label="→">›</button>` : ""}
+    <img class="yz-img" alt="">
+    ${list.length > 1 ? `<div class="yz-count"></div>` : ""}`;
+  document.body.appendChild(box);
+  document.body.style.overflow = "hidden";
+
+  const img = box.querySelector(".yz-img");
+  const cnt = box.querySelector(".yz-count");
+  // ONE place decides how the photo is drawn. (Driving the magnification from
+  // a CSS class while the drag handler wrote an inline transform meant the two
+  // fought each other and the photo never grew.)
+  let ox = 0, oy = 0;
+  const draw = () => {
+    img.style.transform = zoomed ? `scale(${YZ_SCALE}) translate(${ox / YZ_SCALE}px, ${oy / YZ_SCALE}px)` : "";
+    img.classList.toggle("on", zoomed);
+  };
+  const show = () => {
+    img.src = list[i];
+    zoomed = false; ox = 0; oy = 0;
+    draw();
+    if (cnt) cnt.textContent = (i + 1) + " / " + list.length;
+  };
+  const go = (d) => { i = (i + d + list.length) % list.length; show(); };
+  let onMove = null, onUp = null;
+  const close = () => {
+    box.remove();
+    document.body.style.overflow = "";
+    document.removeEventListener("keydown", onKey);
+    if (onMove) window.removeEventListener("mousemove", onMove);
+    if (onUp) window.removeEventListener("mouseup", onUp);
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowRight") go(1);
+    else if (e.key === "ArrowLeft") go(-1);
+  };
+  document.addEventListener("keydown", onKey);
+
+  box.querySelector(".yz-x").onclick = close;
+  const prev = box.querySelector(".yz-prev"), next = box.querySelector(".yz-next");
+  if (prev) prev.onclick = (e) => { e.stopPropagation(); go(-1); };
+  if (next) next.onclick = (e) => { e.stopPropagation(); go(1); };
+  // clicking the dark surround closes; clicking the photo magnifies it
+  box.onclick = (e) => { if (e.target === box) close(); };
+  img.onclick = (e) => {
+    e.stopPropagation();
+    if (moved) { moved = false; return; }   // that click was the end of a drag
+    zoomed = !zoomed;
+    if (!zoomed) { ox = 0; oy = 0; }
+    draw();
+  };
+  // drag to pan while magnified
+  let dragging = false, moved = false, sx = 0, sy = 0, bx = 0, by = 0;
+  const down = (x, y) => { if (!zoomed) return; dragging = true; moved = false; sx = x; sy = y; bx = ox; by = oy; };
+  const move = (x, y) => {
+    if (!dragging) return;
+    if (Math.abs(x - sx) > 4 || Math.abs(y - sy) > 4) moved = true;
+    ox = bx + x - sx; oy = by + y - sy;
+    draw();
+  };
+  const up = () => { dragging = false; };
+  img.addEventListener("mousedown", e => { e.preventDefault(); down(e.clientX, e.clientY); });
+  // on window, so a drag that leaves the photo still works — and removed on
+  // close, or every opening would leave another pair behind
+  onMove = e => move(e.clientX, e.clientY);
+  onUp = () => up();
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+  // on a phone: swipe between photos when not magnified, pan when magnified
+  let tx = 0, ty = 0;
+  img.addEventListener("touchstart", e => {
+    const t0 = e.touches[0]; tx = t0.clientX; ty = t0.clientY; down(t0.clientX, t0.clientY);
+  }, { passive: true });
+  img.addEventListener("touchmove", e => {
+    if (!zoomed) return;
+    e.preventDefault();
+    const t0 = e.touches[0]; move(t0.clientX, t0.clientY);
+  }, { passive: false });
+  img.addEventListener("touchend", e => {
+    const t0 = e.changedTouches[0];
+    up();
+    if (zoomed) return;
+    const dx = t0.clientX - tx, dy = t0.clientY - ty;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+  });
+  show();
+}
+
+// Make a set of <img> open the viewer. Called after any gallery is rendered.
+function yayoZoomable(container, urls) {
+  const el = typeof container === "string" ? document.getElementById(container) : container;
+  if (!el) return;
+  const imgs = [...el.querySelectorAll("img")];
+  const all = urls && urls.length ? urls : imgs.map(im => im.src);
+  imgs.forEach((im, k) => {
+    im.classList.add("yz-open");
+    im.style.cursor = "zoom-in";
+    im.onclick = (e) => { e.preventDefault(); e.stopPropagation(); yayoZoom(all, k); };
+  });
+}
+
 // Skeleton shimmer cards shown while real listings load (premium loading feel)
 function yayoSkelCards(n) {
   return Array.from({ length: n }, () => `

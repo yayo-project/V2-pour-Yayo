@@ -99,11 +99,17 @@ function render() {
   if (d.logo_url) av.innerHTML = `<img src="${escapeHtml(d.logo_url)}" alt="" onerror="this.remove()">`;
   else av.textContent = d.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   document.getElementById("vd-dealer-name").textContent = d.name;
-  // Showroom photos build trust — shown only if the dealer uploaded some
+  // Showroom photos build trust — but only if the buyer can actually SEE them.
+  // Every one opens full-screen, and the logo opens with them.
   const gal = document.getElementById("vd-dealer-gal");
-  const pics = (d.photos || []).slice(0, 3);
+  const all = (d.photos || []);
+  const pics = all.slice(0, 3);
   gal.hidden = !pics.length;
-  gal.innerHTML = pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("");
+  gal.innerHTML = pics.map((u, k) =>
+    `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">${
+      k === 2 && all.length > 3 ? `<span class="gal-more">+${all.length - 3}</span>` : ""}`).join("");
+  if (pics.length) yayoZoomable(gal, all);
+  if (d.logo_url) yayoZoomable(av, [d.logo_url].concat(all));
   // The trust pill next to the dealer name — big, blue, unmissable.
   // No licence checked yet = no badge, and no invented substitute for one:
   // just the plain fact that he sells on Yayo from Dubai.
@@ -190,6 +196,9 @@ function renderGallery() {
   const img = document.getElementById("vd-img");
   img.alt = CAR.car_name;
   img.onerror = function () { this.parentNode.classList.add("noimg"); this.style.display = "none"; };
+  // the car photo itself opens full-screen, starting on the one being viewed
+  img.style.cursor = "zoom-in";
+  img.onclick = () => yayoZoom(GAL, GAL_I);
   galShow(0);
 
   const multi = GAL.length > 1;

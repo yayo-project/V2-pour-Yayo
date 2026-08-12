@@ -50,11 +50,15 @@ async function render() {
 
   document.getElementById("ap-name").textContent = AG.name;
   document.getElementById("ap-logo").innerHTML = yayoAvatarHtml(AG.name, AG.logo_url, true);
-  // Operation photos (trucks, warehouse, loading…) — honest placeholder if none yet
+  // Operation photos (trucks, warehouse, loading…) — honest placeholder if none
+  // yet. Each one opens full-screen: a buyer judging an agency he will never
+  // visit needs to see the warehouse, not a thumbnail of it.
   const pics = AG.photos || [];
   document.getElementById("ap-gallery").innerHTML = pics.length
     ? `<div class="gal-row">${pics.map(u => `<img src="${escapeHtml(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("")}</div>`
     : `<div class="gal-empty" data-i18n="ap_gallery_empty">${t("ap_gallery_empty")}</div>`;
+  if (pics.length) yayoZoomable(document.getElementById("ap-gallery"), pics);
+  if (AG.logo_url) yayoZoomable(document.getElementById("ap-logo"), [AG.logo_url].concat(pics));
   const b = document.getElementById("ap-badge");
   b.className = AG.verified ? "vpill" : "dash-badge wait";
   b.innerHTML = AG.verified ? "<b>" + t("ag_verified") + "</b>" + yayoVBadge() : t("d_not_verified");

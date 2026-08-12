@@ -1986,6 +1986,7 @@ function bizActionsHtml(type, x) {
     ${type === "dealer" ? `<button onclick="adImportFor('${x.id}')">${t("ad_act_import")}</button>` : ""}
     ${type === "dealer" ? `<button onclick="adFixPrices('${x.id}')">${t("ad_act_fixprices")}</button>` : ""}
     <button onclick="adPickLogo('${type}','${x.id}')">${t("ad_act_logo")}</button>
+    <button onclick="adPickPhotos('${type}','${x.id}')">${t("ad_act_photos")}</button>
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
@@ -2055,10 +2056,29 @@ function adOpenBiz(type, id) {
       <button class="ad-inline-btn" onclick="adResetImport('${x.id}')">${t("ad_reset_site")}</button></p>` : ""}
     ${x.rejected_reason ? `<p class="ad-dl ad-reason"><b>${t("ad_d_reason")}</b> ${escapeHtml(x.rejected_reason)}</p>` : ""}
     ${type === "dealer" ? `<p class="ad-dl"><b>${nL}</b> ${t("ad_d_listings")}</p>` : ""}
-    ${gal.length ? `<div class="up-thumbs">${gal.slice(0, 6).map(u => `<div class="up-thumb"><img src="${escapeHtml(u)}" alt=""></div>`).join("")}</div>` : ""}
+    ${gal.length ? `<div class="up-thumbs" id="ad-gal-thumbs">${gal.map((u, k) =>
+      `<div class="up-thumb"><img src="${escapeHtml(u)}" alt="">
+        <button type="button" title="${t("ad_gal_rm")}" onclick="event.stopPropagation();adRmPhoto('${type}','${x.id}',${k})">✕</button></div>`).join("")}</div>` : ""}
     <div class="dash-td-actions ad-detail-actions">${bizActionsHtml(type, x)}</div>
   </div>`;
+  // check the photos the way a buyer will see them: full screen
+  if (gal.length && typeof yayoZoomable === "function") yayoZoomable("ad-gal-thumbs", gal);
   box.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Remove one showroom photo (wrong picture, blurred shot, changed premises)
+async function adRmPhoto(type, id, index) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  const urls = yayoPhotoList(x.photos).slice();
+  urls.splice(index, 1);
+  if (DEMO_ADMIN) { x.photos = urls; adOpenBiz(type, id); return; }
+  try {
+    await adRpc("admin_set_photos", { subject: type, sid: id, urls });
+    x.photos = urls;
+    adRenderBiz(type);
+    adOpenBiz(type, id);
+  } catch (e) { adFail(type === "dealer" ? "ad-dealers-err" : "ad-ag-err", e); }
 }
 
 // The trust gate: open the uploaded trade license (private bucket, signed URL)
@@ -2155,6 +2175,50 @@ function adPickLogo(type, id) {
     if (f) adUploadLogo(type, id, f);
   };
   inp.click();
+}
+
+// The showroom (or the agency's trucks and warehouse). Same idea as the logo:
+// the founder photographs the place while he is standing in it.
+function adPickPhotos(type, id) {
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  let inp = document.getElementById("ad-gal-file");
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*"; inp.multiple = true; inp.id = "ad-gal-file"; inp.hidden = true;
+    document.body.appendChild(inp);
+  }
+  inp.onchange = () => {
+    const files = [...(inp.files || [])];
+    inp.value = "";
+    if (files.length) adUploadPhotos(type, id, files);
+  };
+  inp.click();
+}
+
+async function adUploadPhotos(type, id, files) {
+  const errId = type === "dealer" ? "ad-dealers-err" : "ad-ag-err";
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  try {
+    const bucket = type === "dealer" ? "car-photos" : "agency-photos";
+    // added to what the business already has, never replacing it
+    const urls = yayoPhotoList(x && x.photos).slice();
+    if (typeof yayoToast === "function") yayoToast(t("ad_gal_working").replace("{n}", files.length));
+    for (const f of files.slice(0, 12 - urls.length)) {
+      if (!f.type.startsWith("image/")) continue;
+      const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const path = id + "/gallery-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
+      const up = await yayoSB().storage.from(bucket).upload(path, f, { contentType: f.type });
+      if (up.error) throw up.error;
+      urls.push(yayoSB().storage.from(bucket).getPublicUrl(path).data.publicUrl);
+    }
+    await adRpc("admin_set_photos", { subject: type, sid: id, urls });
+    if (x) x.photos = urls;
+    adRenderBiz(type);
+    adOpenBiz(type, id);          // reopen so he sees the new photos at once
+    if (typeof yayoToast === "function") yayoToast(t("ad_gal_ok").replace("{n}", urls.length));
+  } catch (e) {
+    adFail(errId, new Error(t("ad_gal_fail") + (e.message || e)));
+  }
 }
 
 async function adUploadLogo(type, id, file) {
