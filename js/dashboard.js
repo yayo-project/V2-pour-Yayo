@@ -1985,6 +1985,7 @@ function bizActionsHtml(type, x) {
     <button onclick="adRename('${type}','${x.id}')">${t("ad_act_rename")}</button>
     ${type === "dealer" ? `<button onclick="adImportFor('${x.id}')">${t("ad_act_import")}</button>` : ""}
     ${type === "dealer" ? `<button onclick="adFixPrices('${x.id}')">${t("ad_act_fixprices")}</button>` : ""}
+    <button onclick="adPickLogo('${type}','${x.id}')">${t("ad_act_logo")}</button>
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
@@ -2136,6 +2137,47 @@ function adRename(type, id) {
     () => adRpc("admin_rename_business", { subject: type, sid: id, newname: newname.trim() }),
     y => { y.name = newname.trim(); });
 }
+// ── Give a business its profile picture ──────────────────────────
+// A dealer signed up in person will not upload a logo the first evening,
+// and a grey circle beside his cars is the weakest thing on the page. The
+// founder can take a photo of the showroom sign and set it himself.
+function adPickLogo(type, id) {
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  let inp = document.getElementById("ad-logo-file");
+  if (!inp) {
+    inp = document.createElement("input");
+    inp.type = "file"; inp.accept = "image/*"; inp.id = "ad-logo-file"; inp.hidden = true;
+    document.body.appendChild(inp);
+  }
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    inp.value = "";
+    if (f) adUploadLogo(type, id, f);
+  };
+  inp.click();
+}
+
+async function adUploadLogo(type, id, file) {
+  const errId = type === "dealer" ? "ad-dealers-err" : "ad-ag-err";
+  try {
+    if (!file.type.startsWith("image/")) throw new Error("image only");
+    const bucket = type === "dealer" ? "car-photos" : "agency-photos";
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = id + "/logo-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
+    const up = await yayoSB().storage.from(bucket).upload(path, file, { contentType: file.type });
+    if (up.error) throw up.error;
+    const url = yayoSB().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+    await adRpc("admin_set_logo", { subject: type, sid: id, url });
+    const x = bizList(type).find(r => String(r.id) === String(id));
+    if (x) x.logo_url = url;
+    adRenderBiz(type);
+    document.getElementById(type === "dealer" ? "ad-d-detail" : "ad-a-detail").innerHTML = "";
+    if (typeof yayoToast === "function") yayoToast(t("ad_logo_ok"));
+  } catch (e) {
+    adFail(errId, new Error(t("ad_logo_fail") + (e.message || e)));
+  }
+}
+
 // ── Re-read the real prices of a dealer's imported cars ──────────
 // The first reader could take a filter's maximum instead of the car's price
 // (a Vios arrived at $231,450). This goes back to each source page, reads

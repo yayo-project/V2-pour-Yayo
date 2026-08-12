@@ -67,8 +67,11 @@ async function loadCars() {
   }
   // one dealership importing 400 cars must not own the whole page
   ALL_CARS = yayoSpread(list);
-  CARS = ALL_CARS.slice(0, YAYO_CONFIG.FEATURED_LIMIT);
-  ARRIVALS = ALL_CARS.slice(YAYO_CONFIG.FEATURED_LIMIT, YAYO_CONFIG.FEATURED_LIMIT + 10);
+  // The window: affordable, mixed, and different on every visit.
+  CARS = yayoFeatured(ALL_CARS, YAYO_CONFIG.FEATURED_LIMIT);
+  // The strip below stays chronological — that one IS "what just arrived".
+  const shown = new Set(CARS.map(c => c.id));
+  ARRIVALS = ALL_CARS.filter(c => !shown.has(c.id)).slice(0, 10);
   renderCars();
   renderArrivals();
   renderBudget();

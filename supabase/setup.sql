@@ -1729,3 +1729,30 @@ end $$;
 
 grant execute on function public.admin_set_listing_price(uuid, numeric, boolean) to authenticated;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 40) THE ADMIN CAN FIX A BUSINESS'S PROFILE PICTURE
+-- A dealer signed up in person will not upload a logo on his
+-- first evening, and a nameless grey circle next to his cars is
+-- the weakest thing on the marketplace. The founder can now set
+-- it for him from the admin panel. Audited like every other
+-- admin action; the business can still change it himself.
+-- ═══════════════════════════════════════════════════════════
+create or replace function public.admin_set_logo(subject text, sid uuid, url text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  -- only a Yayo storage URL: this can never be pointed at another site
+  if url is not null and url not like 'https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/%' then
+    raise exception 'logo must be an uploaded Yayo image';
+  end if;
+  if subject = 'dealer' then
+    update dealers set logo_url = url where id = sid;
+  else
+    update shipping_agencies set logo_url = url where id = sid;
+  end if;
+  perform _yayo_log('set_logo', subject, sid::text, coalesce(url, 'removed'));
+end $$;
+
+grant execute on function public.admin_set_logo(text, uuid, text) to authenticated;
+

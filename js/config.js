@@ -29,7 +29,7 @@ const YAYO_CONFIG = {
     dubai:    { name: "Dubai",    flag: "🇦🇪", ship: 0, fees: 0, duty: 0, customs: null }
   },
   DEFAULT_DEST: "kinshasa",
-  FEATURED_LIMIT: 6,
+  FEATURED_LIMIT: 8,
 
   // Real Al Aweer market photos for the landing hero. Empty = hero stays
   // text-only. Drop files in assets/hero/ then list them here, e.g.
@@ -154,6 +154,75 @@ function yayoSpread(list, keyOf) {
   while (any) {
     any = false;
     for (const q of queues) if (q.length) { out.push(q.shift()); any = true; }
+  }
+  return out;
+}
+
+// ── What goes in the shop window ─────────────────────────────────
+// The front page is not "the newest cars", it is the argument that Yayo is
+// worth using: cars an African buyer can actually afford, spread across
+// price levels, brands and sellers — and different on every visit, so a
+// returning buyer sees new stock instead of the same eight cars.
+const YAYO_COMMERCIAL = /(truck|camion|dumper|tipper|bus|coaster|canter|dyna|elf|fuso|hino|forward|giga|ranger|trailer|tanker|mixer|crane|van\b|starbus|tgs|arocs|actros|bongo|tractor|massey|forklift|excavat|loader|freezer|\bud\b|\bhd ?\d)/i;
+
+function yayoFeatured(list, n) {
+  const cars = list.filter(c => (c.photo_url || (c.photos || []).length) && Number(c.price) > 0);
+  if (cars.length <= n) return yayoShuffle(cars);
+
+  // Ignore the very top of the market: a $500 000 car in the window makes a
+  // buyer think Yayo is not for him. Keep everything up to the 85th percentile.
+  const sorted = cars.slice().sort((a, b) => Number(a.price) - Number(b.price));
+  const ceiling = Number(sorted[Math.floor(sorted.length * 0.85)].price);
+  const pool = sorted.filter(c => Number(c.price) <= ceiling);
+
+  // Four price levels, cheapest first, two cars from each: whatever a visitor
+  // can spend, he sees something for him in the first screen.
+  const bands = 4, perBand = Math.max(1, Math.round(n / bands));
+  const size = Math.ceil(pool.length / bands);
+  const picked = [];
+  const makeCount = {}, dealerCount = {};
+  let commercial = 0;
+  const maxCommercial = Math.max(2, Math.floor(n / 4));
+  const fits = (c) => {
+    const mk = String(c.car_name || "").trim().split(/\s+/)[0].toLowerCase();
+    const dl = String(c.dealer_id || "");
+    // One seller's 200 Japanese trucks must not become the face of Yayo:
+    // most visitors are buying a family car, so lorries stay a minority.
+    if (YAYO_COMMERCIAL.test(c.car_name || "") && commercial >= maxCommercial) return false;
+    return (makeCount[mk] || 0) < 2 && (dealerCount[dl] || 0) < Math.ceil(n / 2);
+  };
+  const take = (c) => {
+    const mk = String(c.car_name || "").trim().split(/\s+/)[0].toLowerCase();
+    const dl = String(c.dealer_id || "");
+    if (YAYO_COMMERCIAL.test(c.car_name || "")) commercial++;
+    makeCount[mk] = (makeCount[mk] || 0) + 1;
+    dealerCount[dl] = (dealerCount[dl] || 0) + 1;
+    picked.push(c);
+  };
+  for (let b = 0; b < bands && picked.length < n; b++) {
+    const band = yayoShuffle(pool.slice(b * size, (b + 1) * size));
+    let got = 0;
+    for (const c of band) {
+      if (got >= perBand || picked.length >= n) break;
+      if (picked.includes(c) || !fits(c)) continue;
+      take(c); got++;
+    }
+  }
+  // a thin band (or a one-brand catalogue) must never leave a hole in the grid
+  if (picked.length < n) {
+    for (const c of yayoShuffle(pool)) {
+      if (picked.length >= n) break;
+      if (!picked.includes(c)) take(c);
+    }
+  }
+  return yayoShuffle(picked);
+}
+
+function yayoShuffle(a) {
+  const out = a.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
 }

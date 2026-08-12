@@ -298,6 +298,9 @@ gtag('config', 'G-NR2LTEVKET');
         <div class="auth-ok" id="v-ok" hidden></div>
         <button type="submit" class="btn btn-solid btn-block" id="v-btn" style="margin-top:14px" data-i18n="v_reg_btn">Créer mon compte</button>
         <p class="auth-note" data-i18n="v_apply_note">Votre demande passe en vérification (sous 24h). Vous accédez à votre dashboard immédiatement pour préparer votre profil.</p>
+        <!-- A seller who already signed up should not have to hunt for the way in -->
+        <p class="auth-switch" id="v-have"><span data-i18n="v_have_account">Vous avez déjà un compte ?</span>
+          <a href="connexion.html?next=dashboard.html" data-i18n="v_login_link">Se connecter</a></p>
       </form>
     </div>
   </div>
@@ -362,6 +365,8 @@ let LOGGED_USER = null;
   lg.hidden = false;
   lg.textContent = t("v_logged_as") + " " + LOGGED_USER.email;
   document.getElementById("v-btn").textContent = t("v_apply_btn");
+  // already signed in — the "log in" line would only confuse
+  document.getElementById("v-have").hidden = true;
 })();
 
 // ── "Voir mes voitures" — read the dealer's own site before he signs up ──

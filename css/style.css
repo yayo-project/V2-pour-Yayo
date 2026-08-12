@@ -254,7 +254,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   /* links people must be able to tap with a thumb */
   .sec-link{padding:10px 0;display:inline-flex;align-items:center}
   .footer-bottom .report-link{padding:10px 8px}
-  .rv-login,.auth-switch a,.auth-note a{display:inline-block;padding:6px 0}
+  .rv-login,.auth-switch a,.auth-note a{display:inline-block;padding:11px 8px;min-height:44px;line-height:22px}
   .legal a{display:inline-block;padding:6px 2px}
   /* footer: centered, clean, nothing cut */
   .footer .footer-brand .logo-img{height:28px}
