@@ -1991,6 +1991,7 @@ function bizActionsHtml(type, x) {
     <button onclick="adPickLogo('${type}','${x.id}')">${t("ad_act_logo")}</button>
     <button onclick="adPickPhotos('${type}','${x.id}')">${t("ad_act_photos")}</button>
     ${x.welcomed_at ? "" : `<button onclick="adWelcomeOne('${type}','${x.id}')">${t("ad_act_welcome")}</button>`}
+    ${x.license_path ? "" : `<button onclick="adAskLicence('${type}','${x.id}')">${t("ad_act_asklic")}</button>`}
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
@@ -2193,6 +2194,42 @@ async function adWelcomeAll(type) {
   }
   adRenderBiz(type);
   yayoToast(t("ad_wel_done").replace("{n}", ok) + (fail ? " · " + t("ad_wel_failn").replace("{n}", fail) : ""));
+}
+
+// ── Asking for the trade licence ─────────────────────────────────
+// The badge cannot be given until someone has read the licence, and the
+// badge is what makes a buyer write to this seller rather than another.
+function adAskLicence(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  if (!x.email) { yayoToast(t("ad_wel_noemail")); return; }
+  if (!confirm(t("ad_lic_confirm").replace("{name}", x.name).replace("{email}", x.email))) return;
+  yayoNotifyWelcome(type, id, { kind: "licence", force: true }).then(r => {
+    if (r && r.sent) { x.licence_asked_at = new Date().toISOString(); adRenderBiz(type); yayoToast(t("ad_wel_sent").replace("{email}", x.email)); }
+    else yayoToast(t("ad_wel_fail") + ((r && (r.error || r.skipped)) || ""));
+  });
+}
+
+// Everyone trading without a licence on file (the server skips anyone asked
+// in the last week, so pressing this twice costs nothing)
+async function adAskLicenceAll(type) {
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  const todo = bizList(type).filter(x => x.email && !x.license_path && !x.suspended && (x.approved || x.verified));
+  if (!todo.length) { yayoToast(t("ad_lic_none")); return; }
+  const names = todo.slice(0, 8).map(x => "• " + x.name + " (" + x.email + ")").join("\n");
+  if (!confirm(t("ad_lic_all_confirm").replace("{n}", todo.length) + "\n\n" + names +
+      (todo.length > 8 ? "\n… +" + (todo.length - 8) : ""))) return;
+  let ok = 0, skip = 0, fail = 0;
+  for (const x of todo) {
+    const r = await yayoNotifyWelcome(type, x.id, { kind: "licence" });
+    if (r && r.sent) { ok++; x.licence_asked_at = new Date().toISOString(); }
+    else if (r && r.skipped) skip++;
+    else fail++;
+    yayoToast(t("ad_wel_progress").replace("{i}", ok + skip + fail).replace("{n}", todo.length));
+  }
+  adRenderBiz(type);
+  yayoToast(t("ad_wel_done").replace("{n}", ok) + (skip ? " · " + t("ad_lic_skipped").replace("{n}", skip) : "") + (fail ? " · " + t("ad_wel_failn").replace("{n}", fail) : ""));
 }
 
 // ── Give a business its profile picture ──────────────────────────

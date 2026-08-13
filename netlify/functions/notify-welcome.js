@@ -46,21 +46,36 @@ function html(kind, name, isAgency, creds) {
     : ["Your stock online in 3 minutes",
        "Paste the address of your website in your dashboard and Yayo reads your cars — model, year, price and every photo — and puts them in front of African buyers. You type nothing. No website? Add a car in about a minute."];
 
+  // The licence ask. It has to answer "why" in one breath, because the honest
+  // answer is also the selling point: the badge is what makes a buyer 5 000 km
+  // away write to you instead of to someone else.
+  const lic = [
+    "One step left: your Verified badge",
+    "Your cars are live on Yayo. To put the blue <b>Verified</b> badge next to your name, we need to see your trade licence — one photo is enough.<br><br>Why we ask: our buyers are in Africa, sending money to a company they have never visited. The badge tells them Yayo has seen your papers and that you are a real registered business in Dubai. Verified sellers are the ones buyers write to.<br><br>Open your dashboard → <b>Profil</b> → upload the licence. We review it the same day."
+  ];
+
   const en = kind === "login"
     ? ["Your Yayo account is ready", "We opened your seller account. Sign in with the details below, then paste your website address and your cars go online."]
-    : what;
+    : kind === "licence" ? lic : what;
   const ar = kind === "login"
     ? ["حسابك على يايو جاهز", "أنشأنا لك حساب البائع. سجّل الدخول بالبيانات أدناه، ثم الصق رابط موقعك لتظهر سياراتك."]
+    : kind === "licence"
+    ? ["خطوة أخيرة: شارة التوثيق",
+       "سياراتك ظاهرة على يايو. لوضع شارة <b>التوثيق</b> الزرقاء بجانب اسمك، نحتاج أن نرى رخصتك التجارية — صورة واحدة تكفي.<br><br>لماذا نطلبها؟ لأن مشترينا في إفريقيا يحوّلون أموالهم إلى شركة لم يزوروها قط. الشارة تخبرهم أن يايو اطّلع على أوراقك وأنك شركة مسجّلة فعلاً في دبي. والبائع الموثّق هو من يراسله المشترون.<br><br>افتح لوحة التحكم ← <b>الملف</b> ← ارفع الرخصة. نراجعها في نفس اليوم."]
     : (isAgency
       ? ["شركتك الآن على يايو", "المشترون في إفريقيا الذين اشتروا سياراتهم من دبي يبحثون على يايو عن شركة شحن. أضف خطوطك ومددك وأسعارك — ويتواصلون معك مباشرة، وتصلك رسائلهم بلغتك."]
       : ["مخزونك على الإنترنت خلال 3 دقائق", "الصق رابط موقعك في لوحة التحكم، ويقرأ يايو سياراتك — الطراز والسنة والسعر وكل الصور — ويعرضها على المشترين الأفارقة. لا تكتب أي شيء. لا يوجد موقع؟ أضف سيارة في دقيقة تقريباً."]);
   const fr = kind === "login"
     ? ["Votre compte Yayo est prêt", "Nous avons créé votre compte vendeur. Connectez-vous avec les identifiants ci-dessus, puis collez l'adresse de votre site : vos voitures partent en ligne."]
+    : kind === "licence"
+    ? ["Dernière étape : votre badge Vérifié",
+       "Vos voitures sont en ligne sur Yayo. Pour afficher le badge <b>Vérifié</b> à côté de votre nom, nous devons voir votre licence commerciale — une photo suffit.<br><br>Pourquoi : nos acheteurs sont en Afrique et envoient de l'argent à une société qu'ils n'ont jamais visitée. Le badge leur dit que Yayo a vu vos papiers et que vous êtes une entreprise réellement enregistrée à Dubai. Ce sont les vendeurs vérifiés que les acheteurs contactent.<br><br>Tableau de bord → <b>Profil</b> → envoyez la licence. Nous la vérifions le jour même."]
     : (isAgency
       ? ["Votre agence est sur Yayo", "Les acheteurs africains qui viennent d'acheter une voiture à Dubai cherchent une agence sur Yayo. Ajoutez vos routes, vos délais et vos propres tarifs — ils vous contactent directement."]
       : ["Votre stock en ligne en 3 minutes", "Collez l'adresse de votre site dans votre tableau de bord : Yayo lit vos voitures — modèle, année, prix et toutes les photos — et les présente aux acheteurs africains. Vous ne tapez rien."]);
 
-  const badge = [
+  // …already the whole subject of a licence letter, so it is not repeated there
+  const badge = kind === "licence" ? null : [
     "Get the Verified badge",
     "Send your trade licence from the Profile tab. Verified businesses are the ones buyers write to."
   ];
@@ -78,8 +93,8 @@ function html(kind, name, isAgency, creds) {
       </td></tr>
       ${block(en[0], en[1], false)}
       ${box}
-      ${btn(SITE + "/dashboard.html", kind === "login" ? "Sign in" : "Open my dashboard")}
-      ${block(badge[0], badge[1], false)}
+      ${btn(SITE + "/dashboard.html", kind === "login" ? "Sign in" : kind === "licence" ? "Upload my licence" : "Open my dashboard")}
+      ${badge ? block(badge[0], badge[1], false) : ""}
       <tr><td style="padding:0 32px"><hr style="border:0;border-top:1px solid #DFE6EE;margin:0 0 16px"></td></tr>
       ${block(ar[0], ar[1], true)}
       ${block(fr[0], fr[1], false)}
@@ -110,7 +125,7 @@ exports.handler = async (event) => {
   const token = String(body.token || "");
   const subject = body.subject === "agency" ? "agency" : "dealer";
   const sid = String(body.sid || "");
-  const kind = body.kind === "login" ? "login" : "welcome";
+  const kind = ["login", "licence"].includes(body.kind) ? body.kind : "welcome";
   const password = String(body.password || "");
   if (!token || !/^[0-9a-f-]{20,40}$/i.test(sid)) {
     return { statusCode: 400, headers, body: '{"error":"token and sid required"}' };
@@ -138,7 +153,7 @@ exports.handler = async (event) => {
   const table = subject === "agency" ? "shipping_agencies" : "dealers";
   let biz;
   try {
-    const r = await fetch(SB_URL + `/rest/v1/${table}?id=eq.${sid}&select=name,email,welcomed_at&limit=1`, { headers: svc });
+    const r = await fetch(SB_URL + `/rest/v1/${table}?id=eq.${sid}&select=name,email,welcomed_at,licence_asked_at,license_path&limit=1`, { headers: svc });
     biz = (await r.json())[0];
   } catch (e) { /* fall through */ }
   if (!biz || !biz.email) return { statusCode: 200, headers, body: '{"skipped":"no recipient"}' };
@@ -147,20 +162,32 @@ exports.handler = async (event) => {
   if (!isAdmin && String(biz.email).toLowerCase() !== String(callerEmail).toLowerCase()) {
     return { statusCode: 403, headers, body: '{"error":"not your account"}' };
   }
-  if (kind === "login" && !isAdmin) return { statusCode: 403, headers, body: '{"error":"admin only"}' };
+  if (kind !== "welcome" && !isAdmin) return { statusCode: 403, headers, body: '{"error":"admin only"}' };
   // one welcome per business, ever
   if (kind === "welcome" && biz.welcomed_at) {
     return { statusCode: 200, headers, body: '{"skipped":"already welcomed"}' };
   }
+  if (kind === "licence") {
+    // never chase a licence that has already arrived
+    if (biz.license_path) return { statusCode: 200, headers, body: '{"skipped":"licence already sent"}' };
+    // and never twice in a week — a reminder that nags stops being read
+    const asked = biz.licence_asked_at ? Date.parse(biz.licence_asked_at) : 0;
+    if (!body.force && asked && Date.now() - asked < 7 * 864e5) {
+      return { statusCode: 200, headers, body: '{"skipped":"asked recently"}' };
+    }
+  }
   if (!BREVO) return { statusCode: 200, headers, body: '{"skipped":"no BREVO_API_KEY"}' };
 
   // 3. stamp BEFORE sending: a retry after a half-failed send must not mail twice
-  if (kind === "welcome") {
+  if (kind !== "login") {
+    const stamp = kind === "licence"
+      ? { licence_asked_at: new Date().toISOString() }
+      : { welcomed_at: new Date().toISOString() };
     try {
       await fetch(SB_URL + `/rest/v1/${table}?id=eq.${sid}`, {
-        method: "PATCH", headers: svc, body: JSON.stringify({ welcomed_at: new Date().toISOString() })
+        method: "PATCH", headers: svc, body: JSON.stringify(stamp)
       });
-    } catch (e) { /* column missing (§42 not run) → send anyway, no dedupe */ }
+    } catch (e) { /* column missing (§42/§43 not run) → send anyway, no dedupe */ }
   }
 
   const creds = kind === "login" && password ? { email: biz.email, password } : null;
@@ -173,6 +200,8 @@ exports.handler = async (event) => {
         to: [{ email: biz.email }],
         subject: kind === "login"
           ? "Your Yayo account is ready · حسابك جاهز · Votre compte Yayo est prêt"
+          : kind === "licence"
+          ? "One step left: your Verified badge · شارة التوثيق · Votre badge Vérifié"
           : "Your stock online in 3 minutes · مخزونك على يايو · Votre stock sur Yayo",
         htmlContent: html(kind, biz.name, subject === "agency", creds)
       })

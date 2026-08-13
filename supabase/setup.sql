@@ -1804,3 +1804,14 @@ grant execute on function public.admin_set_photos(text, uuid, jsonb) to authenti
 alter table public.dealers           add column if not exists welcomed_at timestamptz;
 alter table public.shipping_agencies add column if not exists welcomed_at timestamptz;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 43) ASKING FOR THE TRADE LICENCE
+-- The badge is the whole trust machine, and it cannot be given
+-- until someone has read the licence. This records WHEN we last
+-- asked, so a reminder can be sent to everyone who still owes
+-- one without asking the same business twice in a week.
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers           add column if not exists licence_asked_at timestamptz;
+alter table public.shipping_agencies add column if not exists licence_asked_at timestamptz;
+
