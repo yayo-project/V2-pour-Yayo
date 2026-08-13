@@ -768,11 +768,15 @@ const PRICE_HIDDEN = /price\s*on\s*request|ask\s*(us\s*)?for\s*(the\s*)?price|ca
 function priceSnippet(text, html) {
   if (html && PRICE_HIDDEN.test(html.replace(/<[^>]+>/g, " ").slice(0, 60000))) return "";
   if (html) {
+    // Keep the currency WITH the amount. Returning a bare number made a Dubai
+    // dealer's AED 320 002 truck arrive as a $320 002 one — the reader below
+    // has no way to tell dirhams from dollars once the word is gone.
+    const cur = /\bAED\b|د\.إ|dirham/i.test(html) ? "AED " : (/\bUSD\b|\$/.test(html) ? "USD " : "");
     // First choice: the block the page itself marks as THIS car's price.
     const own = ownPriceRegion(html);
     if (own) {
       const mine = priceCandidates(own).map(c => c.n).filter(n => n >= 900);
-      if (mine.length) return String(Math.min(...mine));
+      if (mine.length) return cur + Math.min(...mine);
     }
     // Otherwise: of the amounts the page declares as a price, the SMALLEST
     // plausible one. A filter maximum is by construction larger than any car,
@@ -780,7 +784,7 @@ function priceSnippet(text, html) {
     // (Monthly instalments, the one thing that would be smaller, are excluded
     // by PRICE_NOISE before we get here.)
     const plausible = priceCandidates(html).map(c => c.n).filter(n => n >= 900);
-    if (plausible.length) return String(Math.min(...plausible));
+    if (plausible.length) return cur + Math.min(...plausible);
   }
   // fall back to the old text scan, but never on an obviously noisy region
   const idx = text.search(/AED|USD|\$|درهم|price|prix|السعر/i);
