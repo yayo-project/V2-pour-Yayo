@@ -633,12 +633,16 @@ function pickName(html) {
   const t = cleanTitle(title);
   return t ? t.slice(0, 120) : null;
 }
+// Newsletter, analytics and social widgets serve images too — a car's photos
+// never come from a mailing-list CDN.
+const THIRD_PARTY_IMG = /(mcusercontent|mailchimp|list-manage|gravatar|googletagmanager|google-analytics|doubleclick|facebook\.(com|net)|fbcdn|twimg|linkedin|tiktok|pinimg|cloudflareinsights|hotjar|zendesk|tawk|intercom)/i;
+
 function detailPhotos(html, pageUrl) {
   // drop "similar / related cars" tail — its photos belong to other cars
   const cut = html.search(/similar\s+(listing|car|vehicle|product)|related\s+(cars|vehicles|listings|products)|you\s+may\s+also|voitures?\s+similaires|most\s+viewed/i);
   if (cut > 400) html = html.slice(0, cut);
   const set = new Set();
-  const push = u => { if (!u) return; const a = absUrl(u, pageUrl); if (!a) return; if (/logo|icon|avatar|placeholder|banner|sprite|design|flag|whatsapp|payment|preload|print-|header|footer|loader|spinner|blank|default|no-image|noimage|watermark/i.test(a)) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(a)) return; set.add(unsizeImg(a)); };
+  const push = u => { if (!u) return; const a = absUrl(u, pageUrl); if (!a) return; if (/logo|icon|avatar|placeholder|banner|sprite|design|flag|whatsapp|payment|preload|print-|header|footer|loader|spinner|blank|default|no-image|noimage|watermark/i.test(a)) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(a)) return; if (THIRD_PARTY_IMG.test(a)) return; set.add(unsizeImg(a)); };
   // og:image first (usually the cover)
   const og = (html.match(/property\s*=\s*["']og:image["'][^>]*content\s*=\s*["']([^"']+)["']/i)
     || html.match(/content\s*=\s*["']([^"']+)["'][^>]*property\s*=\s*["']og:image["']/i) || [])[1];
@@ -744,7 +748,14 @@ function priceCandidates(html) {
 
 // The text a page shows around its price, for the AI to parse — now taken
 // from the best declared candidate instead of "the first amount on the page".
+// A page that says so is telling the truth: there is no price to read. Any
+// number we pick up there belongs to something else — on Ibitisam's portal
+// page it was a figure inside an analytics tag, which made a 2015 G550 cost
+// $11,110. Better an empty box the dealer fills in.
+const PRICE_HIDDEN = /price\s*on\s*request|ask\s*(us\s*)?for\s*(the\s*)?price|call\s*for\s*price|price\s*(is\s*)?not\s*(available|accurate|shown)|prix\s*sur\s*demande|السعر\s*عند\s*الطلب/i;
+
 function priceSnippet(text, html) {
+  if (html && PRICE_HIDDEN.test(html.replace(/<[^>]+>/g, " ").slice(0, 60000))) return "";
   if (html) {
     // First choice: the block the page itself marks as THIS car's price.
     const own = ownPriceRegion(html);
