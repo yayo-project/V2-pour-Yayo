@@ -638,9 +638,15 @@ function pickName(html) {
 const THIRD_PARTY_IMG = /(mcusercontent|mailchimp|list-manage|gravatar|googletagmanager|google-analytics|doubleclick|facebook\.(com|net)|fbcdn|twimg|linkedin|tiktok|pinimg|cloudflareinsights|hotjar|zendesk|tawk|intercom)/i;
 
 function detailPhotos(html, pageUrl) {
-  // drop "similar / related cars" tail — its photos belong to other cars
-  const cut = html.search(/similar\s+(listing|car|vehicle|product)|related\s+(cars|vehicles|listings|products)|you\s+may\s+also|voitures?\s+similaires|most\s+viewed/i);
-  if (cut > 400) html = html.slice(0, cut);
+  // Drop the "similar / related cars" tail — its photos belong to other cars.
+  // Match the SECTION, never a mention: a page-top menu with a "Similar cars"
+  // link cut Ibitisam's pages 1 300 characters before their gallery, so every
+  // car imported with a single photo.
+  const marks = [
+    /<(?:section|div|aside|ul)[^>]*(?:id|class)\s*=\s*["'][^"']*(?:similar|related|other-models|you-may|also-viewed|recommend|more-from)/i,
+    /<h[1-4][^>]*>[^<]{0,40}(?:similar|related|you\s+may\s+also|voitures?\s+similaires|most\s+viewed|other\s+\w+\s+cars)/i
+  ].map(re => html.search(re)).filter(k => k > 400);
+  if (marks.length) html = html.slice(0, Math.min(...marks));
   const set = new Set();
   const push = u => { if (!u) return; const a = absUrl(u, pageUrl); if (!a) return; if (/logo|icon|avatar|placeholder|banner|sprite|design|flag|whatsapp|payment|preload|print-|header|footer|loader|spinner|blank|default|no-image|noimage|watermark/i.test(a)) return; if (!/\.(jpe?g|png|webp)(\?|$)/i.test(a)) return; if (THIRD_PARTY_IMG.test(a)) return; set.add(unsizeImg(a)); };
   // og:image first (usually the cover)
