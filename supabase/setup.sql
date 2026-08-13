@@ -1791,3 +1791,16 @@ end $$;
 
 grant execute on function public.admin_set_photos(text, uuid, jsonb) to authenticated;
 
+
+-- ═══════════════════════════════════════════════════════════
+-- 42) THE WELCOME EMAIL
+-- A seller who registers gets a confirmation link and then
+-- silence — at the exact moment he is most willing to act. He
+-- now gets one email telling him how to put his stock online.
+-- The stamp below is what makes it safe to send to the sellers
+-- already registered: nobody can be welcomed twice, whatever
+-- happens, because the server writes the date BEFORE sending.
+-- ═══════════════════════════════════════════════════════════
+alter table public.dealers           add column if not exists welcomed_at timestamptz;
+alter table public.shipping_agencies add column if not exists welcomed_at timestamptz;
+

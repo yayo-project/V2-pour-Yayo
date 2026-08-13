@@ -169,6 +169,8 @@ async function init() {
         data = again.data && again.data[0];
         if (!data) throw ins.error;
       }
+      // his first confirmed sign-in: tell him how to put his stock online
+      if (data) yayoNotifyWelcome("dealer", data.id);
     }
     DEALER = data || null;
   } catch (e) { DEALER = null; }
@@ -1383,6 +1385,7 @@ async function agencyInit() {
         data = again.data && again.data[0];
         if (!data) throw ins.error;
       }
+      if (data) yayoNotifyWelcome("agency", data.id);
     }
     AGENCY = data || null;
   } catch (e) { AGENCY = null; }
@@ -1987,6 +1990,7 @@ function bizActionsHtml(type, x) {
     ${type === "dealer" ? `<button onclick="adFixPrices('${x.id}')">${t("ad_act_fixprices")}</button>` : ""}
     <button onclick="adPickLogo('${type}','${x.id}')">${t("ad_act_logo")}</button>
     <button onclick="adPickPhotos('${type}','${x.id}')">${t("ad_act_photos")}</button>
+    ${x.welcomed_at ? "" : `<button onclick="adWelcomeOne('${type}','${x.id}')">${t("ad_act_welcome")}</button>`}
     ${type === "dealer" ? `<button onclick="adLimits('${x.id}')">${t("ad_act_limits")}</button>` : ""}
     <button onclick="adLicense('${type}','${x.id}')">${t("ad_act_license")}</button>
     <button onclick="adApprove('${type}','${x.id}',${x.approved ? "false" : "true"})">${x.approved ? t("ad_act_unapprove") : t("ad_act_approve")}</button>
@@ -2157,6 +2161,40 @@ function adRename(type, id) {
     () => adRpc("admin_rename_business", { subject: type, sid: id, newname: newname.trim() }),
     y => { y.name = newname.trim(); });
 }
+// ── Reaching the businesses already registered ───────────────────
+// The welcome email only fires for new arrivals, so everyone who joined
+// before it existed would never hear it. This sends it to them — once each,
+// because the server records the date before sending and refuses a second.
+function adWelcomeOne(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  if (!x.email) { yayoToast(t("ad_wel_noemail")); return; }
+  if (!confirm(t("ad_wel_confirm").replace("{name}", x.name).replace("{email}", x.email))) return;
+  yayoNotifyWelcome(type, id).then(r => {
+    if (r && r.sent) { x.welcomed_at = new Date().toISOString(); adRenderBiz(type); yayoToast(t("ad_wel_sent").replace("{email}", x.email)); }
+    else yayoToast(t("ad_wel_fail") + ((r && (r.error || r.skipped)) || ""));
+  });
+}
+
+// Everyone who has never received it, one after another
+async function adWelcomeAll(type) {
+  if (DEMO_ADMIN) { alert(t("d_demo_banner")); return; }
+  const todo = bizList(type).filter(x => x.email && !x.welcomed_at && !x.suspended);
+  if (!todo.length) { yayoToast(t("ad_wel_none")); return; }
+  const names = todo.slice(0, 8).map(x => "• " + x.name + " (" + x.email + ")").join("\n");
+  if (!confirm(t("ad_wel_all_confirm").replace("{n}", todo.length) + "\n\n" + names +
+      (todo.length > 8 ? "\n… +" + (todo.length - 8) : ""))) return;
+  let ok = 0, fail = 0;
+  for (const x of todo) {
+    const r = await yayoNotifyWelcome(type, x.id);
+    if (r && r.sent) { ok++; x.welcomed_at = new Date().toISOString(); } else fail++;
+    yayoToast(t("ad_wel_progress").replace("{i}", ok + fail).replace("{n}", todo.length));
+  }
+  adRenderBiz(type);
+  yayoToast(t("ad_wel_done").replace("{n}", ok) + (fail ? " · " + t("ad_wel_failn").replace("{n}", fail) : ""));
+}
+
 // ── Give a business its profile picture ──────────────────────────
 // A dealer signed up in person will not upload a logo the first evening,
 // and a grey circle beside his cars is the weakest thing on the page. The
@@ -2434,6 +2472,7 @@ function adCreateBiz(type) {
              <input id="nd-desc" type="text" autocomplete="off" placeholder="Dubai → Kinshasa, Douala…"></div>`
         : `<div class="field"><label>${t("ad_new_site")}</label>
              <input id="nd-site" type="text" autocomplete="off" placeholder="monsite.com"></div>`}
+      <label class="nd-check"><input type="checkbox" id="nd-mail" checked> <span>${t("ad_new_mail")}</span></label>
       <p class="auth-error" id="nd-err" hidden></p>
       <button type="button" class="btn btn-solid btn-block" id="nd-save" onclick="adCreateSave('${ag ? "agency" : "dealer"}')">${t("ad_new_save")}</button>
       <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("d_cancel")}</button>
@@ -2462,7 +2501,7 @@ async function adCreateSave(type) {
   }
   const btn = document.getElementById("nd-save");
   btn.disabled = true; btn.textContent = t("ad_new_working");
-  let existed = false;
+  let existed = false, sentMail = null;
   try {
     if (!DEMO_ADMIN) {
       const { data: s } = await yayoSB().auth.getSession();
@@ -2491,8 +2530,14 @@ async function adCreateSave(type) {
         .order("created_at", { ascending: false }).limit(500);
       if (data) { if (ag) AD_AGS = data; else AD_DEALERS = data; }
       adRenderBiz(ag ? "agency" : "dealer");
+      // email him the login as well, so it does not depend on WhatsApp
+      const mail = document.getElementById("nd-mail");
+      if (mail && mail.checked && !existed) {
+        const row = (ag ? AD_AGS : AD_DEALERS).find(r => String(r.email || "").toLowerCase() === email);
+        if (row) sentMail = await yayoNotifyWelcome(ag ? "agency" : "dealer", row.id, { kind: "login", password: pass });
+      }
     }
-    adCreateDone(name, email, pass, existed);
+    adCreateDone(name, email, pass, existed, sentMail);
   } catch (e) {
     err.hidden = false; err.textContent = t("ad_new_fail") + (e.message || e);
     btn.disabled = false; btn.textContent = t("ad_new_save");
@@ -2523,13 +2568,18 @@ function adLoginMessage(name, email, pass) {
   ].join("\n");
 }
 
-function adCreateDone(name, email, pass, existed) {
+function adCreateDone(name, email, pass, existed, sentMail) {
   const box = document.querySelector("#sold-modal .sold-box");
   if (!box) return;
   const msg = adLoginMessage(name, email, pass);
+  const mailLine = sentMail
+    ? (sentMail.sent ? `<p class="nd-mailed">${t("ad_new_mailed").replace("{email}", email)}</p>`
+                     : `<p class="auth-error">${t("ad_new_mail_fail")}${sentMail.error || sentMail.skipped || ""}</p>`)
+    : "";
   box.innerHTML = `
     <h3>${t("ad_new_done")}</h3>
     <p>${existed ? t("ad_new_existed") : t("ad_new_done_p")}</p>
+    ${mailLine}
     <textarea id="nd-msg" class="nd-msg" rows="10" readonly>${escapeHtml(msg)}</textarea>
     <button type="button" class="btn btn-solid btn-block" id="nd-copy" onclick="adCopyLogin()">${t("ad_new_copy")}</button>
     <button type="button" class="sold-cancel" onclick="document.getElementById('sold-modal').remove()">${t("ad_act_close")}</button>`;

@@ -450,6 +450,24 @@ async function yayoNotifyDecision(subject, sid) {
   } catch (e) { /* never blocks the admin action */ }
 }
 
+// ── Welcome email (fire-and-forget) ──────────────────────────────
+// Sent the first time a business record exists — that is the first CONFIRMED
+// sign-in, not the signup form, so an unconfirmed address is never mailed.
+// The server refuses to send twice, so calling this again costs nothing.
+async function yayoNotifyWelcome(subject, sid, opts) {
+  try {
+    const { data } = await yayoSB().auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if (!token) return null;
+    const res = await fetch("/.netlify/functions/notify-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({ token, subject, sid, kind: "welcome" }, opts || {}))
+    });
+    return await res.json();
+  } catch (e) { return null; }
+}
+
 // ── Founder alert (fire-and-forget) — "a dealer just registered" etc. ──
 function yayoNotifyAdmin(kind, name, detail) {
   try {
