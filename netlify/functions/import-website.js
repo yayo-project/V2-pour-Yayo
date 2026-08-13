@@ -487,7 +487,12 @@ async function carsFromDataFeeds(entryHtml, url) {
 // ad's id — "/2017-mercedes-benz-e43-amg-912138.html". There is no /car/ or
 // /listing/ segment to recognise, so this shape is only trusted on a page we
 // were sent to deliberately (a dealer's own page on that portal).
-const PORTAL_DETAIL = /\/[a-z0-9]+(?:-[a-z0-9]+){2,}-\d{4,}(?:\.html?)?$/i;
+// One car on a classifieds portal: a slug ending in its ad number AND a page
+// extension. Without demanding the extension, "/dubai-gta-used-cars-trading-2"
+// — another DEALER's page — imported as a car called "GTA Used Cars Trading".
+const PORTAL_DETAIL = /\/[a-z0-9]+(?:-[a-z0-9]+){2,}-\d{4,}\.html?$/i;
+// …and a page titled like a shop, not a car, is a shop.
+const PORTAL_SHOP_NAME = /(new\s*&\s*used|new\s+and\s+used|cars?\s+for\s+sale\s+in|used\s+cars?\s+(trading|dealer)|showroom|autohaus)/i;
 
 function classifyLinks(html, baseUrl, portal) {
   const details = new Set(), indexes = new Set();
@@ -831,6 +836,7 @@ function normalize(cars, aedHintGlobal) {
   const seen = new Set(); const out = [];
   for (const c of cars) {
     if (!c.name) continue;
+    if (PORTAL_SHOP_NAME.test(c.name)) continue;   // a shop's page, not a car
     let currency = c.currency, guessed = false, missing = false;
     let price = c.price_original;
     if (price != null && price <= 0) price = null;
