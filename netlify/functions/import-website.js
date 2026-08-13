@@ -502,8 +502,16 @@ function classifyLinks(html, baseUrl, portal) {
     let path, query;
     try { const p = new URL(u); path = p.pathname; query = p.search; } catch (e) { continue; }
     const kind = pathKind(path);
+    // On a classifieds portal ONE car always ends in its ad number
+    // (…-865918.html). Everything else there is a browse page, and
+    // "/uae/used/pick-up-truck" was being imported as a car called
+    // "Pick Up Trucks for sale in UAE".
+    if (portal) {
+      if (PORTAL_DETAIL.test(path) && !SERVICE_SEG.test(path)) details.add(u);
+      else if (kind === "index" || INDEX_QUERY.test(query)) indexes.add(u);
+      continue;
+    }
     if (DETAIL_QUERY.test(query) || kind === "detail") details.add(u);
-    else if (portal && PORTAL_DETAIL.test(path) && !SERVICE_SEG.test(path)) details.add(u);
     else if (kind === "index" || INDEX_QUERY.test(query)) indexes.add(u);
   }
   return { details: [...details], indexes: [...indexes], host };
@@ -646,6 +654,16 @@ function detailPhotos(html, pageUrl) {
   // plain <img> in the (trimmed) main content
   const imgRe = /<img[^>]*?(?:data-src|data-lazy|data-original|src)\s*=\s*["']([^"'\s]+\.(?:jpe?g|png|webp)[^"'\s]*)["']/gi;
   let m; while ((m = imgRe.exec(html)) && set.size < 20) push(m[1]);
+  // A responsive gallery declares its photos in srcset, often without any
+  // protocol ("//host/…"). Dubicars does exactly this, which is why a car
+  // with seventeen photos arrived with one.
+  const srcsetRe = /srcset\s*=\s*["']([^"']+)["']/gi;
+  let s; while ((s = srcsetRe.exec(html)) && set.size < 20) {
+    s[1].split(",").forEach(part => {
+      const u = part.trim().split(/\s+/)[0];
+      if (u) push(u.startsWith("//") ? "https:" + u : u);
+    });
+  }
   // Last resort: modern React/Next sites keep their gallery inside a JSON
   // payload rather than <img> tags, so sweep the raw page for image URLs.
   if (set.size < 3) {
@@ -663,7 +681,7 @@ function detailPhotos(html, pageUrl) {
 // Toyota Vios at $231,450 (that was the filter slider) and a Ferrari at
 // $4,356,705 (a hidden calculator field). So: read the element that is
 // *declared* to be the price, and only then fall back to text.
-const PRICE_NOISE = /(filter|filtre|range|slider|min[-_ ]?price|max[-_ ]?price|price[-_ ]?(min|max|from|to)|search|recherche|widget|sidebar|compare|calculator|calculateur|finance|loan|emi|installment|mensual|monthly|par mois|\/mo\b|down[-_ ]?payment|شهري|قسط)/i;
+const PRICE_NOISE = /(filter|filtre|range|slider|min[-_ ]?price|max[-_ ]?price|price[-_ ]?(min|max|from|to)|search|recherche|widget|sidebar|compare|calculator|calculateur|finance|loan|emi|installment|mensual|monthly|per[\s-]?month|month(ly)?[\s-]?payment|\/mo\b|par mois|down[-_ ]?payment|شهري|قسط)/i;
 
 // The container a car-dealer theme puts THE car's price in. Everything else
 // on the page — the "similar cars" strip, the finance widget, a promo banner —
@@ -710,6 +728,10 @@ function priceCandidates(html) {
   while ((m = open.exec(html))) {
     if (PRICE_NOISE.test(m[0])) continue;
     const region = html.slice(m.index, m.index + 400).replace(/<[^>]+>/g, " ");
+    // "AED 7,594 Per Month" is a finance offer, not a price. A dealer who
+    // hides his price shows exactly this — and it imported a Range Rover at
+    // $2,995. The words are in the TEXT, not in the class, so check both.
+    if (PRICE_NOISE.test(region)) continue;
     // Anchor on the currency and take at most three groups of digits:
     // "AED4 400 000" next to a "296 GTB" would otherwise read as one
     // 4 400 000 296 amount.
@@ -815,6 +837,14 @@ function normalize(cars, aedHintGlobal) {
     }
     // fill make/model/year from the name when still empty
     if (!cand.make || !cand.year) { const d = deriveMakeModelYear(cand.name); cand.make = cand.make || d.make; cand.model = cand.model || d.model; cand.year = cand.year || d.year; }
+    // …and from the address when the title carries no year: a portal names its
+    // pages "/2018-land-rover-range-rover-velar-745390.html" while the heading
+    // on the page says only "Range Rover Velar R-DYNAMIC S".
+    if (!cand.year && cand.source_url) {
+      const y = (cand.source_url.match(/\/(?:.*?[-\/])?((?:19|20)\d{2})[-\/]/) || [])[1];
+      const n = parseInt(y, 10);
+      if (n >= 1980 && n <= new Date().getFullYear() + 2) cand.year = n;
+    }
     cand.fingerprint = cand.source_url ? "u:" + cand.source_url : "f:" + [cand.make, cand.model, cand.year, cand.price_original].join("|").toLowerCase();
     if (seen.has(cand.fingerprint)) continue;
     seen.add(cand.fingerprint); out.push(cand);
