@@ -30,6 +30,17 @@ const STATIC = [
   ["conditions.html", "0.3", false]
 ];
 
+// Brand-by-city guides ("Importer une Toyota de Dubai à Kinshasa"). These are
+// real files in the repo, one per make per city, generated only for makes with
+// enough cars in stock — so the list is fixed here rather than derived from
+// live inventory, which could otherwise point the sitemap at a 404.
+const BRAND_SLUGS = [
+  "toyota", "mitsubishi", "isuzu", "suzuki", "hino", "nissan", "mercedes-benz",
+  "bmw", "mitsubishi-fuso", "honda", "peugeot", "mg", "hyundai", "ford",
+  "jetour", "daihatsu", "jeep", "land-rover", "cadillac", "mazda", "man"
+];
+const BRAND_CITIES = ["kinshasa", "douala", "abidjan", "dakar"];
+
 const esc = s => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -77,6 +88,16 @@ exports.handler = async () => {
       (translated ? altLinks(p) + "\n" : "") +
       `    <priority>${pr}</priority>\n  </url>`
     );
+  }
+
+  for (const mk of BRAND_SLUGS) {
+    for (const city of BRAND_CITIES) {
+      const p = `importer-${mk}-dubai-${city}.html`;
+      urls.push(
+        `  <url>\n    <loc>${esc(SITE + "/" + p)}</loc>\n` +
+        altLinks(p) + `\n    <priority>0.6</priority>\n  </url>`
+      );
+    }
   }
 
   for (const l of cars) {
