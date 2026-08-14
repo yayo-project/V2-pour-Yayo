@@ -1885,3 +1885,53 @@ update public.listings
  where make is not null
    and nullif(trim(model),'') is not null
    and car_name is distinct from trim(both ' ' from concat_ws(' ', make, model));
+
+
+-- ═══════════════════════════════════════════════════════════
+-- 45) THE TWENTY CARS §44 COULD NOT NAME
+-- After §44, twenty listings were left with no usable brand:
+-- sixteen called just "2023" or "2024", and four whose brand
+-- was a model number ("400 Z", "407"). §44 could not fix them
+-- because the advert title on the dealer's site was only a year.
+--
+-- But the ADDRESS the car was imported from still holds the
+-- truth: .../listings/new-2023-suzuki-baleno-3/. This reads the
+-- make and model back out of that address, so the cars keep
+-- their photos and their price and simply get their name back.
+--
+-- Only rows that are currently broken are touched: a real
+-- Suzuki that already says Suzuki is never rewritten.
+-- ═══════════════════════════════════════════════════════════
+
+update public.listings l
+   set make  = v.mk,
+       model = coalesce(nullif(trim(l.model), ''), v.md)
+  from (values
+    ('suzuki-baleno',        'Suzuki',  'Baleno'),
+    ('suzuki-grand-vitara',  'Suzuki',  'Grand Vitara'),
+    ('suzuki-apv',           'Suzuki',  'APV'),
+    ('nissan-400z',          'Nissan',  '400Z'),
+    ('nissan-patrol',        'Nissan',  'Patrol'),
+    ('peugeot-407',          'Peugeot', '407'),
+    ('peugeot-308',          'Peugeot', '308'),
+    ('peugeot-2008',         'Peugeot', '2008'),
+    ('jeep-grand-cherokee',  'Jeep',    'Grand Cherokee')
+  ) as v(pat, mk, md)
+ where l.source_url ilike '%' || v.pat || '%'
+   and (l.make is null or trim(l.make) = '' or l.make ~ '^[0-9]+$');
+
+-- Put the corrected name back on the card and in the web address.
+update public.listings
+   set car_name = trim(both ' ' from concat_ws(' ', make, model))
+ where make is not null
+   and nullif(trim(model), '') is not null
+   and (car_name ~ '^[0-9]{4}( |$)' or car_name ~ '^[0-9]+ ' or trim(car_name) = '');
+
+-- One car remains genuinely nameless: its address is only
+-- "/listings/new-2023/" and the page never said what it was.
+-- Hide it rather than show a buyer a car called "2023".
+update public.listings
+   set hidden = true
+ where (make is null or trim(make) = '')
+   and coalesce(nullif(trim(model), ''), '') = ''
+   and car_name ~ '^[0-9]{4}$';
