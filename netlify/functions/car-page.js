@@ -111,6 +111,13 @@ function injectHead(html, tags, carId) {
     `<meta property="og:type" content="product">`);
 
   const extra = [
+    // the car pages are the biggest group on the site; without these the
+    // English and Arabic versions of a car do not exist as far as Google is
+    // concerned, and only the French one can ever rank
+    `<link rel="alternate" hreflang="fr" href="${tags.url}">`,
+    `<link rel="alternate" hreflang="en" href="${tags.url}?lang=en">`,
+    `<link rel="alternate" hreflang="ar" href="${tags.url}?lang=ar">`,
+    `<link rel="alternate" hreflang="x-default" href="${tags.url}">`,
     `<meta property="og:url" content="${tags.url}">`,
     `<meta name="twitter:title" content="${tags.ogTitle}">`,
     `<meta name="twitter:description" content="${tags.desc}">`,
