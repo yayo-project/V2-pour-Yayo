@@ -49,6 +49,34 @@ const YAYO_CONFIG = {
   GA4_ID: "G-NR2LTEVKET"
 };
 
+// ── One address per car ──
+// Cars live at /voiture/toyota-land-cruiser-2021-<uuid>: the name and year are
+// in the URL where Google reads them, and the uuid on the end keeps the lookup
+// exact. Every internal link uses this, so the pretty URL is the only one that
+// ever accumulates ranking signals.
+function yayoSlugify(s) {
+  return String(s || "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 60);
+}
+
+function yayoCarSlug(c) {
+  if (!c || !c.id) return "";
+  // some imported rows put the YEAR in the make column — never let that
+  // become the brand in a URL
+  const make = /^\d{4}$/.test(String(c.make || "").trim()) ? "" : (c.make || "");
+  const title = [make, c.model].filter(Boolean).join(" ") || c.car_name || "voiture";
+  return [yayoSlugify(title), c.year ? String(c.year) : "", c.id].filter(Boolean).join("-");
+}
+
+// Link to a car. Demo cars keep the query form — they are never indexed.
+function yayoCarHref(c) {
+  if (!c || !c.id) return "acheter.html";
+  if (String(c.id).startsWith("demo")) return "voiture.html?id=" + encodeURIComponent(c.id);
+  return "/voiture/" + yayoCarSlug(c);
+}
+
 // Shared money formatter. The thousands separator is a NON-BREAKING space
 // ( ) so "$3 200" can never wrap into "$3" / "200" on a narrow phone.
 function yayoFmt(n) {

@@ -11,6 +11,19 @@
   status = 200
   force = true
 
+# Every car gets a real address with its name in it, served with the title,
+# photo, price and structured data already in the HTML — so Google indexes it
+# and WhatsApp/Facebook show the car instead of the Yayo logo.
+[[redirects]]
+  from = "/voiture/*"
+  to = "/.netlify/functions/car-page"
+  status = 200
+  force = true
+
+# car-page.js serves the real voiture.html shell, so it must be bundled with it
+[functions."car-page"]
+  included_files = ["voiture.html"]
+
 # Weekly founder digest — every Monday 08:00 UTC (12:00 Dubai)
 [functions."weekly-stats"]
   schedule = "0 8 * * 1"

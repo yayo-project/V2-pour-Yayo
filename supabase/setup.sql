@@ -1815,3 +1815,123 @@ alter table public.shipping_agencies add column if not exists welcomed_at timest
 alter table public.dealers           add column if not exists licence_asked_at timestamptz;
 alter table public.shipping_agencies add column if not exists licence_asked_at timestamptz;
 
+
+
+-- ═══════════════════════════════════════════════════════════
+-- 44) CLEANING UP WHAT THE IMPORTER WROTE
+-- The website importer filled make / model / year from scraped
+-- page titles, and it got a lot of them wrong: 41 cars have the
+-- YEAR sitting in the make column ("2023 Toyota" became
+-- make=2023, model=Toyota), 361 have no year at all, and some
+-- makes arrived shouting ("MITSUBISHI FUSO") so the same brand
+-- splits into two in every filter.
+--
+-- This matters far beyond tidiness. The make is the brand in
+-- the car's web address, its page title, and any brand landing
+-- page. A page called "2023 Toyota" ranks for nothing and looks
+-- fake to a buyer.
+--
+-- RUN THE SELECT FIRST and look at what it will change. The
+-- updates below only touch rows that are demonstrably wrong,
+-- and never overwrite a value that is already sensible.
+-- ═══════════════════════════════════════════════════════════
+
+-- PREVIEW — read this before running anything else
+-- select id, make, model, year, car_name from public.listings
+--   where make ~ '^[0-9]{4}$' or year is null or make = upper(make)
+--   order by make limit 100;
+
+-- 44a) The year landed in the make column. Move everything back
+--      one place: the model becomes the make, and the year we
+--      found becomes the year (unless one is already recorded).
+update public.listings
+   set year  = coalesce(year, nullif(make, '')::int),
+       make  = nullif(model, ''),
+       model = null
+ where make ~ '^[0-9]{4}$'
+   and nullif(make,'')::int between 1980 and 2030;
+
+-- 44b) Recover a missing year from the advert title ("2024 Toyota
+--      Camry"). Only a plausible car year is accepted.
+update public.listings
+   set year = (substring(car_name from '(19[8-9][0-9]|20[0-3][0-9])'))::int
+ where year is null
+   and car_name ~ '(19[8-9][0-9]|20[0-3][0-9])';
+
+-- 44c) One spelling per brand. "MITSUBISHI FUSO" and "Mitsubishi
+--      Fuso" are the same company and must group as one.
+update public.listings
+   set make = initcap(lower(make))
+ where make is not null
+   and make = upper(make)
+   and make !~ '^[0-9]+$'
+   and length(make) > 3;   -- leaves BMW, MG, KIA, GMC alone
+
+-- 44d) A handful of rows have no real name at all (car_name and
+--      make are both "New"). They cannot be described honestly,
+--      so hide them from buyers rather than publish a car called
+--      "New". Un-hide any that a dealer later fills in properly.
+update public.listings
+   set hidden = true
+ where (coalesce(nullif(trim(car_name),''), '') = ''
+        or lower(trim(car_name)) in ('new','used','other'))
+   and coalesce(nullif(trim(model),''), '') = '';
+
+-- 44e) Rebuild the display name from the clean columns wherever
+--      it disagrees with them, so the card, the page title and
+--      the web address all say the same thing.
+update public.listings
+   set car_name = trim(both ' ' from concat_ws(' ', make, model))
+ where make is not null
+   and nullif(trim(model),'') is not null
+   and car_name is distinct from trim(both ' ' from concat_ws(' ', make, model));
+
+
+-- ═══════════════════════════════════════════════════════════
+-- 45) THE TWENTY CARS §44 COULD NOT NAME
+-- After §44, twenty listings were left with no usable brand:
+-- sixteen called just "2023" or "2024", and four whose brand
+-- was a model number ("400 Z", "407"). §44 could not fix them
+-- because the advert title on the dealer's site was only a year.
+--
+-- But the ADDRESS the car was imported from still holds the
+-- truth: .../listings/new-2023-suzuki-baleno-3/. This reads the
+-- make and model back out of that address, so the cars keep
+-- their photos and their price and simply get their name back.
+--
+-- Only rows that are currently broken are touched: a real
+-- Suzuki that already says Suzuki is never rewritten.
+-- ═══════════════════════════════════════════════════════════
+
+update public.listings l
+   set make  = v.mk,
+       model = coalesce(nullif(trim(l.model), ''), v.md)
+  from (values
+    ('suzuki-baleno',        'Suzuki',  'Baleno'),
+    ('suzuki-grand-vitara',  'Suzuki',  'Grand Vitara'),
+    ('suzuki-apv',           'Suzuki',  'APV'),
+    ('nissan-400z',          'Nissan',  '400Z'),
+    ('nissan-patrol',        'Nissan',  'Patrol'),
+    ('peugeot-407',          'Peugeot', '407'),
+    ('peugeot-308',          'Peugeot', '308'),
+    ('peugeot-2008',         'Peugeot', '2008'),
+    ('jeep-grand-cherokee',  'Jeep',    'Grand Cherokee')
+  ) as v(pat, mk, md)
+ where l.source_url ilike '%' || v.pat || '%'
+   and (l.make is null or trim(l.make) = '' or l.make ~ '^[0-9]+$');
+
+-- Put the corrected name back on the card and in the web address.
+update public.listings
+   set car_name = trim(both ' ' from concat_ws(' ', make, model))
+ where make is not null
+   and nullif(trim(model), '') is not null
+   and (car_name ~ '^[0-9]{4}( |$)' or car_name ~ '^[0-9]+ ' or trim(car_name) = '');
+
+-- One car remains genuinely nameless: its address is only
+-- "/listings/new-2023/" and the page never said what it was.
+-- Hide it rather than show a buyer a car called "2023".
+update public.listings
+   set hidden = true
+ where (make is null or trim(make) = '')
+   and coalesce(nullif(trim(model), ''), '') = ''
+   and car_name ~ '^[0-9]{4}$';

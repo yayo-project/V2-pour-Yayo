@@ -168,6 +168,39 @@ function deriveMakeModelYear(name) {
   return { make, model: model || null, year: yr ? parseInt(yr, 10) : null };
 }
 
+// Some dealers title a car page with nothing but the year ("2023"), which is
+// how 41 cars reached Yayo with "2023" as their brand. The address the car
+// came from still names it: /listings/new-2023-suzuki-baleno-3/. Read it back
+// out of there rather than publishing a car called "2023".
+function deriveFromUrl(url) {
+  if (!url) return { make: null, model: null };
+  let slug;
+  // the car can live in the query as easily as the path —
+  // targetmotorfze.com serves product.php?product=toyota-land-cruiser-lc300
+  try { const u = new URL(url); slug = decodeURIComponent(u.pathname + " " + u.search); }
+  catch (e) { slug = String(url); }
+  slug = slug.toLowerCase().replace(/\.(html?|php)$/, "").replace(/[\/_+-]+/g, " ").replace(/\s+/g, " ").trim();
+  const title = s => s.split(" ").filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+  for (const m of KNOWN_MAKES) {
+    // whole words only, or "man" would match inside "roman"
+    const re = new RegExp("\\b" + m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b");
+    const hit = re.exec(slug);
+    if (!hit) continue;
+    const rest = slug.slice(hit.index + m.length)
+      .replace(/\b(19[89]\d|20[0-3]\d)\b/g, " ")          // the year has its own column
+      .replace(/\b\d{5,}\b/g, " ")                          // advert reference numbers
+      .replace(/\b(new|used|for|sale|dubai|uae|gcc|luxury|premium|sports?|car|cars|suv|sedan|van|listing|listings|export)\b/g, " ")
+      .trim().split(/\s+/).filter(Boolean).slice(0, 3);
+    // WordPress numbers duplicate pages ("…-baleno-3"), and that stray digit
+    // must not become part of the model. Only drop it when a real word came
+    // first, so a Mazda 3 keeps its name.
+    if (rest.length > 1 && /^\d{1,2}$/.test(rest[rest.length - 1])) rest.pop();
+    const model = rest.join(" ");
+    return { make: title(m), model: model ? title(model) : null };
+  }
+  return { make: null, model: null };
+}
+
 // ── JSON-LD extraction ────────────────────────────────────────
 function jsonLdBlocks(html) {
   const out = [];
@@ -871,6 +904,23 @@ function normalize(cars, aedHintGlobal) {
       const y = (cand.source_url.match(/\/(?:.*?[-\/])?((?:19|20)\d{2})[-\/]/) || [])[1];
       const n = parseInt(y, 10);
       if (n >= 1980 && n <= new Date().getFullYear() + 2) cand.year = n;
+    }
+    // A year is never a brand. When one lands in the make column the whole row
+    // has shifted along, so put it back: the model is the real make.
+    if (cand.make && /^(19|20)\d{2}$/.test(String(cand.make).trim())) {
+      if (!cand.year) cand.year = parseInt(cand.make, 10);
+      cand.make = (cand.model && String(cand.model).trim()) || null;
+      cand.model = null;
+    }
+    // Still nameless? The address it was imported from usually knows.
+    if (!cand.make && cand.source_url) {
+      const u = deriveFromUrl(cand.source_url);
+      if (u.make) { cand.make = u.make; cand.model = cand.model || u.model; }
+    }
+    // The card and the web address both read from the name, so a car left
+    // called "2023" would publish as a car called 2023.
+    if (cand.make && /^\s*(19|20)\d{2}\s*$/.test(String(cand.name || ""))) {
+      cand.name = [cand.make, cand.model].filter(Boolean).join(" ");
     }
     cand.fingerprint = cand.source_url ? "u:" + cand.source_url : "f:" + [cand.make, cand.model, cand.year, cand.price_original].join("|").toLowerCase();
     if (seen.has(cand.fingerprint)) continue;
