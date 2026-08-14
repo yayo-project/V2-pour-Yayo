@@ -1685,6 +1685,25 @@ function applyI18n(root) {
   (root || document).querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); });
 }
 
+// hreflang only counts when each language version names ITSELF as the
+// canonical page. Left alone, /acheter.html?lang=en tells Google "the real
+// page is the French one", so Google folds the two together and throws away
+// every alternate we declare — the English and Arabic versions then cannot
+// rank at all. This keeps the canonical on the language actually being shown.
+function yayoLangCanonical() {
+  const el = document.getElementById("vd-canonical") || document.querySelector('link[rel="canonical"]');
+  if (!el) return;
+  try {
+    const u = new URL(el.getAttribute("href") || location.pathname, location.origin);
+    u.searchParams.delete("lang");
+    if (YAYO_LANG && YAYO_LANG !== "fr") u.searchParams.set("lang", YAYO_LANG);
+    const href = u.toString();
+    el.setAttribute("href", href);
+    const og = document.querySelector('meta[property="og:url"]');
+    if (og) og.setAttribute("content", href);
+  } catch (e) { /* leave the canonical as it is */ }
+}
+
 function setLang(lang) {
   if (!I18N[lang]) return;
   YAYO_LANG = lang;
@@ -1693,6 +1712,7 @@ function setLang(lang) {
   document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
   applyI18n();
+  yayoLangCanonical();
   if (typeof window.onLangChange === "function") window.onLangChange();
 }
 

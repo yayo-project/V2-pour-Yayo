@@ -195,6 +195,10 @@ function renderSeo() {
     document.head.appendChild(s);
   }
   s.textContent = JSON.stringify(ld);
+  // this runs after the language has been applied, so put the language back
+  // on the canonical — otherwise the English car page points at the French
+  // one and Google discards the alternates
+  if (typeof yayoLangCanonical === "function") yayoLangCanonical();
 }
 
 // ── Photo gallery: all photos browsable big (arrows + swipe + thumbnails) ──
