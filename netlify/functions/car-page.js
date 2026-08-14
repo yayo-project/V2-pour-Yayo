@@ -99,8 +99,11 @@ function injectHead(html, tags, carId) {
   out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${tags.title}</title>`);
   out = out.replace(/<meta name="description" content="[^"]*">/i,
     `<meta name="description" content="${tags.desc}">`);
+  // the canonical names THIS language version; the alternates below name the
+  // whole set. If the English page canonicalised to the French one, Google
+  // would merge them and drop every alternate.
   out = out.replace(/<link rel="canonical"[^>]*>/i,
-    `<link rel="canonical" id="vd-canonical" href="${tags.url}">`);
+    `<link rel="canonical" id="vd-canonical" href="${tags.self}">`);
   out = out.replace(/<meta property="og:title" content="[^"]*">/i,
     `<meta property="og:title" content="${tags.ogTitle}">`);
   out = out.replace(/<meta property="og:description" content="[^"]*">/i,
@@ -118,7 +121,7 @@ function injectHead(html, tags, carId) {
     `<link rel="alternate" hreflang="en" href="${tags.url}?lang=en">`,
     `<link rel="alternate" hreflang="ar" href="${tags.url}?lang=ar">`,
     `<link rel="alternate" hreflang="x-default" href="${tags.url}">`,
-    `<meta property="og:url" content="${tags.url}">`,
+    `<meta property="og:url" content="${tags.self}">`,
     `<meta name="twitter:title" content="${tags.ogTitle}">`,
     `<meta name="twitter:description" content="${tags.desc}">`,
     `<meta name="twitter:image" content="${tags.image}">`,
@@ -189,10 +192,37 @@ exports.handler = async (event) => {
   const photos = (Array.isArray(l.photos) ? l.photos : []).filter(Boolean);
   const image = photos[0] || l.photo_url || `${SITE}/assets/og-image.png`;
 
-  const title = `${name}${year} à Dubai — ${money(l.price)} | prix livré Kinshasa, Douala, Abidjan, Dakar`;
-  const desc = `${name}${year} à vendre à Dubai chez ${l.dealer_name || (l.dealers && l.dealers.name) || "un vendeur vérifié"} : ${money(l.price)}.`
-    + (kin ? ` Coût total estimé livré à Kinshasa ≈ ${money(kin)} (transport + douane, estimation).` : "")
-    + ` Photos réelles, vendeur vérifié, discussion directe sur Yayo. Gratuit pour les acheteurs.`;
+  // The title is what Google ranks and shows. Serving the French one on the
+  // English URL makes the page read as French however much of the body the
+  // browser translates afterwards.
+  const lang = ((event.queryStringParameters || {}).lang || "fr").toLowerCase();
+  const seller = (l.dealers && l.dealers.name) || null;
+  const T = {
+    fr: {
+      title: `${name}${year} à Dubai — ${money(l.price)} | prix livré Kinshasa, Douala, Abidjan, Dakar`,
+      desc: `${name}${year} à vendre à Dubai chez ${seller || "un vendeur vérifié"} : ${money(l.price)}.`
+        + (kin ? ` Coût total estimé livré à Kinshasa ≈ ${money(kin)} (transport + douane, estimation).` : "")
+        + ` Photos réelles, vendeur vérifié, discussion directe sur Yayo. Gratuit pour les acheteurs.`,
+      og: `${name}${year} — ${money(l.price)} à Dubai`
+    },
+    en: {
+      title: `${name}${year} for sale in Dubai — ${money(l.price)} | landed price Kinshasa, Douala, Abidjan, Dakar`,
+      desc: `${name}${year} for sale in Dubai from ${seller || "a verified seller"}: ${money(l.price)}.`
+        + (kin ? ` Estimated total landed cost to Kinshasa ≈ ${money(kin)} (shipping + customs, estimate).` : "")
+        + ` Real photos, verified seller, message them directly on Yayo. Free for buyers.`,
+      og: `${name}${year} — ${money(l.price)} in Dubai`
+    },
+    ar: {
+      title: `${name}${year} للبيع في دبي — ${money(l.price)} | السعر شاملاً التوصيل إلى كينشاسا ودوالا وأبيدجان وداكار`,
+      desc: `${name}${year} للبيع في دبي لدى ${seller || "بائع موثوق"}: ${money(l.price)}.`
+        + (kin ? ` التكلفة الإجمالية التقديرية حتى كينشاسا ≈ ${money(kin)} (الشحن والجمارك، تقديري).` : "")
+        + ` صور حقيقية، بائع موثوق، تواصل مباشر عبر Yayo. مجاني للمشترين.`,
+      og: `${name}${year} — ${money(l.price)} في دبي`
+    }
+  };
+  const M = T[lang] || T.fr;
+  const title = M.title;
+  const desc = M.desc;
 
   const ld = {
     "@context": "https://schema.org",
@@ -234,11 +264,14 @@ exports.handler = async (event) => {
     ]
   };
 
+  const selfUrl = lang !== "fr" && T[lang] ? `${canonical}?lang=${lang}` : canonical;
+
   const body = injectHead(base, {
     title: esc(title),
     desc: esc(desc),
     url: esc(canonical),
-    ogTitle: esc(`${name}${year} — ${money(l.price)} à Dubai`),
+    self: esc(selfUrl),
+    ogTitle: esc(M.og),
     image: esc(image),
     ld: JSON.stringify(ld).replace(/</g, "\\u003c")
   }, l.id);
