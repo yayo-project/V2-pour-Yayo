@@ -10,7 +10,10 @@ let CAR = null;
 let CONVO = null;
 let AGENCIES = [];   // verified agencies with parsed routes
 let CHOSEN = null;   // agency picked by the buyer for shipping
-const CAR_ID = new URLSearchParams(location.search).get("id") || "";
+// On the pretty URL (/voiture/toyota-camry-2024-<uuid>) the server has already
+// rendered the head and hands us the id; ?id= still works for old links.
+const CAR_ID = (typeof window !== "undefined" && window.__CAR_ID)
+  || new URLSearchParams(location.search).get("id") || "";
 
 // Demo agencies (shared in js/demo.js) — only shown on demo listings
 const DEMO_AGENCIES = window.YAYO_DEMO_AGENCIES;
@@ -41,6 +44,10 @@ async function loadCar() {
           id: data.id,
           dealer_id: data.dealer_id,
           car_name: data.car_name,
+          // make/model feed the pretty URL — without them the canonical the
+          // page declares would not match the one the server serves
+          make: data.make,
+          model: data.model,
           year: data.year,
           mileage: data.mileage,
           fuel: data.fuel || "",
@@ -143,7 +150,10 @@ function render() {
 // ("Toyota Land Cruiser prix Dubai Kinshasa") with price rich snippets. ──
 function renderSeo() {
   if (String(CAR.id).startsWith("demo")) return; // fictional demo cars are never indexed as products
-  const url = "https://yayo.digital/voiture.html?id=" + encodeURIComponent(CAR.id);
+  // One address per car: the pretty URL. An old ?id= link still renders, but
+  // it tells Google the real page is /voiture/<name>-<year>-<id>, so the two
+  // never compete for the same ranking.
+  const url = window.__CAR_URL || ("https://yayo.digital/voiture/" + yayoCarSlug(CAR));
   const landed = yayoLandedTotal(CAR.price, "kinshasa");
   const desc = `${CAR.car_name}${CAR.year ? " " + CAR.year : ""} à vendre à Dubai chez ${CAR.dealer.name} : $${Math.round(CAR.price).toLocaleString("fr-FR")}` +
     ` — coût total livré Kinshasa ≈ $${Math.round(landed).toLocaleString("fr-FR")} (transport + douane, estimation). Dealer vérifié, chat direct sur Yayo.`;
@@ -458,7 +468,7 @@ async function loadSimilar() {
       // NOTE: no "fuel" column on listings — asking for it made this query
       // fail every time, which is why real cars never showed similar ones.
       const ask = (cols) => yayoSB().from("listings")
-        .select("id, car_name, price, mileage, year, photo_url, photos, make, dealer_id, dealers!inner(" + cols + ")")
+        .select("id, car_name, price, mileage, year, photo_url, photos, make, model, dealer_id, dealers!inner(" + cols + ")")
         .eq("active", true).eq("hidden", false).eq("dormant", false)
         .eq("dealers.suspended", false)
         .neq("id", CAR.id).limit(60);
@@ -468,6 +478,7 @@ async function loadSimilar() {
       pool = yayoSpread((data || []).filter(l => yayoBizLive(l.dealers)))
         .map(l => ({
           id: l.id, car_name: l.car_name, price: Number(l.price) || 0,
+          make: l.make, model: l.model,
           mileage: l.mileage, fuel: "", year: l.year,
           photo_url: l.photo_url, photos: yayoPhotoList(l.photos),
           verified: !!(l.dealers && l.dealers.verified)
@@ -488,7 +499,7 @@ async function loadSimilar() {
   if (!pool.length) return;
   document.getElementById("vd-similar-sec").hidden = false;
   document.getElementById("vd-similar").innerHTML = pool.map(c => `
-  <div class="car-card" onclick="location.href='voiture.html?id=${c.id}'">
+  <div class="car-card" onclick="location.href='${yayoCarHref(c)}'">
     <div class="car-img">
       <img src="${escapeHtml(c.photo_url || "")}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
       ${c.verified ? `<span class="card-vseal">${yayoVBadge()}</span>` : ""}
@@ -496,7 +507,7 @@ async function loadSimilar() {
       ${c.ai ? `<span class="ai-badge ${c.ai === "good" ? "ai-good" : "ai-nego"}">${c.ai === "good" ? t("badge_good") : t("badge_nego")}</span>` : ""}
     </div>
     <div class="car-body">
-      <div class="car-title">${escapeHtml(c.car_name)}</div>
+      <a class="car-title" href="${yayoCarHref(c)}" style="display:block;color:inherit;text-decoration:none">${escapeHtml(c.car_name)}</a>
       <div class="car-chips">${c.year ? `<span>${c.year}</span>` : ""}${c.mileage ? `<span>${Number(c.mileage).toLocaleString("fr-FR")} km</span>` : ""}${c.fuel ? `<span>${escapeHtml(tFuel(c.fuel))}</span>` : ""}</div>
       <div class="car-price-row"><span class="car-price">${fmt(c.price)}</span><span class="car-price-lbl">${t("a_dubai")}</span></div>
     </div>
@@ -513,7 +524,9 @@ function shareCar() {
     .replace("{price}", fmt(CAR.price))
     .replace("{city}", DEST[key].name)
     .replace("{landed}", fmt(yayoLandedTotal(CAR.price, key)));
-  const url = "https://yayo.digital/voiture.html?id=" + encodeURIComponent(CAR.id);
+  // The shared link is the pretty one: WhatsApp fetches it and gets the car's
+  // real photo, name and price in the preview instead of the Yayo logo.
+  const url = "https://yayo.digital" + yayoCarHref(CAR);
   const full = text + " " + url;
   if (navigator.share) { navigator.share({ text: full }).catch(() => {}); return; }
   window.open("https://wa.me/?text=" + encodeURIComponent(full), "_blank", "noopener");

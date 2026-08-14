@@ -6,6 +6,10 @@
 <title>Importer une voiture de Dubai à Kinshasa — Prix, douane et délais | Yayo</title>
 <meta name="description" content="Combien coûte vraiment une voiture de Dubai livrée à Kinshasa ? Prix total transparent : transport 3 200 $, droits de douane RD Congo, TVA et frais de port. Vendeurs automobiles vérifiés, gratuit pour les acheteurs.">
 <link rel="canonical" href="https://yayo.digital/importer-voiture-dubai-kinshasa.html">
+<link rel="alternate" hreflang="fr" href="https://yayo.digital/importer-voiture-dubai-kinshasa.html">
+<link rel="alternate" hreflang="en" href="https://yayo.digital/importer-voiture-dubai-kinshasa.html?lang=en">
+<link rel="alternate" hreflang="ar" href="https://yayo.digital/importer-voiture-dubai-kinshasa.html?lang=ar">
+<link rel="alternate" hreflang="x-default" href="https://yayo.digital/importer-voiture-dubai-kinshasa.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet">
@@ -156,7 +160,7 @@ document.addEventListener("DOMContentLoaded", seoCalc);
     // Asking for a column that does not exist is an error, not an empty
     // answer, so fall back to the old flag until §38 has been run.
     const ask = (col) => yayoSB().from("listings")
-      .select("id,car_name,price,year,mileage,photo_url,dealer_id,dealers!inner(name,verified," + col + ",suspended)")
+      .select("id,car_name,make,model,price,year,mileage,photo_url,dealer_id,dealers!inner(name,verified," + col + ",suspended)")
       .eq("active", true).eq("sold", false).eq("hidden", false)
       .eq("dealers." + col, true).eq("dealers.suspended", false)
       .order("created_at", { ascending: false }).limit(6);
@@ -167,7 +171,7 @@ document.addEventListener("DOMContentLoaded", seoCalc);
     document.getElementById("seo-cars-h").hidden = false;
     document.getElementById("seo-cars-p").hidden = false;
     document.getElementById("seo-cars").innerHTML = data.map(l => `
-    <a class="car-card" href="voiture.html?id=${l.id}" style="text-decoration:none;color:inherit">
+    <a class="car-card" href="${yayoCarHref(l)}" style="text-decoration:none;color:inherit">
       <div class="car-img"><img src="${esc(l.photo_url || "")}" alt="${esc(l.car_name)} à vendre à Dubai" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()"></div>
       <div class="car-body">
         <div class="car-title">${esc(l.car_name)}</div>

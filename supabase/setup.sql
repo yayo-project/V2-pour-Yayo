@@ -1815,3 +1815,73 @@ alter table public.shipping_agencies add column if not exists welcomed_at timest
 alter table public.dealers           add column if not exists licence_asked_at timestamptz;
 alter table public.shipping_agencies add column if not exists licence_asked_at timestamptz;
 
+
+
+-- ═══════════════════════════════════════════════════════════
+-- 44) CLEANING UP WHAT THE IMPORTER WROTE
+-- The website importer filled make / model / year from scraped
+-- page titles, and it got a lot of them wrong: 41 cars have the
+-- YEAR sitting in the make column ("2023 Toyota" became
+-- make=2023, model=Toyota), 361 have no year at all, and some
+-- makes arrived shouting ("MITSUBISHI FUSO") so the same brand
+-- splits into two in every filter.
+--
+-- This matters far beyond tidiness. The make is the brand in
+-- the car's web address, its page title, and any brand landing
+-- page. A page called "2023 Toyota" ranks for nothing and looks
+-- fake to a buyer.
+--
+-- RUN THE SELECT FIRST and look at what it will change. The
+-- updates below only touch rows that are demonstrably wrong,
+-- and never overwrite a value that is already sensible.
+-- ═══════════════════════════════════════════════════════════
+
+-- PREVIEW — read this before running anything else
+-- select id, make, model, year, car_name from public.listings
+--   where make ~ '^[0-9]{4}$' or year is null or make = upper(make)
+--   order by make limit 100;
+
+-- 44a) The year landed in the make column. Move everything back
+--      one place: the model becomes the make, and the year we
+--      found becomes the year (unless one is already recorded).
+update public.listings
+   set year  = coalesce(year, nullif(make, '')::int),
+       make  = nullif(model, ''),
+       model = null
+ where make ~ '^[0-9]{4}$'
+   and nullif(make,'')::int between 1980 and 2030;
+
+-- 44b) Recover a missing year from the advert title ("2024 Toyota
+--      Camry"). Only a plausible car year is accepted.
+update public.listings
+   set year = (substring(car_name from '(19[8-9][0-9]|20[0-3][0-9])'))::int
+ where year is null
+   and car_name ~ '(19[8-9][0-9]|20[0-3][0-9])';
+
+-- 44c) One spelling per brand. "MITSUBISHI FUSO" and "Mitsubishi
+--      Fuso" are the same company and must group as one.
+update public.listings
+   set make = initcap(lower(make))
+ where make is not null
+   and make = upper(make)
+   and make !~ '^[0-9]+$'
+   and length(make) > 3;   -- leaves BMW, MG, KIA, GMC alone
+
+-- 44d) A handful of rows have no real name at all (car_name and
+--      make are both "New"). They cannot be described honestly,
+--      so hide them from buyers rather than publish a car called
+--      "New". Un-hide any that a dealer later fills in properly.
+update public.listings
+   set hidden = true
+ where (coalesce(nullif(trim(car_name),''), '') = ''
+        or lower(trim(car_name)) in ('new','used','other'))
+   and coalesce(nullif(trim(model),''), '') = '';
+
+-- 44e) Rebuild the display name from the clean columns wherever
+--      it disagrees with them, so the card, the page title and
+--      the web address all say the same thing.
+update public.listings
+   set car_name = trim(both ' ' from concat_ws(' ', make, model))
+ where make is not null
+   and nullif(trim(model),'') is not null
+   and car_name is distinct from trim(both ' ' from concat_ws(' ', make, model));

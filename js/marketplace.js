@@ -269,7 +269,7 @@ function render() {
   if (miss) miss.hidden = true;
 
   g.innerHTML = FILTERED.map(c => `
-  <div class="car-card" onclick="openCar('${c.id || ""}')">
+  <div class="car-card" onclick="location.href='${yayoCarHref(c)}'">
     <div class="car-img">
       <img src="${c.photo_url || ""}" alt="${escapeHtml(c.car_name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">
       ${carBadge(c)}
@@ -277,7 +277,7 @@ function render() {
       ${c.photos && c.photos.length > 1 ? `<span class="card-pcount"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg> ${c.photos.length}</span>` : ""}
     </div>
     <div class="car-body">
-      <div class="car-title">${escapeHtml(c.car_name)}</div>
+      <a class="car-title" href="${yayoCarHref(c)}" style="display:block;color:inherit;text-decoration:none">${escapeHtml(c.car_name)}</a>
       <div class="car-chips">${c.year ? `<span>${c.year}</span>` : ""}${c.mileage ? `<span>${Number(c.mileage).toLocaleString("fr-FR")} km</span>` : ""}${c.fuel ? `<span>${escapeHtml(tFuel(c.fuel))}</span>` : (c.condition ? `<span>${escapeHtml(c.condition)}</span>` : "")}</div>
       <div class="car-price-row">
         <span class="car-price">${fmt(c.price)}</span>
