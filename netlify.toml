@@ -20,6 +20,16 @@
   status = 200
   force = true
 
+# Old ?id= links go through the same renderer. Without this their raw HTML
+# still carries the shell's canonical (/voiture.html), so every car would tell
+# Google it is the same page until JavaScript ran.
+[[redirects]]
+  from = "/voiture.html"
+  query = {id = ":id"}
+  to = "/.netlify/functions/car-page?id=:id"
+  status = 200
+  force = true
+
 # car-page.js serves the real voiture.html shell, so it must be bundled with it
 [functions."car-page"]
   included_files = ["voiture.html"]

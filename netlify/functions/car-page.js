@@ -131,6 +131,16 @@ exports.handler = async (event) => {
   // working page rather than showing a broken one.
   if (!base) return { statusCode: 302, headers: { location: "/acheter.html" }, body: "" };
 
+  // Demo cars are fictional and must never be indexed, but the demo tour has
+  // to keep working — serve the shell and let the page's own JS run.
+  if (id && String(id).startsWith("demo")) {
+    return {
+      statusCode: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      body: base.replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>')
+    };
+  }
+
   if (!id) {
     return {
       statusCode: 404,
