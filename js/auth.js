@@ -245,6 +245,9 @@ function initReportLink() {
     const ap = document.createElement("a");
     ap.href = "a-propos.html";
     ap.className = "report-link";
+    // data-i18n so applyI18n retranslates it when the language changes —
+    // without it the footer stayed French on the English site
+    ap.setAttribute("data-i18n", "f_about");
     ap.textContent = t("f_about");
     foot.appendChild(ap);
   }
@@ -253,13 +256,16 @@ function initReportLink() {
     const c = document.createElement("a");
     c.href = "conditions.html";
     c.className = "report-link";
+    c.setAttribute("data-i18n", "f_terms");
     c.textContent = t("f_terms");
     foot.appendChild(c);
   }
   const a = document.createElement("a");
   a.href = "#";
   a.className = "report-link";
-  a.textContent = "⚑ " + t("rp_link");
+  // the flag stays outside the translated span, or applyI18n would wipe it
+  a.innerHTML = '⚑ <span data-i18n="rp_link"></span>';
+  a.querySelector("span").textContent = t("rp_link");
   a.addEventListener("click", ev => { ev.preventDefault(); openReportModal(); });
   foot.appendChild(a);
 }
