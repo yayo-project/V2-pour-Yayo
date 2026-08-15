@@ -23,6 +23,7 @@ const STATIC = [
   ["importer-voiture-dubai-douala.html", "0.8", true],
   ["importer-voiture-dubai-abidjan.html", "0.8", true],
   ["importer-voiture-dubai-dakar.html", "0.8", true],
+  ["a-propos.html", "0.8", true],
   ["comment.html", "0.7", true],
   ["vendre.html", "0.7", true],
   ["expedier.html", "0.7", true],

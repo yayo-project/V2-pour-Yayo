@@ -238,6 +238,16 @@ document.addEventListener("DOMContentLoaded", initPasswordEyes);
 function initReportLink() {
   const foot = document.querySelector(".footer-bottom");
   if (!foot || foot.querySelector(".report-link")) return;
+  // "À propos" on every page: it is the page Google reads to work out what
+  // the word "Yayo" refers to, and a link from every page is what tells it
+  // the page matters.
+  if (!/a-propos\.html/.test(location.pathname)) {
+    const ap = document.createElement("a");
+    ap.href = "a-propos.html";
+    ap.className = "report-link";
+    ap.textContent = t("f_about");
+    foot.appendChild(ap);
+  }
   // Conditions & Confidentialité — founder-approved, linked on every page
   if (!/conditions\.html/.test(location.pathname)) {
     const c = document.createElement("a");
