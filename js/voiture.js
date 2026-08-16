@@ -24,6 +24,11 @@ function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 
 async function loadCar() {
+  // The server already looked and the car is sold, hidden or gone. Say so.
+  // Without this the empty id falls through to the demo tour below, and
+  // someone opening an old link for a car that just sold is shown a
+  // different vehicle as though it were still for sale.
+  if (window.__CAR_MISSING) { CAR = null; render(); return; }
   if (CAR_ID.startsWith("demo-") || CAR_ID === "") {
     CAR = window.YAYO_DEMO.find(c => c.id === CAR_ID) || null;
     if (!CAR && CAR_ID === "") CAR = window.YAYO_DEMO[0];

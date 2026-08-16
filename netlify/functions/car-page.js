@@ -83,10 +83,16 @@ function carTitle(l) {
 // sold car reached from an old WhatsApp link is served from /voiture/<slug>
 // too, and without the base tag its scripts 404 and the buyer watches a
 // spinner forever instead of being told the car is gone.
-function plainShell(base) {
+// `missing` marks a car that is sold, hidden or gone. Without it the page
+// falls back to showing a DEMO car, so someone opening an old link for a car
+// that just sold is shown a different vehicle as if it were real stock.
+function plainShell(base, missing) {
   return base
     .replace(/<head([^>]*)>/i, `<head$1>\n<base href="/">`)
-    .replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>');
+    .replace(/<\/head>/i,
+      '<meta name="robots" content="noindex">\n'
+      + (missing ? '<script>window.__CAR_MISSING=1;</script>\n' : '')
+      + '</head>');
 }
 
 let SHELL = null;
@@ -173,7 +179,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers: { "content-type": "text/html; charset=utf-8" },
-      body: plainShell(base)
+      body: plainShell(base, true)
     };
   }
 
@@ -193,7 +199,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-      body: plainShell(base)
+      body: plainShell(base, true)
     };
   }
 
