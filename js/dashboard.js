@@ -782,7 +782,11 @@ function impPrice(i, val) {
 function impUpdateConfirm() {
   const n = IMP.cars.filter(c => c.pick && !c.locked).length;
   const btn = document.getElementById("imp-confirm");
-  btn.textContent = n ? t("imp_confirm").replace("{n}", n) : t("imp_confirm_none");
+  // Do not promise to publish cars that will land as drafts — say "import".
+  const anyDraft = IMP.cars.some(c => c.pick && !c.locked && !(c.price_usd > 0));
+  btn.textContent = n
+    ? (anyDraft ? t("imp_confirm_draft") : t("imp_confirm")).replace("{n}", n)
+    : t("imp_confirm_none");
   btn.disabled = !n;
   // Explain WHY the button is off, so it never looks broken: on sites that
   // hide prices every car waits for one.
