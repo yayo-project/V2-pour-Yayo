@@ -705,21 +705,33 @@ function impRenderReview(cars, siteTotal) {
     if (have.has(c.source_url) || seen.has(fp)) return false;
     seen.add(fp); return true;
   });
-  // effective limit → how many can go live now (unlimited during promo)
+  // effective limit → how many can go LIVE now (unlimited during promo).
+  // Cars with no price never go live on import, so they cost no slot and are
+  // never locked — §46 counts only what a buyer could actually find.
   const L = yayoDealerLimit(impDealer());
-  const used = IMP_FOR ? (IMP_FOR._used || 0) : LISTINGS.filter(l => !l.sold && !l.dormant).length;
+  const used = IMP_FOR ? (IMP_FOR._used || 0)
+    : LISTINGS.filter(l => !l.sold && !l.dormant && Number(l.price) > 0).length;
   const slots = L.limit < 0 ? Infinity : Math.max(0, L.limit - used);
+  let livePicked = 0;
 
-  IMP.cars = cars.map((c, i) => ({
-    name: c.name, make: c.make, model: c.model, year: c.year, mileage: c.mileage,
-    price_usd: c.price_usd, price_missing: !!c.price_missing,
-    // a number the reader does not trust (see PRICE_MAX_USD in the importer)
-    price_doubt: c.price_doubt || null,
-    photos: (c.photos || []).slice(0, IMPORT_PHOTOS_MAX), source_url: c.source_url || null,
-    import_method: c.import_method || "import",
-    locked: i >= slots,
-    pick: i < slots && !c.price_missing   // priced cars pre-ticked; price-less wait for a price
-  }));
+  IMP.cars = cars.map((c) => {
+    const priced = !c.price_missing && Number(c.price_usd) > 0;
+    // only a priced car takes one of the slots
+    const locked = priced && livePicked >= slots;
+    if (priced && !locked) livePicked++;
+    return {
+      name: c.name, make: c.make, model: c.model, year: c.year, mileage: c.mileage,
+      price_usd: c.price_usd, price_missing: !!c.price_missing,
+      // a number the reader does not trust (see PRICE_MAX_USD in the importer)
+      price_doubt: c.price_doubt || null,
+      photos: (c.photos || []).slice(0, IMPORT_PHOTOS_MAX), source_url: c.source_url || null,
+      import_method: c.import_method || "import",
+      locked: locked,
+      // everything importable starts ticked: priced cars go live, price-less
+      // ones land as drafts only the dealer can see
+      pick: !locked
+    };
+  });
 
   impShow("imp-review");
   document.getElementById("imp-review-h").textContent = IMP.cars.length + " " + t("imp_found");
