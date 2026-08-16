@@ -1161,3 +1161,22 @@ body.no-scroll{overflow:hidden}
 .ad-inline-btn:hover{border-color:#B3261E;color:#B3261E}
 [dir="rtl"] .ad-inline-btn{margin-left:0;margin-right:8px}
 .imp-hint{font-size:12.5px;color:var(--teal-dark);background:var(--teal-tint);border-radius:9px;padding:9px 12px;margin-top:12px;font-weight:600}
+/* Price box on a car imported without one (§46). It sits in the price column
+   of the dealer's own table, so it has to stay narrow and wrap on a phone. */
+.dp-set { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+.dp-set input {
+  width: 92px; border: 1px solid var(--line, #DFE6EE); border-radius: 8px;
+  padding: 7px 9px; font: inherit; font-size: 14px; min-height: 38px;
+}
+.dp-set select {
+  border: 1px solid var(--line, #DFE6EE); border-radius: 8px;
+  padding: 7px 6px; font: inherit; font-size: 13px; min-height: 38px; background: #fff;
+}
+.dp-set button {
+  border: 0; background: #0A2540; color: #fff; border-radius: 8px;
+  padding: 8px 12px; font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; min-height: 38px;
+}
+.dp-set button:active { transform: scale(.97) }
+#lst-drafts { margin: 10px 0 4px }
+@media (max-width: 700px) { .dp-set input { width: 78px } }

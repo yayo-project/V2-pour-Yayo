@@ -451,38 +451,89 @@ function renderOverview() {
 }
 
 // ── Listings CRUD ──
+// A car with no price is a DRAFT (§46): imported from a site that does not
+// publish prices. It is switched off and no buyer can reach it — typing the
+// price is what puts it on the marketplace.
+function isDraft(l) { return !l.sold && !(Number(l.price) > 0); }
+
 function statusOf(l) {
   if (l.sold) return ["sold", t("d_st_sold")];
+  if (isDraft(l)) return ["off", t("d_st_noprice")];
   // asleep because the plan shrank (§32): kept safe, wakes up automatically
   if (l.dormant) return ["off", t("d_st_dormant")];
   if (!l.active) return ["off", t("d_st_off")];
   return ["active", t("d_st_active")];
 }
 
+// Type a price on a draft and the car goes live. One box, one action —
+// a dealer with 92 of these will not click through a form 92 times.
+async function setDraftPrice(id, inputEl) {
+  const raw = Number(String(inputEl.value).replace(/[^\d.]/g, ""));
+  if (!(raw > 0)) { inputEl.focus(); return; }
+  const cur = document.getElementById("dp-cur-" + id);
+  const usd = cur && cur.value === "AED" ? yayoAedToUsd(raw) : raw;
+  inputEl.disabled = true;
+  if (DEMO) { patchListing(id, { price: usd, active: true }); yayoToast(t("d_price_live")); return; }
+  const { error } = await yayoSB().from("listings")
+    .update({ price: usd, active: true }).eq("id", id);
+  inputEl.disabled = false;
+  if (error) { yayoToast(t("d_price_fail")); return; }
+  patchListing(id, { price: usd, active: true });
+  yayoToast(t("d_price_live"));
+}
+
 function renderListings() {
   const rows = document.getElementById("lst-rows");
   const empty = document.getElementById("lst-empty");
   empty.hidden = LISTINGS.length > 0;
-  rows.innerHTML = LISTINGS.map(l => {
+  // cars waiting for a price first — they are the only ones needing an action
+  const ordered = LISTINGS.slice().sort((a, b) => (isDraft(b) ? 1 : 0) - (isDraft(a) ? 1 : 0));
+  renderDraftNote(ordered);
+  rows.innerHTML = ordered.map(l => {
     const [cls, lbl] = statusOf(l);
+    const priceCell = isDraft(l)
+      ? `<div class="dp-set">
+           <input id="dp-in-${l.id}" type="number" min="1" step="1" placeholder="${t("d_price_ph")}"
+                  onkeydown="if(event.key==='Enter')setDraftPrice('${l.id}',this)">
+           <select id="dp-cur-${l.id}"><option>USD</option><option>AED</option></select>
+           <button onclick="setDraftPrice('${l.id}',document.getElementById('dp-in-${l.id}'))">${t("d_price_go")}</button>
+         </div>`
+      : fmt(l.price);
     return `
     <tr>
       <td class="dash-td-car">
         <span class="dash-thumb${l.photo_url ? "" : " noimg"}">${l.photo_url ? `<img src="${escapeHtml(l.photo_url)}" alt="" loading="lazy" onerror="this.parentNode.classList.add('noimg');this.remove()">` : ""}</span>
         <b>${escapeHtml(l.car_name)}</b>
       </td>
-      <td>${fmt(l.price)}</td>
+      <td>${priceCell}</td>
       <td>${l.year || "—"}</td>
       <td>${l.views || 0}</td>
       <td><span class="dash-st ${cls}">${lbl}</span></td>
       <td class="dash-td-actions">
         <button onclick="editListing('${l.id}')">${t("d_edit")}</button>
         ${l.sold ? "" : `<button onclick="markSold('${l.id}')">${t("d_sold_btn")}</button>`}
-        ${l.sold ? "" : `<button onclick="toggleActive('${l.id}')">${l.active ? t("d_off_btn") : t("d_on_btn")}</button>`}
+        ${l.sold || isDraft(l) ? "" : `<button onclick="toggleActive('${l.id}')">${l.active ? t("d_off_btn") : t("d_on_btn")}</button>`}
         <button class="danger" onclick="delListing('${l.id}')">${t("d_del")}</button>
       </td>
     </tr>`;
   }).join("");
+}
+
+// One line above the table saying how many cars are waiting for a price, so
+// a dealer who imported 92 of them knows what the list is asking of him.
+function renderDraftNote(list) {
+  const wrap = document.getElementById("lst-limit");
+  if (!wrap) return;
+  let note = document.getElementById("lst-drafts");
+  const n = list.filter(isDraft).length;
+  if (!n) { if (note) note.remove(); return; }
+  if (!note) {
+    note = document.createElement("div");
+    note.id = "lst-drafts";
+    note.className = "cost-note-strong";
+    wrap.parentNode.insertBefore(note, wrap.nextSibling);
+  }
+  note.textContent = t("d_drafts_note").replace("{n}", n);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -703,7 +754,9 @@ function impCardsHtml() {
     </div>`).join("");
 }
 function impToggle(i, on) {
-  IMP.cars[i].pick = on && (!IMP.cars[i].price_missing || IMP.cars[i].price_usd > 0);
+  // A car with no price can be brought in as a draft (§46): it lands switched
+  // off in the dealer's dashboard and no buyer can reach it until he prices it.
+  IMP.cars[i].pick = on;
   document.getElementById("imp-card-" + i).classList.toggle("on", IMP.cars[i].pick);
   impUpdateConfirm();
 }
@@ -723,9 +776,11 @@ function impUpdateConfirm() {
   // hide prices every car waits for one.
   const hint = document.getElementById("imp-hint");
   if (hint) {
-    const needPrice = IMP.cars.filter(c => !c.locked && c.price_missing && !c.pick).length;
-    hint.hidden = !(!n && needPrice);
-    if (!hint.hidden) hint.textContent = t("imp_need_price").replace("{n}", needPrice);
+    // Say plainly what will happen to the ticked cars that still have no
+    // price: they come in as drafts and stay invisible until he prices them.
+    const drafts = IMP.cars.filter(c => c.pick && !c.locked && !(c.price_usd > 0)).length;
+    hint.hidden = !drafts;
+    if (drafts) hint.textContent = t("imp_draft_note").replace("{n}", drafts);
   }
 }
 
@@ -784,7 +839,11 @@ async function impConfirm() {
         ok++;
         return;
       }
-      const insert = (pl) => sb.from("listings").insert({ ...pl, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: true, sold: false });
+      // No price = draft: switched OFF so no buyer can reach it (§46 also
+      // enforces this in the database). Pricing it in the dashboard is what
+      // publishes it.
+      const live = Number(payload.price) > 0;
+      const insert = (pl) => sb.from("listings").insert({ ...pl, dealer_id: DEALER.id, city: "Dubai", export_africa: true, active: live, sold: false });
       let { error } = await insert(payload);
       if (error && /column|source_url|import_method|imported_at|make|model|photos/i.test(error.message || "")) {
         const { source_url, import_method, imported_at, make, model, photos: ph, ...slim } = payload;

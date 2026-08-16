@@ -1935,3 +1935,67 @@ update public.listings
  where (make is null or trim(make) = '')
    and coalesce(nullif(trim(model), ''), '') = ''
    and car_name ~ '^[0-9]{4}$';
+
+
+-- ═══════════════════════════════════════════════════════════
+-- 46) A CAR WITH NO PRICE IS A DRAFT
+-- Some Dubai dealers never publish prices — Target Motors is
+-- one: his whole site says "price on request". Refusing to
+-- import him until he has prices means never importing him.
+--
+-- So a price-less car can now be imported. It arrives switched
+-- OFF: buyers only ever see active = true, so it is invisible
+-- from the first second. It sits in his dashboard until he
+-- types a price, and typing the price is what publishes it.
+--
+-- Two rules the database enforces, so nothing can slip out by
+-- accident or by clicking the wrong toggle:
+--   a) a car cannot be active while it has no real price
+--   b) a price-less draft does not eat the dealer's listing
+--      allowance — he only spends it on cars buyers can see
+-- ═══════════════════════════════════════════════════════════
+
+-- 46a) The car may not go public without a price.
+create or replace function public.yayo_price_before_public()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  if coalesce(new.active, false) = true
+     and (new.price is null or new.price <= 0) then
+    new.active := false;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists yayo_price_gate on public.listings;
+create trigger yayo_price_gate before insert or update on public.listings
+  for each row execute function public.yayo_price_before_public();
+
+-- 46b) Drafts do not count against the limit. Only cars a buyer
+--      could actually find do.
+create or replace function public.yayo_enforce_listing_limit()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare d record; lim int; cnt int;
+begin
+  if coalesce(public.yayo_admin_role(),'') in ('super_admin','admin_dealers') then
+    return new;
+  end if;
+  select * into d from dealers where id = new.dealer_id;
+  if d is null then return new; end if;
+  if d.promo_until is not null and current_date < d.promo_until and d.promo_limit is not null then
+    lim := d.promo_limit;
+  else
+    lim := coalesce(d.normal_limit, 10);
+  end if;
+  if lim < 0 then return new; end if;
+  -- a car being inserted without a price is a draft: let it in
+  if new.price is null or new.price <= 0 then return new; end if;
+  select count(*) into cnt from listings
+    where dealer_id = new.dealer_id
+      and coalesce(sold,false) = false
+      and coalesce(dormant,false) = false
+      and price is not null and price > 0;   -- drafts are free
+  if cnt >= lim then
+    raise exception 'YAYO_LIMIT_REACHED';
+  end if;
+  return new;
+end $$;
