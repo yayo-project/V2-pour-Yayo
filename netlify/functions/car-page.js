@@ -79,6 +79,16 @@ function carTitle(l) {
   return name;
 }
 
+// The plain shell, still anchored to the root. Every branch needs this: a
+// sold car reached from an old WhatsApp link is served from /voiture/<slug>
+// too, and without the base tag its scripts 404 and the buyer watches a
+// spinner forever instead of being told the car is gone.
+function plainShell(base) {
+  return base
+    .replace(/<head([^>]*)>/i, `<head$1>\n<base href="/">`)
+    .replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>');
+}
+
 let SHELL = null;
 function shell() {
   if (SHELL) return SHELL;
@@ -155,7 +165,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-      body: base.replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>')
+      body: plainShell(base)
     };
   }
 
@@ -163,7 +173,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers: { "content-type": "text/html; charset=utf-8" },
-      body: base.replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>')
+      body: plainShell(base)
     };
   }
 
@@ -183,7 +193,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 404,
       headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-      body: base.replace(/<\/head>/i, '<meta name="robots" content="noindex">\n</head>')
+      body: plainShell(base)
     };
   }
 
