@@ -75,7 +75,10 @@ function render() {
   document.getElementById("vd-loading").hidden = true;
   if (!CAR) { document.getElementById("vd-notfound").hidden = false; return; }
   document.getElementById("vd-content").hidden = false;
-  document.title = CAR.car_name + " à Dubai — prix livré en Afrique | Yayo";
+  // The server already wrote a better title (price + destinations, in the
+  // reader's language). Only write one here when it did not — a demo car, or
+  // a page opened without going through the renderer.
+  if (!window.__CAR_ID) document.title = CAR.car_name + " à Dubai — prix livré en Afrique | Yayo";
   renderSeo();
 
   document.getElementById("crumb-name").textContent = CAR.car_name;
@@ -150,6 +153,11 @@ function render() {
 // ("Toyota Land Cruiser prix Dubai Kinshasa") with price rich snippets. ──
 function renderSeo() {
   if (String(CAR.id).startsWith("demo")) return; // fictional demo cars are never indexed as products
+  // Served through the renderer: description, canonical, Open Graph and the
+  // Car/Offer data are already in the HTML and are language-aware. Rewriting
+  // them here would replace them with a French-only copy. Just keep the
+  // canonical pointing at whichever language is on screen.
+  if (window.__CAR_URL) { if (typeof yayoLangCanonical === "function") yayoLangCanonical(); return; }
   // One address per car: the pretty URL. An old ?id= link still renders, but
   // it tells Google the real page is /voiture/<name>-<year>-<id>, so the two
   // never compete for the same ranking.
