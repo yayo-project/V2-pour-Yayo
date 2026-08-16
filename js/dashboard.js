@@ -844,7 +844,8 @@ async function impConfirm() {
       };
       // demo mode saves nothing anywhere — it only shows what would happen
       if (DEMO_ADMIN) { ok++; return; }
-      if (DEMO) { LISTINGS.unshift({ ...payload, id: "demo-imp-" + Date.now() + Math.random(), active: true, sold: false, dealer: { name: DEALER.name } }); ok++; return; }
+      // mirror the real insert: no price means it arrives switched off
+      if (DEMO) { LISTINGS.unshift({ ...payload, id: "demo-imp-" + Date.now() + Math.random(), active: Number(payload.price) > 0, sold: false, dealer: { name: DEALER.name } }); ok++; return; }
       const sb = yayoSB();
       // Publishing into someone else's inventory goes through the audited §37
       // RPC — the row-level rules rightly forbid a direct insert.
