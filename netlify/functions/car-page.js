@@ -96,6 +96,14 @@ function shell() {
 // two <title> tags or two canonicals is worse than none.
 function injectHead(html, tags, carId) {
   let out = html;
+  // voiture.html lives at the site root and asks for "js/voiture.js" and
+  // "css/style.css". Served from /voiture/<slug> those resolve one folder
+  // deep — /voiture/js/voiture.js — and 404, so no stylesheet and no script
+  // ever load and the page spins forever. This anchors every relative URL on
+  // the page to the root: assets, the menu links, and the addresses the
+  // scripts build at runtime (connexion.html?next=…). It must sit before the
+  // first relative URL in the head to apply to it.
+  out = out.replace(/<head([^>]*)>/i, `<head$1>\n<base href="/">`);
   out = out.replace(/<title>[\s\S]*?<\/title>/i, `<title>${tags.title}</title>`);
   out = out.replace(/<meta name="description" content="[^"]*">/i,
     `<meta name="description" content="${tags.desc}">`);
