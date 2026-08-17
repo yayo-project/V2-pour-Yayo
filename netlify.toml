@@ -1,6 +1,15 @@
 [build]
   publish = "."
 
+# Netlify rewrites every link in the served HTML to drop ".html", so the repo
+# says acheter.html, the canonical says acheter.html, the sitemap says
+# acheter.html — and the page Google downloads links to /acheter. Google
+# follows the links, indexes that, and overrides the canonical, which is the
+# "Duplicate, Google chose different canonical than user" report. Turning the
+# rewrite off makes the links, the canonical and the sitemap say one thing.
+[build.processing.html]
+  pretty_urls = false
+
 [functions]
   directory = "netlify/functions"
 
