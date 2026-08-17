@@ -17,14 +17,22 @@ const YAYO_CONFIG = {
   //           prélèvements communautaires + redevance statistique ~2-2.5%)
   //   vat   = TVA applied on (CIF + duty + extra): DRC 16%, CM 19.25%, CI/SN 18%
   // legacy `duty` kept as the flat effective fallback for any old code path.
+  // Freight per car, Dubai → destination port. These replace figures that were
+  // roughly DOUBLE the market and made a $3 000 car look like a $10 000 one.
+  // Reference points (Aug 2026): Dubai→Douala quoted "up to $1 975" including
+  // some clearance, 36–45 days; RoRo to Cameroon $1 200–1 700, container
+  // $1 800–2 500. ship = a normal car, shipL = 4×4 / pick-up / van,
+  // shipXL = truck or bus. Every one of them is replaced by an agency's REAL
+  // price the moment a buyer picks an agency — these are only the "before you
+  // have a quote" figure, and they are labelled as such.
   DESTINATIONS: {
-    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 3200, fees: 1070, duty: 0.45,
+    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 1700, shipL: 2300, shipXL: 3300, fees: 650, duty: 0.45,
                 customs: { duty: 0.10, extra: 0.10, vat: 0.16 } },
-    douala:   { name: "Douala",   flag: "🇨🇲", ship: 2800, fees: 1070, duty: 0.50,
+    douala:   { name: "Douala",   flag: "🇨🇲", ship: 1450, shipL: 1950, shipXL: 2900, fees: 520, duty: 0.50,
                 customs: { duty: 0.30, extra: 0.00, vat: 0.1925 } },
-    abidjan:  { name: "Abidjan",  flag: "🇨🇮", ship: 3500, fees: 1070, duty: 0.44,
+    abidjan:  { name: "Abidjan",  flag: "🇨🇮", ship: 1550, shipL: 2050, shipXL: 3000, fees: 520, duty: 0.44,
                 customs: { duty: 0.20, extra: 0.025, vat: 0.18 } },
-    dakar:    { name: "Dakar",    flag: "🇸🇳", ship: 3300, fees: 1070, duty: 0.48,
+    dakar:    { name: "Dakar",    flag: "🇸🇳", ship: 1500, shipL: 2000, shipXL: 2950, fees: 500, duty: 0.48,
                 customs: { duty: 0.20, extra: 0.024, vat: 0.18 } },
     dubai:    { name: "Dubai",    flag: "🇦🇪", ship: 0, fees: 0, duty: 0, customs: null }
   },
@@ -145,12 +153,26 @@ function yayoCustoms(price, ship, destKey) {
   return { duty, extra, vat, total: duty + extra + vat, c };
 }
 
-// Full landed total for a destination (optionally with a real agency price)
-function yayoLandedTotal(price, destKey, shipOverride) {
+// A Land Cruiser does not cost the same to ship as a Yaris — freight is sold
+// by the space the vehicle occupies, never by its price.
+const YAYO_BIG_VEHICLE = /(land ?cruiser|prado|patrol|pajero|fortuner|hilux|ranger|navara|amarok|hiace|d-?max|bt-?50|tundra|sequoia|suburban|tahoe|escalade|expedition|armada|\bgls\b|\bgle\b|\bx7\b|\bq7\b|range rover|discovery|defender|wrangler|pick-?up|pickup|4x4|minibus|van\b|caravan|transit|sprinter|coaster|alphard|carnival|staria|\bvxr\b|\blc\d{2,3}\b)/i;
+
+function yayoShipFor(destKey, carName) {
+  const d = YAYO_CONFIG.DESTINATIONS[destKey];
+  if (!d) return 0;
+  const n = String(carName || "");
+  if (n && typeof YAYO_COMMERCIAL !== "undefined" && YAYO_COMMERCIAL.test(n)) return d.shipXL || d.shipL || d.ship;
+  if (n && YAYO_BIG_VEHICLE.test(n)) return d.shipL || d.ship;
+  return d.ship;
+}
+
+// Full landed total for a destination. shipOverride = a real agency price;
+// carName lets us charge a 4×4 like a 4×4 instead of like a saloon.
+function yayoLandedTotal(price, destKey, shipOverride, carName) {
   const d = YAYO_CONFIG.DESTINATIONS[destKey];
   price = Number(price) || 0;
   if (!d || destKey === "dubai") return price;
-  const ship = Number((shipOverride != null) ? shipOverride : d.ship) || 0;
+  const ship = Number((shipOverride != null) ? shipOverride : yayoShipFor(destKey, carName)) || 0;
   return price + ship + yayoCustoms(price, ship, destKey).total + d.fees;
 }
 

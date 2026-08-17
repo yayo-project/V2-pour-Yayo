@@ -18,8 +18,8 @@ function fmt(n) {
   return "$" + Math.round(n).toLocaleString("fr-FR").replace(/\u202f/g, " ");
 }
 
-function landedTotal(price, destKey) {
-  return yayoLandedTotal(price, destKey);
+function landedTotal(price, destKey, name) {
+  return yayoLandedTotal(price, destKey, null, name);
 }
 
 // ── Load real listings from Supabase ──
@@ -126,7 +126,7 @@ function renderArrivals() {
         <div class="arr-title">${escapeHtml(c.car_name)}</div>
         <div class="car-chips">${c.year ? `<span>${c.year}</span>` : ""}${c.mileage ? `<span>${Number(c.mileage).toLocaleString("fr-FR")} km</span>` : ""}</div>
         <div class="arr-price">${fmt(c.price)} <span>${t("a_dubai")}</span></div>
-        ${CUR === "dubai" ? "" : `<div class="arr-landed">≈ ${fmt(landedTotal(c.price, CUR))} ${escapeHtml(dst.name)}</div>`}
+        ${CUR === "dubai" ? "" : `<div class="arr-landed">≈ ${fmt(landedTotal(c.price, CUR, c.car_name))} ${escapeHtml(dst.name)}</div>`}
       </div>
     </div>`;
   }).join("");
@@ -141,7 +141,7 @@ function renderBudget() {
   const sec = document.getElementById("budget");
   // Budget tiers describe what is really for sale — with no inventory there is
   // nothing honest to say, so the whole section stays away.
-  const landed = ALL_CARS.map(c => landedTotal(c.price, CUR)).sort((a, b) => a - b);
+  const landed = ALL_CARS.map(c => landedTotal(c.price, CUR, c.car_name)).sort((a, b) => a - b);
   if (!landed.length) { g.innerHTML = ""; if (sec) sec.hidden = true; return; }
   if (sec) sec.hidden = false;
   const pick = p => landed[Math.min(landed.length - 1, Math.floor(landed.length * p))];
@@ -230,7 +230,7 @@ function renderCars() {
       ${CUR === "dubai" ? "" : `
       <div class="landed">
         <span class="landed-lbl">${t("rendu2")} ${dst.name}</span>
-        <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR))}</span>
+        <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR, c.car_name))}</span>
       </div>`}
       <div class="car-dealer">
         ${yayoAvatarHtml(c.dealer.name, c.dealer.logo_url)}

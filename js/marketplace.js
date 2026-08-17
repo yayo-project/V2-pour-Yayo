@@ -28,7 +28,7 @@ function bodyOf(c) {
 }
 
 function fmt(n) { return yayoFmt(n); }
-function landedTotal(price, key) { return yayoLandedTotal(price, key); }
+function landedTotal(price, key, name) { return yayoLandedTotal(price, key, null, name); }
 function escapeHtml(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function brandOf(c) { const w = (c.car_name || "").split(" ")[0]; return BRANDS.find(b => b.toLowerCase() === w.toLowerCase()) || w; }
 
@@ -160,7 +160,7 @@ function applyFilters() {
   FILTERED = ALL.filter(c => {
     if (ONLY_DEALER && String(c.dealer_id) !== ONLY_DEALER) return false;
     if (BUDGET) {
-      if (landedTotal(c.price, CUR) > BUDGET.amount) return false;
+      if (landedTotal(c.price, CUR, c.car_name) > BUDGET.amount) return false;
     } else if (q) {
       const name = (c.car_name || "").toLowerCase();
       if (!q.split(/\s+/).every(w => name.includes(w))) return false;
@@ -211,7 +211,7 @@ function renderBudgetMiss() {
   if (!BUDGET || CUR === "dubai" || !ALL.length) return false;
   const pool = ONLY_DEALER ? ALL.filter(c => String(c.dealer_id) === ONLY_DEALER) : ALL;
   if (!pool.length) return false;
-  const cheapest = Math.min(...pool.map(c => landedTotal(c.price, CUR)));
+  const cheapest = Math.min(...pool.map(c => landedTotal(c.price, CUR, c.car_name)));
   if (!(cheapest > BUDGET.amount)) return false;      // empty for another reason
   const inDubai = pool.filter(c => Number(c.price) <= BUDGET.amount).length;
   el.hidden = false;
@@ -286,7 +286,7 @@ function render() {
       ${CUR === "dubai" ? "" : `
       <div class="landed">
         <span class="landed-lbl">${t("rendu2")} ${dst.name}</span>
-        <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR))}</span>
+        <span class="landed-val">≈ ${fmt(landedTotal(c.price, CUR, c.car_name))}</span>
       </div>`}
       <div class="car-dealer">
         ${yayoAvatarHtml(c.dealer.name, c.dealer.logo_url)}

@@ -167,7 +167,7 @@ function renderSeo() {
   // it tells Google the real page is /voiture/<name>-<year>-<id>, so the two
   // never compete for the same ranking.
   const url = window.__CAR_URL || ("https://yayo.digital/voiture/" + yayoCarSlug(CAR));
-  const landed = yayoLandedTotal(CAR.price, "kinshasa");
+  const landed = yayoLandedTotal(CAR.price, "kinshasa", null, CAR.car_name);
   const desc = `${CAR.car_name}${CAR.year ? " " + CAR.year : ""} à vendre à Dubai chez ${CAR.dealer.name} : $${Math.round(CAR.price).toLocaleString("fr-FR")}` +
     ` — coût total livré Kinshasa ≈ $${Math.round(landed).toLocaleString("fr-FR")} (transport + douane, estimation). Dealer vérifié, chat direct sur Yayo.`;
   const canon = document.getElementById("vd-canonical");
@@ -331,7 +331,8 @@ function renderBreakdown() {
     ? `${yayoVBadge()} ${escapeHtml(CHOSEN.name)} · ${t("agl_change")}`
     : t("ct_btn");
   const route = CHOSEN && routeFor(CHOSEN, CUR);
-  const ship = Number(route ? route.price : d.ship) || 0;
+  // freight is sold by the space a vehicle takes, not by what it cost
+  const ship = Number(route ? route.price : yayoShipFor(CUR, CAR.car_name)) || 0;
   const shipLbl = route
     ? `${t("ct_price_lbl")}<span class="ct-src">${escapeHtml(CHOSEN.name)}</span>`
     : t("bd_ship2");
@@ -362,6 +363,8 @@ function renderBreakdown() {
       <div class="cost-line"><span>${t("bd_fees2")}</span><b>${fmt(d.fees)}</b></div>
       <div class="pay-sub">${t("bd_customs_note")}</div>
     </div>
+    ${(ship + cx.total + d.fees) > CAR.price
+      ? `<p class="pay-cheap">${t("bd_cheap_note")}</p>` : ""}
     <p class="pay-explain">${t("bd_explain")}</p>`;
   updateTeasers(total, d.name);
 }
@@ -540,7 +543,7 @@ function shareCar() {
     .replace("{car}", CAR.car_name)
     .replace("{price}", fmt(CAR.price))
     .replace("{city}", DEST[key].name)
-    .replace("{landed}", fmt(yayoLandedTotal(CAR.price, key)));
+    .replace("{landed}", fmt(yayoLandedTotal(CAR.price, key, null, CAR.car_name)));
   // The shared link is the pretty one: WhatsApp fetches it and gets the car's
   // real photo, name and price in the preview instead of the Yayo logo.
   const url = "https://yayo.digital" + yayoCarHref(CAR);

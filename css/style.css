@@ -1071,6 +1071,8 @@ body.no-scroll{overflow:hidden}
 .bmiss p{font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-bottom:14px}
 .bmiss .btn{margin-bottom:10px}
 .bmiss-note{font-size:12px;color:var(--ink-3);margin-bottom:0}
+/* why a cheap car costs so much to bring home */
+.pay-cheap{font-size:12.5px;line-height:1.6;color:#8A6116;background:#FFF6E5;border-radius:10px;padding:10px 12px;margin:10px 0 0}
 /* Full-screen photo viewer — a buyer must be able to SEE the showroom */
 .yz{position:fixed;inset:0;z-index:10000;background:rgba(7,27,51,.94);display:flex;align-items:center;justify-content:center;padding:44px 14px;animation:yzin .18s ease}
 @keyframes yzin{from{opacity:0}to{opacity:1}}
