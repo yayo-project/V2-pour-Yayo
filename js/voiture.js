@@ -355,13 +355,18 @@ function renderBreakdown() {
       <div class="pay-sub">${t("bd_pay_dealer_note")}</div>
     </div>
     <div class="pay-block">
-      <div class="pay-head">${icoShip} ${t("bd_fees_h")}</div>
+      <div class="pay-head">${icoShip} ${t("bd_ship_h")}</div>
       <div class="cost-line"><span>${shipLbl}</span><b>${fmt(ship)}</b></div>
+      <div class="pay-sub">${t("bd_ship_note")}</div>
+    </div>
+    <div class="pay-block pay-tax">
+      <div class="pay-head">🏛️ ${t("bd_tax_h")}</div>
       <div class="cost-line"><span>${t("bd_duty3")} (${pct(cx.c.duty)})</span><b>${fmt(cx.duty)}</b></div>
       ${cx.extra ? `<div class="cost-line"><span>${t("bd_levies")} (${pct(cx.c.extra)})</span><b>${fmt(cx.extra)}</b></div>` : ""}
       <div class="cost-line"><span>${t("bd_vat")} (${pct(cx.c.vat)})</span><b>${fmt(cx.vat)}</b></div>
       <div class="cost-line"><span>${t("bd_fees2")}</span><b>${fmt(d.fees)}</b></div>
-      <div class="pay-sub">${t("bd_customs_note")}</div>
+      <div class="cost-line cost-sub"><span>${t("bd_tax_total")}</span><b>${fmt(cx.total + d.fees)}</b></div>
+      <div class="pay-sub">${t("bd_tax_note")}</div>
     </div>
     ${(ship + cx.total + d.fees) > CAR.price
       ? `<p class="pay-cheap">${t("bd_cheap_note")}</p>` : ""}

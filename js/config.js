@@ -26,8 +26,13 @@ const YAYO_CONFIG = {
   // price the moment a buyer picks an agency — these are only the "before you
   // have a quote" figure, and they are labelled as such.
   DESTINATIONS: {
-    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 1700, shipL: 2300, shipXL: 3300, fees: 650, duty: 0.45,
-                customs: { duty: 0.10, extra: 0.10, vat: 0.16 } },
+    // DRC (DGDA): droit d'entrée 20% of CIF · TVA 16% on (CIF + duty) ·
+    // CEEAC 1% + CEDEAO 1% + statistique 1% · taxe spécifique by engine size
+    // (~$500 for 2000cc, carried in "fees" with the port and documents).
+    // Published total lands at 40–60% of the vehicle's value, which is what
+    // Congolese importers actually pay.
+    kinshasa: { name: "Kinshasa", flag: "🇨🇩", ship: 1700, shipL: 2300, shipXL: 3300, fees: 900, duty: 0.45,
+                customs: { duty: 0.20, extra: 0.03, vat: 0.16 } },
     douala:   { name: "Douala",   flag: "🇨🇲", ship: 1450, shipL: 1950, shipXL: 2900, fees: 520, duty: 0.50,
                 customs: { duty: 0.30, extra: 0.00, vat: 0.1925 } },
     abidjan:  { name: "Abidjan",  flag: "🇨🇮", ship: 1550, shipL: 2050, shipXL: 3000, fees: 520, duty: 0.44,
