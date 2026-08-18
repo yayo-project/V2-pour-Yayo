@@ -152,7 +152,7 @@ async function yayoQuoteSend() {
           .select("id").eq("agency_id", ag.id).eq("user_id", user.id).maybeSingle();
         if (!convo) {
           const ins = await sb.from("conversations")
-            .insert({ agency_id: ag.id, user_id: user.id, car_name: "transport · " + carLabel, status: "open" })
+            .insert({ agency_id: ag.id, user_id: user.id, car_name: "transport · " + carLabel, status: "open", dest: QUOTE.city || null })
             .select("id").single();
           convo = ins.data;
         }

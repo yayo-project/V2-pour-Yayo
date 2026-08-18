@@ -1999,3 +1999,20 @@ begin
   end if;
   return new;
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 47) WHERE THE BUYER WANTS THE CAR DELIVERED
+-- The seller never learns who the buyer is — no name, no email,
+-- no number. But an inbox where every row reads "Acheteur" is
+-- unusable the moment two people ask about the same Hilux.
+-- So the conversation carries the destination city the buyer had
+-- selected when he wrote. The dashboard pairs it with a short
+-- code derived from the user id: same buyer, same code, always.
+-- The dealer can finally tell his conversations apart, and the
+-- one fact he gains — where the car is going — is the one he
+-- needs to quote shipping. It still says nothing about who.
+-- Old conversations keep dest null and simply show the code.
+-- ═══════════════════════════════════════════════════════════
+
+alter table public.conversations
+  add column if not exists dest text;

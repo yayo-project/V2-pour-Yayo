@@ -589,7 +589,7 @@ async function openChat() {
       .eq("car_name", CAR.car_name).maybeSingle();
     if (!convo) {
       const ins = await sb.from("conversations")
-        .insert({ dealer_id: CAR.dealer_id, user_id: user.id, car_name: CAR.car_name, status: "open" })
+        .insert({ dealer_id: CAR.dealer_id, user_id: user.id, car_name: CAR.car_name, status: "open", dest: CUR === "dubai" ? null : CUR })
         .select("id").single();
       convo = ins.data;
     }

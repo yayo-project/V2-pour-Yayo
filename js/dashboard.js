@@ -37,11 +37,11 @@ function hide(id) { document.getElementById(id).hidden = true; }
 const DEMO_DEALER = { id: "demo-dealer", name: "Mukoma Auto", verified: true };
 function demoConvos() {
   return [
-    { id: "dc-1", car_name: "Toyota Land Cruiser GXR 2021", buyer: "Acheteur · Kinshasa", msgs: [
+    { id: "dc-1", car_name: "Toyota Land Cruiser GXR 2021", buyer: "Acheteur #K4R7 · Kinshasa", msgs: [
       { me: false, text: "Bonjour, la Land Cruiser est toujours disponible ? Je suis à Kinshasa." },
       { me: false, text: "Et le prix est négociable si je paie rapidement ?" }
     ]},
-    { id: "dc-2", car_name: "Toyota Hilux 4x4 2020", buyer: "Acheteur · Douala", msgs: [
+    { id: "dc-2", car_name: "Toyota Hilux 4x4 2020", buyer: "Acheteur #B1M3 · Douala", msgs: [
       { me: false, text: "Le Hilux peut arriver à Douala avant fin du mois ?" },
       { me: true,  text: "Bonjour ! Oui, avec une agence certifiée Yayo le délai est de 3 à 4 semaines." }
     ]}
@@ -52,10 +52,10 @@ const DEMO_AGENCY = {
 };
 function demoAgConvos() {
   return [
-    { id: "ac-1", car_name: "transport · Toyota Prado 2021", buyer: "Acheteur · Kinshasa", msgs: [
+    { id: "ac-1", car_name: "transport · Toyota Prado 2021", buyer: "Acheteur #K4R7 · Kinshasa", msgs: [
       { me: false, text: "Bonjour, vous pouvez livrer un Prado à Kinshasa ? Quel délai ?" }
     ]},
-    { id: "ac-2", car_name: "transport", buyer: "Acheteur · Dakar", msgs: [
+    { id: "ac-2", car_name: "transport", buyer: "Acheteur #M6T2 · Dakar", msgs: [
       { me: false, text: "Est-ce que l'assurance est incluse dans votre prix vers Dakar ?" },
       { me: true,  text: "Bonjour ! Oui, l'assurance de base est incluse. Comptez 30 jours port à port." }
     ]}
@@ -284,12 +284,48 @@ async function loadListings() {
   } catch (e) { LISTINGS = []; }
 }
 
+// A buyer stays anonymous to the seller — no name, no email, no number.
+// But "Acheteur" on every row is unusable once two people ask about the same
+// car, so each buyer gets a short code that is always the same for him, plus
+// the city he wants the car delivered to. The city is the part a dealer
+// actually needs; neither says who he is.
+// Four characters, ~57 600 combinations. Three would collide inside a single
+// busy inbox often enough to matter (two buyers, one code, wrong car marked
+// sold). Two independent hashes so the halves cannot drift together.
+function buyerCode(uid) {
+  const s = String(uid || "");
+  if (!s) return "";
+  let a = 0, b = 0;
+  for (let i = 0; i < s.length; i++) {
+    a = (a * 31 + s.charCodeAt(i)) >>> 0;
+    b = (b * 131 + s.charCodeAt(i) * (i + 7)) >>> 0;
+  }
+  const L = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I, no O — they read as 1 and 0
+  // divide before the second modulo: a % 24 and a % 10 overlap (both turn on
+  // a % 120) and would quietly cost three quarters of the range.
+  return L[a % 24] + String(Math.floor(a / 24) % 10)
+       + L[b % 24] + String(Math.floor(b / 24) % 10);
+}
+function buyerLabel(uid, dest) {
+  const code = buyerCode(uid);
+  const d = dest && YAYO_CONFIG.DESTINATIONS[dest];
+  let s = t("d_buyer");
+  if (code) s += " #" + code;
+  if (d) s += " · " + d.name;
+  return s;
+}
+
 // Works for BOTH dashboards: dealer convos or agency convos
 async function loadConvos() {
   try {
     const field = DEALER ? "dealer_id" : "agency_id";
     const bizId = DEALER ? DEALER.id : AGENCY.id;
+    // Newest schema first, then older ones. A column that does not exist yet
+    // must never empty the inbox — it only costs the extra detail.
     let r = await yayoSB().from("conversations")
+      .select("id, car_name, user_id, created_at, last_message, last_message_at, last_sender, dest")
+      .eq(field, bizId).order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
+    if (r.error) r = await yayoSB().from("conversations")
       .select("id, car_name, user_id, created_at, last_message, last_message_at, last_sender")
       .eq(field, bizId).order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
     if (r.error) r = await yayoSB().from("conversations")
@@ -298,7 +334,7 @@ async function loadConvos() {
     CONVOS = (r.data || []).map(c => ({
       id: c.id,
       car_name: c.car_name || "—",
-      buyer: t("d_buyer"),
+      buyer: buyerLabel(c.user_id, c.dest),
       created_at: c.created_at, // for the 30-day trend chart
       last: c.last_message || "",
       lastAt: c.last_message_at || null,
@@ -1106,11 +1142,14 @@ async function markSold(id) {
   const l = findListing(id);
   let convos = [];
   try {
-    const { data } = await yayoSB().from("conversations")
-      .select("id, user_id, car_name, last_message, last_message_at, created_at")
+    const cols = "id, user_id, car_name, last_message, last_message_at, created_at";
+    let q = await yayoSB().from("conversations").select(cols + ", dest")
       .eq("dealer_id", DEALER.id)
       .order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
-    convos = data || [];
+    if (q.error) q = await yayoSB().from("conversations").select(cols)
+      .eq("dealer_id", DEALER.id)
+      .order("last_message_at", { ascending: false, nullsFirst: false }).limit(50);
+    convos = q.data || [];
   } catch (e) { convos = []; }
   // conversations about THIS car first — that's almost always the buyer
   const nm = ((l && l.car_name) || "").toLowerCase();
@@ -1131,7 +1170,8 @@ async function markSold(id) {
       <div class="sold-list">
         ${convos.slice(0, 12).map(c => `
         <button type="button" onclick="soldTo('${id}','${c.user_id}')">
-          <b>${esc(c.car_name || "—")}</b>
+          <b>${esc(buyerLabel(c.user_id, c.dest))}</b>
+          <span>${esc(c.car_name || "—")}</span>
           <span>${esc((c.last_message || "").slice(0, 60)) || t("sold_pick_convo")}</span>
         </button>`).join("")}
       </div>

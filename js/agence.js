@@ -162,7 +162,7 @@ async function openAgChat() {
       .select("id").eq("agency_id", AG.id).eq("user_id", user.id).maybeSingle();
     if (!convo) {
       const ins = await sb.from("conversations")
-        .insert({ agency_id: AG.id, user_id: user.id, car_name: FROM_CAR ? ("transport · " + FROM_CAR) : "transport", status: "open" })
+        .insert({ agency_id: AG.id, user_id: user.id, car_name: FROM_CAR ? ("transport · " + FROM_CAR) : "transport", status: "open", dest: P.get("city") || null })
         .select("id").single();
       convo = ins.data;
     }
