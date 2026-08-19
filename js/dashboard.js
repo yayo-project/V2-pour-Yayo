@@ -732,6 +732,80 @@ function impFail(msg) {
   err.hidden = false; err.textContent = msg;
 }
 
+// ── Two cars must never read the same ───────────────────────────────
+// A dealer with eighteen Toyota Dyna trucks at one price had eighteen
+// identical cards. They are eighteen different trucks — his own pages say
+// "Model#BU162-0101914" — but the display name kept only make + model.
+// Everything needed is still in the address the car was imported from, so
+// take it from there, and only for the cars that actually clash: a car with
+// a name of its own is left exactly as it is.
+const IMPN_JUNK = /^(new|used|pre|owned|for|sale|dubai|uae|gcc|export|car|cars|suv|sedan|van|listing|listings|sport|model)$/;
+function impnSlug(u) {
+  try { return decodeURIComponent(new URL(u).pathname).toLowerCase().replace(/\/+$/, "").split("/").pop(); }
+  catch (e) { return ""; }
+}
+// the dealer's own stock reference: "…-modelbu162-0101914" → "BU162-0101914"
+function impnCode(u) {
+  const m = String(u || "").toLowerCase().match(/model[-#:]?([a-z0-9]+-[0-9]+)/);
+  return m ? m[1].toUpperCase() : null;
+}
+function impnYear(u) {
+  const m = impnSlug(u).match(/\b(19[89]\d|20[0-3]\d)\b/);
+  const n = m ? parseInt(m[1], 10) : 0;
+  return n >= 1980 && n <= 2030 ? n : null;
+}
+// the words the address carries that the name does not already say — trim,
+// engine, gearbox, colour. Compared without punctuation so "l200" and "L-200"
+// count as the same word and never get appended twice.
+function impnExtra(u, name) {
+  const bare = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let s = impnSlug(u);
+  if (!s) return "";
+  s = s.replace(/\b(19[89]\d|20[0-3]\d)\b/g, " ").replace(/-\d{1,2}$/, " ");
+  const have = new Set(String(name || "").split(/[^A-Za-z0-9.]+/).filter(Boolean).map(bare));
+  const words = s.split(/[-\s]+/).filter(Boolean)
+    .filter(w => !IMPN_JUNK.test(w) && !have.has(bare(w)));
+  const out = [];
+  for (let i = 0; i < words.length; i++) {
+    // "4-0l" arrives split by the hyphen — put 4.0L back together
+    if (/^\d$/.test(words[i]) && /^\dl$/.test(words[i + 1] || "")) { out.push(words[i] + "." + words[i + 1].toUpperCase()); i++; continue; }
+    out.push(words[i]);
+  }
+  return out.slice(0, 5).map(w => (w.length <= 4 && /\d/.test(w)) || /^(lc|at|mt|se|v\d)$/.test(w)
+    ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)).join(" ");
+}
+// the dealer's own listing number, the last thing left when two cars are
+// described identically on his site ("…-highlander-8")
+function impnRef(u) { const m = impnSlug(u).match(/-(\d{1,2})$/); return m ? m[1] : null; }
+
+// rows: { car_name, year, price, source_url } → each gets .distinctName
+function impnDistinct(rows) {
+  rows.forEach(r => {
+    // the recorded year wins: the card and the year filter must agree. The
+    // address only fills in for a car that has no year at all.
+    const yr = r.year || impnYear(r.source_url) || null;
+    const n = String(r.car_name || "").trim();
+    r.distinctName = yr && !new RegExp("\\b" + yr + "\\b").test(n) ? (n + " " + yr) : n;
+  });
+  const clashes = () => {
+    const g = {};
+    rows.forEach(r => { const k = r.distinctName + "|" + r.price; (g[k] = g[k] || []).push(r); });
+    return Object.keys(g).map(k => g[k]).filter(v => v.length > 1);
+  };
+  // first the stock reference or the trim detail…
+  clashes().forEach(v => v.forEach(r => {
+    const ex = impnCode(r.source_url) || impnExtra(r.source_url, r.distinctName);
+    if (ex) r.distinctName = (r.distinctName + " " + ex).trim();
+  }));
+  // …then, only if two are still identical, the dealer's own listing number
+  clashes().forEach(v => v.forEach(r => {
+    const ref = impnRef(r.source_url);
+    if (ref) r.distinctName = r.distinctName + " · réf. " + ref;
+  }));
+  rows.forEach(r => { r.distinctName = r.distinctName.slice(0, 160); });
+  return rows;
+}
+
 function impRenderReview(cars, siteTotal) {
   // dedupe within the batch + against listings already on Yayo
   const have = impHave();
@@ -741,6 +815,12 @@ function impRenderReview(cars, siteTotal) {
     if (have.has(c.source_url) || seen.has(fp)) return false;
     seen.add(fp); return true;
   });
+  // Same car twice is already impossible (the address is unique per dealer,
+  // in code here and as an index in the database). What was still possible was
+  // twenty different cars arriving with one name, so give each its own before
+  // the dealer ever sees the review screen.
+  impnDistinct(cars.map(c => ({ car_name: c.name, year: c.year, price: c.price_usd, source_url: c.source_url })))
+    .forEach((r, i) => { cars[i].name = r.distinctName; });
   // effective limit → how many can go LIVE now (unlimited during promo).
   // Cars with no price never go live on import, so they cost no slot and are
   // never locked — §46 counts only what a buyer could actually find.
@@ -1902,7 +1982,7 @@ async function adminInit() {
     sb.from("shipping_agencies").select("*").order("created_at", { ascending: false }).limit(500).then(r => { AD_AGS = r.data || []; })
   );
   if (adCan("dealers") || adCan("listings")) jobs.push(
-    sb.from("listings").select("id, car_name, price, views, active, sold, hidden, dealer_id, dealers(name)")
+    sb.from("listings").select("id, car_name, price, views, active, sold, hidden, dealer_id, year, source_url, dealers(name)")
       .order("created_at", { ascending: false }).limit(1000).then(r => { AD_LISTINGS = r.data || []; })
   );
   if (adCan("team")) jobs.push(sb.from("admin_users").select("*").order("created_at").then(r => { AD_TEAM = r.data || []; }));
@@ -2812,6 +2892,54 @@ function adRenderListings() {
   }).join("");
   document.getElementById("ad-lst-empty").hidden = rows.length > 0;
 }
+// ── Repair the names imported before the fix ────────────────────────
+// Groups every car by its seller, works out a name that tells it apart from
+// its neighbours, and shows the list BEFORE writing anything. Cars that
+// already have a name of their own are not touched.
+function adNamePlan() {
+  const byDealer = {};
+  AD_LISTINGS.forEach(l => {
+    if (!l.source_url) return;             // typed in by hand: leave it alone
+    (byDealer[l.dealer_id] = byDealer[l.dealer_id] || []).push(l);
+  });
+  const plan = [];
+  Object.keys(byDealer).forEach(d => {
+    impnDistinct(byDealer[d].map(l => ({
+      id: l.id, car_name: l.car_name, year: l.year, price: l.price, source_url: l.source_url
+    }))).forEach(r => {
+      if (r.distinctName && r.distinctName !== r.car_name) plan.push(r);
+    });
+  });
+  return plan;
+}
+function adFixNames() {
+  const plan = adNamePlan();
+  const box = document.getElementById("ad-lst-fix");
+  if (!plan.length) { box.hidden = false; box.innerHTML = `<p>${t("ad_fix_none")}</p>`; return; }
+  box.hidden = false;
+  box.innerHTML = `
+    <p><b>${plan.length}</b> ${t("ad_fix_count")}</p>
+    <div class="ad-fix-list">${plan.slice(0, 40).map(r => `
+      <div><s>${escapeHtml(r.car_name)}</s> → <b>${escapeHtml(r.distinctName)}</b></div>`).join("")}</div>
+    ${plan.length > 40 ? `<p class="dash-sub">${t("ad_fix_more").replace("{n}", plan.length - 40)}</p>` : ""}
+    <button class="ad-fix-btn" onclick="adFixNamesApply()">${t("ad_fix_apply")}</button>`;
+}
+async function adFixNamesApply() {
+  const plan = adNamePlan();
+  if (!plan.length) return;
+  if (!confirm(t("ad_fix_confirm").replace("{n}", plan.length))) return;
+  const box = document.getElementById("ad-lst-fix");
+  let ok = 0, failed = 0;
+  for (const r of plan) {
+    if (DEMO_ADMIN) { ok++; continue; }
+    try { await adRpc("admin_rename_listing", { lid: r.id, val: r.distinctName }); ok++; }
+    catch (e) { failed++; }
+    box.innerHTML = `<p>${ok + failed} / ${plan.length}</p>`;
+  }
+  box.innerHTML = `<p>${t("ad_fix_done").replace("{n}", ok)}${failed ? " · " + failed + " ✗" : ""}</p>`;
+  if (!DEMO_ADMIN) { await adminInit(); adRenderListings(); }
+}
+
 async function adHideListing(id, val) {
   const l = AD_LISTINGS.find(x => String(x.id) === String(id));
   if (!l) return;

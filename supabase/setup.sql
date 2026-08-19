@@ -2016,3 +2016,31 @@ end $$;
 
 alter table public.conversations
   add column if not exists dest text;
+
+-- ═══════════════════════════════════════════════════════════
+-- 48) LET THE ADMIN GIVE A CAR ITS NAME BACK
+-- §44e rebuilt every display name as make + model. That made
+-- the columns agree, and it also erased what told two cars
+-- apart: "Toyota Dyna Model#BU162-0101914" became "Toyota
+-- Dyna", eighteen times over. On the marketplace those show
+-- as eighteen identical cards, which reads as a broken site
+-- rather than as eighteen trucks.
+--
+-- The distinguishing part is still in the address each car
+-- was imported from, so it can be put back. The repair runs
+-- from the admin dashboard, which needs a way to write a name
+-- on a car it does not own — same audited, role-checked shape
+-- as the other admin actions.
+--
+-- Do NOT re-run §44e after this: it would erase the names
+-- again.
+-- ═══════════════════════════════════════════════════════════
+
+create or replace function public.admin_rename_listing(lid uuid, val text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  perform _yayo_require(array['super_admin','admin_support']);
+  if coalesce(trim(val), '') = '' then return; end if;
+  update listings set car_name = left(trim(val), 160) where id = lid;
+  perform _yayo_log('rename_listing', 'listing', lid::text, left(trim(val), 160));
+end $$;
