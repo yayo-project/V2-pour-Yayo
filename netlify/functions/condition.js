@@ -35,6 +35,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: MODELS.VISION,
         temperature: 0.2,
+        // Room to think AND answer. This is the only function that asks for
+        // plain text instead of JSON, so nothing here suppresses the model's
+        // reasoning — cut it short and the note never arrives at all.
+        max_tokens: 1600,
         messages: [
           {
             role: "user",
@@ -49,11 +53,30 @@ exports.handler = async (event) => {
     });
     if (!res.ok) throw new Error("groq " + res.status);
     const data = await res.json();
-    const report = data.choices && data.choices[0] && data.choices[0].message.content;
-    if (!report) throw new Error("empty");
-    return { statusCode: 200, headers, body: JSON.stringify({ report: String(report).trim().slice(0, 1200) }) };
+    const raw = data.choices && data.choices[0] && data.choices[0].message.content;
+    if (!raw) throw new Error("empty");
+    const report = stripThinking(raw);
+    // Nothing left means the model spent the whole budget reasoning and never
+    // reached its answer. Say "unavailable" — never hand a dealer the monologue.
+    if (!report) throw new Error("reasoning only");
+    return { statusCode: 200, headers, body: JSON.stringify({ report: report.slice(0, 1200) }) };
   } catch (e) {
     console.error("[yayo] condition failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: '{"unavailable":true}' };
   }
 };
+
+// The model reasons out loud before answering. That monologue is not a
+// condition report — a dealer who photographed a car was being shown
+// "The user wants a short, honest condition note… Wait, looking closer…"
+// and nothing else, because the reasoning alone filled the reply.
+// Everything before the final </think> goes; an unclosed one takes the
+// rest of the string with it, since the answer never came.
+function stripThinking(s) {
+  let out = String(s);
+  const end = out.lastIndexOf("</think>");
+  if (end !== -1) out = out.slice(end + 8);
+  const open = out.search(/<think>|<\|channel\|>analysis/i);
+  if (open !== -1) out = out.slice(0, open);
+  return out.replace(/<\/?think>/gi, "").trim();
+}

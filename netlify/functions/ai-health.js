@@ -46,8 +46,13 @@ exports.handler = async () => {
       // JSON mode is tested, not assumed: translate, car-ai, assistant and
       // import all depend on response_format, so a model that lacks it would
       // fail exactly like a dead model — the failure we just spent a day on.
+      // max_tokens has to cover the model THINKING before it answers, not just
+      // the answer. The first version allowed 30, which the current model spent
+      // on reasoning — so the probe returned "Failed to validate JSON" and this
+      // panel reported the AI dead while translation was working perfectly.
+      // A health check that cries wolf is worse than no health check.
       body: JSON.stringify({
-        model: MODEL, temperature: 0, max_tokens: 30,
+        model: MODEL, temperature: 0, max_tokens: 512,
         response_format: { type: "json_object" },
         messages: [{ role: "user", content: 'Reply only with JSON: {"ok":true}' }]
       })
