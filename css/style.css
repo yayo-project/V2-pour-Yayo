@@ -1366,9 +1366,13 @@ body.no-scroll{overflow:hidden}
    list or IN the conversation, with a back arrow that says so.
    ══════════════════════════════════════════════════════════════ */
 
-/* search over the conversations */
+/* search over the conversations — pinned, because a search box that
+   scrolls away with the results it filters is a search box you lose */
 .mx-search{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:6px;
-  background:var(--bg);border:1px solid var(--line);border-radius:10px}
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  position:sticky;top:0;z-index:2;box-shadow:0 6px 8px -8px rgba(10,37,64,.35)}
+/* the rows live in their own wrapper now, so they carry their own spacing */
+#mx-list{display:flex;flex-direction:column;gap:4px}
 .mx-search svg{width:16px;height:16px;color:var(--ink-3);flex:0 0 auto}
 .mx-search input{flex:1;min-width:0;border:none;background:none;outline:none;
   font-family:inherit;font-size:13px;color:var(--ink)}
