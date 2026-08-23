@@ -185,6 +185,13 @@ async function mxSend(e) {
   const input = document.getElementById("mx-input");
   const text = input.value.trim();
   if (!text || !MX_CUR) return false;
+  // Contact details do not travel before an order exists (§49). Checked
+  // BEFORE the box is cleared, so his message is still there to edit.
+  if (yayoFindContacts(text).length) {
+    mxBubble(false, t("chat_no_contact"));
+    yayoFlagContact(MX_CUR.id);
+    return false;
+  }
   input.value = "";
   const bubble = mxBubble(true, text);
   MX_CUR.msgs.push({ me: true, text });

@@ -1127,6 +1127,19 @@ async function saveListing(e) {
   err.hidden = true;
   if (!PHOTOS.length) { err.hidden = false; err.textContent = t("up_min_err"); return false; }
 
+  // A description is read by every buyer who opens the car, so a number in
+  // it travels further than one in a message. Checked BEFORE the photos
+  // upload — telling him after a long upload would waste it, and the button
+  // is already disabled by then.
+  const lfDesc = document.getElementById("lf-desc").value.trim();
+  const lfHits = yayoFindContacts(lfDesc);
+  if (lfHits.length) {
+    err.hidden = false;
+    err.textContent = t("d_f_no_contact").replace("{found}", lfHits.slice(0, 3).join(" · "));
+    document.getElementById("lf-desc").focus();
+    return false;
+  }
+
   const btn = e.target && e.target.querySelector ? e.target.querySelector("button[type=submit]") : null;
   if (btn) { btn.disabled = true; btn.textContent = t("up_uploading"); }
   let photoUrls;
@@ -1152,7 +1165,7 @@ async function saveListing(e) {
     color: document.getElementById("lf-color").value.trim() || null,
     photo_url: photoUrls[0],
     photos: photoUrls,
-    description: document.getElementById("lf-desc").value.trim() || null
+    description: lfDesc || null
   };
   if (DEMO) {
     if (EDIT_ID) Object.assign(findListing(EDIT_ID), payload);
@@ -1508,6 +1521,14 @@ async function dashSend(e) {
   const input = document.getElementById("msg-input");
   const text = input.value.trim();
   if (!text || !CUR_CONVO) return false;
+  // Contact details do not travel before an order exists (§49). Checked
+  // BEFORE the box is cleared, so the seller's message is still there to
+  // edit — this is the side the rule exists for.
+  if (yayoFindContacts(text).length) {
+    addMsg(false, t("chat_no_contact"));
+    if (!DEMO && !DEMO_AG) yayoFlagContact(CUR_CONVO.id);
+    return false;
+  }
   input.value = "";
   const bubble = addMsg(true, text);
   CUR_CONVO.msgs.push({ me: true, text });

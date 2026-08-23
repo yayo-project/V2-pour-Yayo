@@ -495,6 +495,66 @@ function yayoNotifyAdmin(kind, name, detail) {
   } catch (e) { /* never blocks the user */ }
 }
 
+// ── Contact details stay inside Yayo until there is an order ─────────
+// A phone number in a message is how a deal leaves the platform, and it has
+// already happened: one dealer put his WhatsApp number in eleven imported
+// descriptions and in his first reply to a buyer.
+//
+// Precision matters far more than reach. These must all pass untouched:
+// a chassis number, a year, a price like "258 681", a model code like
+// "BU162-0101914", a spec line like "2.7L 4-Cylinder". So a digit run is
+// only treated as a number to stop when something CONFIRMS it — an
+// international prefix, a long unbroken run, or a contact word beside it.
+// A bare run of digits with none of those is left alone.
+const YAYO_CONTACT_WORD = /(t[ée]l[ée]?phone|\btel\b|\bphone\b|whats\s?app|watsapp|wattsapp|\bwapp\b|telegram|\bimo\b|\bviber\b|contact|appel(?:ez|le)?[- ]?moi|call\s?me|joignez|num[ée]ro|\bnumber\b|واتساب|هاتف|رقم|اتصل)/i;
+
+// Returns the pieces of `text` that must not travel, or [] when it is clean.
+function yayoFindContacts(text) {
+  const s = String(text || "");
+  const hits = [];
+  const push = v => { if (v && hits.indexOf(v) === -1) hits.push(v); };
+
+  // e-mail addresses and messaging links are contact details on their own
+  (s.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || []).forEach(push);
+  (s.match(/\b(?:wa\.me|api\.whatsapp\.com|chat\.whatsapp\.com|t\.me|m\.me)\/\S+/gi) || []).forEach(push);
+
+  // digit runs: 9-15 digits, never glued to letters (that would be a chassis
+  // number or a model code). No lookbehind — some Android WebViews lack it.
+  const re = /(^|[^A-Za-z0-9+])((?:\+|00)?\d[\d\s(). -]{6,20}\d)(?![A-Za-z0-9])/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const raw = m[2];
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length < 9 || digits.length > 15) continue;
+    // what turns a run of digits into a phone number
+    const international = /^(\+|00)/.test(raw.trim());
+    const unbroken = /\d{9,}/.test(raw);
+    const before = s.slice(Math.max(0, m.index - 45), m.index);
+    const nearWord = YAYO_CONTACT_WORD.test(before);
+    if (international || unbroken || nearWord) push(raw.trim());
+  }
+  return hits;
+}
+
+// Remove them instead of refusing — used on imported text, where refusing
+// would mean dropping the dealer's whole car description.
+function yayoStripContacts(text) {
+  let out = String(text || "");
+  yayoFindContacts(out).forEach(h => { out = out.split(h).join(" "); });
+  // the label left behind reads worse than the number did
+  out = out.replace(/^[ \t ]*[•\-*]?[ \t]*(?:tel|t[ée]l[ée]phone|phone|whats\s?app|contact)[^\n]{0,20}:[ \t]*$/gim, "")
+           .replace(/[ \t]{2,}/g, " ")
+           .replace(/\n{3,}/g, "\n\n");
+  return out.trim();
+}
+
+// Called when a send is refused: counts the attempt against the business so
+// admin can see a pattern (§49). Never blocks the user if it fails.
+function yayoFlagContact(convoId) {
+  try { yayoSB().rpc("yayo_flag_contact_attempt", { cid: convoId }).then(() => {}, () => {}); }
+  catch (e) { /* counting is a bonus, never a blocker */ }
+}
+
 // ── Photos in chat (shared by all 4 chat surfaces) ──
 // Upload the picked photo to Storage, then post it as a chat message.
 async function yayoSendChatPhoto(convoId, file) {

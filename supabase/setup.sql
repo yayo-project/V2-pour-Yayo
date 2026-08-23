@@ -2044,3 +2044,56 @@ begin
   update listings set car_name = left(trim(val), 160) where id = lid;
   perform _yayo_log('rename_listing', 'listing', lid::text, left(trim(val), 160));
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 49) CONTACT DETAILS STAY INSIDE YAYO UNTIL THERE IS AN ORDER
+-- One dealer typed his WhatsApp number into eleven of his own
+-- listing descriptions and into his first reply to a buyer.
+-- Nothing in the code stopped him, because nothing had ever
+-- been built to: the rule existed only in the brief.
+--
+-- The client now refuses to send a message or save a listing
+-- that carries a phone number, an e-mail or a messaging link,
+-- and tells the sender why. This adds the two database pieces:
+-- a counter so a pattern is visible to an admin, and the
+-- clean-up of what is already stored.
+-- ═══════════════════════════════════════════════════════════
+
+alter table public.dealers            add column if not exists contact_attempts int not null default 0;
+alter table public.shipping_agencies  add column if not exists contact_attempts int not null default 0;
+
+-- 49a) Count one refused attempt against whoever sent it.
+-- Security definer: the sender must not be able to edit his own
+-- counter, and a buyer must not be able to inflate a seller's.
+create or replace function public.yayo_flag_contact_attempt(cid uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare c record;
+begin
+  select * into c from conversations where id = cid;
+  if c is null then return; end if;
+  -- the buyer of this conversation is not the one being counted
+  if c.user_id = auth.uid() then return; end if;
+  if c.dealer_id is not null then
+    update dealers set contact_attempts = contact_attempts + 1 where id = c.dealer_id;
+  elsif c.agency_id is not null then
+    update shipping_agencies set contact_attempts = contact_attempts + 1 where id = c.agency_id;
+  end if;
+end $$;
+
+-- 49b) Clean what is already published.
+-- Only the phone number and the label in front of it are removed;
+-- the specifications, the showroom address and everything else
+-- the dealer wrote are his and stay untouched.
+-- The number always sits on its own line, behind its own label
+-- ("• Tel / WhatsApp: +971 50 541 2007"), so the whole line goes:
+-- removing only the digits would leave a dangling "Tel / WhatsApp:"
+-- that reads worse than the number did.
+update public.listings
+   set description = nullif(btrim(
+         regexp_replace(
+           regexp_replace(description,
+             '[^\n]*(\+|00)[ ]?[0-9][0-9()., -]{6,20}[0-9][^\n]*', '', 'g'),
+           '\n{3,}', E'\n\n', 'g')
+       ), '')
+ where description is not null
+   and description ~ '(\+|00)[0-9 ()., -]{8,}';

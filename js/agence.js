@@ -222,6 +222,13 @@ async function sendMsg(e) {
   const input = document.getElementById("chat-input");
   const text = input.value.trim();
   if (!text) return false;
+  // Contact details do not travel before an order exists (§49). Checked
+  // BEFORE the box is cleared, so his message is still there to edit.
+  if (yayoFindContacts(text).length) {
+    addBubble("yayo", t("chat_no_contact"));
+    if (CONVO) yayoFlagContact(CONVO.id);
+    return false;
+  }
   input.value = "";
   const bubble = addBubble("me", text);
   if (isDemo()) {
