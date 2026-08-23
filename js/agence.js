@@ -169,23 +169,26 @@ async function openAgChat() {
     CONVO = convo;
     if (!CONVO) throw new Error("no convo");
     const list = await yayoLoadMessages(CONVO.id, 100);
-    const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url);
+    const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url && !m.file_url);
     if (theirs.length) {
-      const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
+      const tr = await yayoTranslate(theirs.map(m => m.transcript || m.content), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
     // Checked on what the agency actually typed, never on the translation.
     list.forEach(m => {
-      const b = addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url);
-      if (m.sender_id !== user.id) yayoAttachPaymentNotice(b, CONVO.id, m.content);
+      const mine = m.sender_id === user.id;
+      const b = addBubble(mine ? "me" : "them", m.display || m.content, m);
+      if (mine) yayoTick(b, m.seen);
+      else yayoAttachPaymentNotice(b, CONVO.id, m.transcript || m.content);
     });
     if (!list.length) addBubble("yayo", t("chat_start"));
     // Live: the agency's replies appear instantly, translated
     if (window.__agLiveOff) window.__agLiveOff();
     window.__agLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
-      if (m.image_url) { addBubble("them", "", m.image_url); return; }
-      const tr = await yayoTranslate([m.content], YAYO_LANG);
-      yayoAttachPaymentNotice(addBubble("them", tr[0] || m.content), CONVO.id, m.content);
+      if (m.image_url || m.file_url) { addBubble("them", "", m); return; }
+      const said = m.transcript || m.content;
+      const tr = await yayoTranslate([said], YAYO_LANG);
+      yayoAttachPaymentNotice(addBubble("them", tr[0] || said, m), CONVO.id, said);
     });
   } catch (e) {
     console.error("[Yayo] openAgChat failed:", e);

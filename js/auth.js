@@ -631,24 +631,57 @@ async function yayoLoadMessages(convoId, limit) {
   const sb = yayoSB();
   const q = cols => sb.from("messages").select(cols)
     .eq("conversation_id", convoId).order("created_at", { ascending: true }).limit(limit || 200);
-  let r = await q("sender_id, content, created_at, image_url");
+  // newest schema first; each fallback costs detail, never the conversation
+  let r = await q("sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size");
+  if (r.error) r = await q("sender_id, content, created_at, image_url, seen");
+  if (r.error) r = await q("sender_id, content, created_at, image_url");
   if (r.error) r = await q("sender_id, content, created_at");
   return r.data || [];
 }
 
 // Fill a chat bubble: photo (clickable, opens full size) or plain text.
+// `img` may also be the whole message row, which is how a bubble learns to
+// be a voice note or a document without every surface repeating the logic.
 function yayoFillBubble(el, text, img) {
-  if (img) {
+  const m = (img && typeof img === "object") ? img : null;
+  const src = m ? m.image_url : img;
+
+  if (m && m.audio_url && typeof yayoVoiceHtml === "function") {
+    el.classList.add("chat-voice");
+    el.innerHTML = yayoVoiceHtml(m, text);
+    return;
+  }
+  if (m && m.file_url && typeof yayoDocHtml === "function") {
+    el.classList.add("chat-file");
+    el.innerHTML = yayoDocHtml(m);
+    return;
+  }
+  if (src) {
     el.textContent = "";
     const a = document.createElement("a");
-    a.href = img; a.target = "_blank"; a.rel = "noopener";
+    a.href = src; a.target = "_blank"; a.rel = "noopener";
     const im = document.createElement("img");
-    im.src = img; im.className = "chat-img"; im.loading = "lazy"; im.alt = "photo";
+    im.src = src; im.className = "chat-img"; im.loading = "lazy"; im.alt = "photo";
     a.appendChild(im);
     el.appendChild(a);
   } else {
     el.textContent = text;
   }
+}
+
+// Sent · read, on the sender's own bubbles only. A tick on a message you
+// received tells you nothing.
+function yayoTick(el, seen) {
+  if (!el) return;
+  const old = el.querySelector(".chat-tick");
+  if (old) old.remove();
+  const s = document.createElement("span");
+  s.className = "chat-tick" + (seen ? " seen" : "");
+  s.textContent = seen ? "✓✓" : "✓";
+  s.title = t(seen ? "chat_seen" : "chat_sent");
+  // ride the end of the words rather than starting a line of its own —
+  // a tick alone on the last row reads as a stray character
+  (el.querySelector(".yv-said") || el).appendChild(s);
 }
 
 // ── PWA push notifications (bell in the topbar) ──

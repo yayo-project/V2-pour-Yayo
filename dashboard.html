@@ -694,10 +694,18 @@ gtag('config', 'G-NR2LTEVKET');
                   <div class="dash-suggest-chips" id="msg-chips"></div>
                 </div>
               </div>
-              <form class="chat-form" onsubmit="return dashSend(event)">
+              <div class="yv-bar" id="yv-bar" hidden></div>
+              <form class="chat-form" id="msg-form" onsubmit="return dashSend(event)">
                 <input id="msg-input" type="text" data-i18n-ph="d_reply_ph" placeholder="Votre réponse…" autocomplete="off" maxlength="1000">
                 <button type="button" class="chat-photo-btn" onclick="document.getElementById('msg-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
                 <input id="msg-photo" type="file" accept="image/*" hidden onchange="dashSendPhoto(this.files)">
+                <button type="button" class="chat-tool" onclick="document.getElementById('msg-doc').click()" data-i18n-title="v_doc" title="Joindre un fichier" aria-label="Joindre un fichier">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.19a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.59-2.6l8.5-8.49"/></svg>
+                </button>
+                <input id="msg-doc" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" hidden onchange="dashSendDoc(this.files)">
+                <button type="button" class="chat-tool" onclick="dashStartVoice()" data-i18n-title="v_rec" title="Message vocal" aria-label="Message vocal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg>
+                </button>
                 <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
               </form>
             </div>
@@ -777,6 +785,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
+<script src="js/voice.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/dashboard.js"></script>

@@ -175,10 +175,18 @@ gtag('config', 'G-NR2LTEVKET');
           <h2 class="vd-h"><svg class="h-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg> <span data-i18n="chat_h">Votre conversation</span></h2>
           <div class="chat-trust" id="chat-trust"></div>
           <div class="chat-box" id="chat-box"></div>
-          <form class="chat-form" onsubmit="return sendMsg(event)">
+          <div class="yv-bar" id="yv-bar" hidden></div>
+          <form class="chat-form" id="chat-form" onsubmit="return sendMsg(event)">
             <input id="chat-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
             <button type="button" class="chat-photo-btn" onclick="document.getElementById('chat-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
             <input id="chat-photo" type="file" accept="image/*" hidden onchange="sendChatPhoto(this.files)">
+            <button type="button" class="chat-tool" onclick="document.getElementById('chat-doc').click()" data-i18n-title="v_doc" title="Joindre un fichier" aria-label="Joindre un fichier">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.19a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.59-2.6l8.5-8.49"/></svg>
+            </button>
+            <input id="chat-doc" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" hidden onchange="sendChatDoc(this.files)">
+            <button type="button" class="chat-tool" onclick="startVoice()" data-i18n-title="v_rec" title="Message vocal" aria-label="Message vocal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg>
+            </button>
             <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
           </form>
           <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
@@ -245,6 +253,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/translate.js"></script>
+<script src="js/voice.js"></script>
 <script src="js/fav.js"></script>
 <script src="js/reviews.js"></script>
 <script src="js/ai.js"></script>

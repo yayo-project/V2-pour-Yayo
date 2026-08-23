@@ -128,7 +128,8 @@ async function mxOpen(id) {
   if (MX_CUR.msgs === null) {
     try {
       const data = await yayoLoadMessages(MX_CUR.id, 200);
-      MX_CUR.msgs = data.map(m => ({ me: m.sender_id === MX_USER.id, text: m.content, img: m.image_url }));
+      // keep the whole row: a bubble needs it to become a voice note or a file
+      MX_CUR.msgs = data.map(m => ({ ...m, me: m.sender_id === MX_USER.id, text: m.transcript || m.content, img: m.image_url }));
     } catch (e) { MX_CUR.msgs = []; }
     // Replies arrive in the buyer's language — it is simply the business replying
     const theirs = MX_CUR.msgs.filter(m => !m.me && !m.img);
@@ -140,21 +141,23 @@ async function mxOpen(id) {
   // m.text stays the original wording; the payment name is checked on that,
   // never on the translation.
   MX_CUR.msgs.forEach(m => {
-    const b = mxBubble(m.me, m.me ? m.text : (m.display || m.text), m.img);
-    if (!m.me) yayoAttachPaymentNotice(b, MX_CUR.id, m.text);
+    const b = mxBubble(m.me, m.me ? m.text : (m.display || m.text), m);
+    if (m.me) yayoTick(b, m.seen);
+    else yayoAttachPaymentNotice(b, MX_CUR.id, m.text);
   });
   if (!MX_CUR.msgs.length) mxBubble(false, t("chat_start"));
 
   // Live: new replies pop in instantly (translated), no refresh needed
   if (window.__mxLiveOff) window.__mxLiveOff();
   window.__mxLiveOff = yayoLiveMessages(MX_CUR.id, MX_USER.id, async m => {
-    let text = m.content;
-    if (!m.image_url) {
-      const tr = await yayoTranslate([m.content], YAYO_LANG);
-      text = tr[0] || m.content;
+    const said = m.transcript || m.content;
+    let text = said;
+    if (!m.image_url && !m.file_url) {
+      const tr = await yayoTranslate([said], YAYO_LANG);
+      text = tr[0] || said;
     }
-    MX_CUR.msgs.push({ me: false, text: m.content, display: text, img: m.image_url });
-    yayoAttachPaymentNotice(mxBubble(false, text, m.image_url), MX_CUR.id, m.content);
+    MX_CUR.msgs.push({ ...m, me: false, text: said, display: text, img: m.image_url });
+    yayoAttachPaymentNotice(mxBubble(false, text, m), MX_CUR.id, said);
     try { yayoSB().rpc("yayo_mark_read", { cid: MX_CUR.id }).then(() => {}, () => {}); } catch (e) {}
   });
 }

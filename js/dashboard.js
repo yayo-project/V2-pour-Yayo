@@ -1464,16 +1464,20 @@ async function openConvo(id) {
   if (CUR_CONVO.msgs === null) {
     try {
       const data = DEMO || DEMO_AG ? [] : await yayoLoadMessages(CUR_CONVO.id, 200);
-      CUR_CONVO.msgs = data.map(m => ({ me: USER && m.sender_id === USER.id, text: m.content, img: m.image_url }));
+      // keep the whole row: a bubble needs it to become a voice note or a file
+      CUR_CONVO.msgs = data.map(m => ({ ...m, me: USER && m.sender_id === USER.id, text: m.transcript || m.content, img: m.image_url }));
     } catch (e) { CUR_CONVO.msgs = []; }
   }
   // Two-way translation: incoming buyer messages shown in the dealer's language
-  const incoming = CUR_CONVO.msgs.filter(m => !m.me && !m.img);
+  const incoming = CUR_CONVO.msgs.filter(m => !m.me && !m.img && !m.file_url);
   if (incoming.length) {
     const translated = await yayoTranslate(incoming.map(m => m.text), YAYO_LANG);
     incoming.forEach((m, i) => { m.display = translated[i]; });
   }
-  CUR_CONVO.msgs.forEach(m => addMsg(m.me, m.me ? m.text : (m.display || m.text), m.img));
+  CUR_CONVO.msgs.forEach(m => {
+    const b = addMsg(m.me, m.me ? m.text : (m.display || m.text), m);
+    if (m.me) yayoTick(b, m.seen);
+  });
 
   // Live: buyer messages appear instantly (translated), no refresh
   if (!DEMO && !DEMO_AG && USER) {
@@ -1513,6 +1517,48 @@ async function dashSendPhoto(files) {
     CUR_CONVO.msgs.push({ me: true, text: "📷", img: url });
   } catch (e) {
     yayoFillBubble(b, t("chat_photo_fail"));
+  }
+}
+
+// Voice and documents, seller side. This is the side the feature exists
+// for: a dealer at Al Aweer answers faster by speaking than by typing in a
+// language he does not have.
+function dashStartVoice() {
+  if (!CUR_CONVO) return;
+  if (DEMO || DEMO_AG) { addMsg(false, t("d_demo_banner")); return; }
+  const form = document.getElementById("msg-form");
+  if (form) form.hidden = true;
+  yayoVoiceStart(CUR_CONVO.id, sent => {
+    const b = addMsg(true, sent.transcript || "", sent);
+    yayoTick(b, false);
+    CUR_CONVO.msgs.push({ ...sent, me: true, text: sent.transcript || "" });
+  });
+  setTimeout(() => {
+    const bar = document.getElementById("yv-bar");
+    if (form && bar && bar.hidden) form.hidden = false;
+  }, 600);
+}
+document.addEventListener("click", e => {
+  if (e.target && (e.target.classList.contains("yv-stop") || e.target.classList.contains("yv-x"))) {
+    setTimeout(() => {
+      const bar = document.getElementById("yv-bar"), form = document.getElementById("msg-form");
+      if (form && bar && bar.hidden) form.hidden = false;
+    }, 120);
+  }
+});
+async function dashSendDoc(files) {
+  const f = files && files[0];
+  document.getElementById("msg-doc").value = "";
+  if (!f || !CUR_CONVO) return;
+  if (DEMO || DEMO_AG) { addMsg(true, "📎 " + f.name); return; }
+  const b = addMsg(true, t("chat_photo_sending"));
+  try {
+    const url = await yayoSendDoc(CUR_CONVO.id, f);
+    yayoFillBubble(b, "", { file_url: url, file_name: f.name, file_size: f.size });
+    yayoTick(b, false);
+  } catch (err) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+    b.classList.add("chat-failed");
   }
 }
 

@@ -2175,3 +2175,30 @@ begin
     coalesce(nullif(btrim(p->>'legal_name'),''),'') ||
     case when exp is null then '' else ' · exp ' || exp::text end);
 end $$;
+
+-- ═══════════════════════════════════════════════════════════
+-- 51) A MESSAGE CAN BE A VOICE NOTE OR A DOCUMENT
+-- Text and one photo was everything the chat could carry, and
+-- next to WhatsApp that looks poor — which is the real reason
+-- people ask to move the conversation there.
+--
+-- A voice note carries four things, not one: where the audio
+-- lives, how long it runs, the shape to draw before the audio
+-- has loaded, and the transcript THE SENDER APPROVED. The
+-- transcript is stored because it is what gets translated for
+-- the other side, and what the contact filter reads (§49) —
+-- so a number dictated aloud is caught exactly like a typed
+-- one, without transcribing the same audio twice.
+-- ═══════════════════════════════════════════════════════════
+
+alter table public.messages
+  add column if not exists audio_url   text,
+  add column if not exists transcript  text,
+  add column if not exists duration_ms int,
+  add column if not exists waveform    text,      -- 40 digits, 0-9, drawn instantly
+  add column if not exists file_url    text,
+  add column if not exists file_name   text,
+  add column if not exists file_size   int;
+
+-- Voice notes and documents live beside the chat photos, in a
+-- bucket that already exists and already has the right rules.

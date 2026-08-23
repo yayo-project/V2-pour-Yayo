@@ -598,24 +598,28 @@ async function openChat() {
     const list = await yayoLoadMessages(CONVO.id, 100);
     // Two-way translation: the dealer's replies arrive in the buyer's language.
     // From the buyer's side it is simply the dealer replying. (Photos pass as-is.)
-    const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url);
+    // A voice note is translated through the transcript its sender approved.
+    const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url && !m.file_url);
     if (theirs.length) {
-      const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
+      const tr = await yayoTranslate(theirs.map(m => m.transcript || m.content), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
     // The payment name is checked on what the seller actually typed, never on
     // the translation — a translator has no business rewriting a company name.
     list.forEach(m => {
-      const b = addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url);
-      if (m.sender_id !== user.id) yayoAttachPaymentNotice(b, CONVO.id, m.content);
+      const mine = m.sender_id === user.id;
+      const b = addBubble(mine ? "me" : "them", m.display || m.content, m);
+      if (mine) yayoTick(b, m.seen);
+      else yayoAttachPaymentNotice(b, CONVO.id, m.transcript || m.content);
     });
     if (!list.length) addBubble("yayo", t("chat_start"));
     // Live: the dealer's replies appear instantly, translated, no refresh
     if (window.__vdLiveOff) window.__vdLiveOff();
     window.__vdLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
-      if (m.image_url) { addBubble("them", "", m.image_url); return; }
-      const tr = await yayoTranslate([m.content], YAYO_LANG);
-      yayoAttachPaymentNotice(addBubble("them", tr[0] || m.content), CONVO.id, m.content);
+      if (m.image_url || m.file_url) { addBubble("them", "", m); return; }
+      const said = m.transcript || m.content;
+      const tr = await yayoTranslate([said], YAYO_LANG);
+      yayoAttachPaymentNotice(addBubble("them", tr[0] || said, m), CONVO.id, said);
     });
   } catch (e) {
     console.error("[Yayo] openChat failed:", e);
@@ -648,6 +652,46 @@ async function sendChatPhoto(files) {
     yayoFillBubble(b, "", url);
   } catch (e) {
     yayoFillBubble(b, t("chat_photo_fail"));
+  }
+}
+
+// Voice and documents — the composer steps aside while recording so the
+// screen never shows two ways to send at once.
+function startVoice() {
+  if (!CONVO) { addBubble("yayo", t("chat_soon")); return; }
+  const form = document.getElementById("chat-form");
+  if (form) form.hidden = true;
+  yayoVoiceStart(CONVO.id, sent => {
+    const b = addBubble("me", sent.transcript || "", sent);
+    yayoTick(b, false);
+  });
+  // if the microphone is refused the bar never opens — bring the form back
+  setTimeout(() => {
+    const bar = document.getElementById("yv-bar");
+    if (form && bar && bar.hidden) form.hidden = false;
+  }, 600);
+}
+// the recorder always hands the composer back, however it ended
+document.addEventListener("click", e => {
+  if (e.target && (e.target.classList.contains("yv-stop") || e.target.classList.contains("yv-x"))) {
+    setTimeout(() => {
+      const bar = document.getElementById("yv-bar"), form = document.getElementById("chat-form");
+      if (form && bar && bar.hidden) form.hidden = false;
+    }, 120);
+  }
+});
+async function sendChatDoc(files) {
+  const f = files && files[0];
+  document.getElementById("chat-doc").value = "";
+  if (!f || !CONVO) return;
+  const b = addBubble("me", t("chat_photo_sending"));
+  try {
+    const sent = await yayoSendDoc(CONVO.id, f);
+    yayoFillBubble(b, "", { file_url: sent, file_name: f.name, file_size: f.size });
+    yayoTick(b, false);
+  } catch (err) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+    b.classList.add("chat-failed");
   }
 }
 
