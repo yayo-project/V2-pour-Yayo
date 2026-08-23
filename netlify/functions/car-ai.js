@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — car pricing AI (Groq, key stays server-side).
 // POST { task:"verdict", lang, cars:[{id,name,year,mileage,price}] }  (max 25)
 // →    { verdicts: { id: { v:"good"|"fair"|"high", why } } }
@@ -11,7 +12,7 @@ async function groq(key, system, user) {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: MODELS.BIG,
       temperature: 0.2,
       response_format: { type: "json_object" },
       messages: [
@@ -79,6 +80,9 @@ exports.handler = async (event) => {
 
     return { statusCode: 400, headers, body: '{"error":"task verdict|estimate required"}' };
   } catch (e) {
+    // The client hides the feature on failure, so the log is the only place
+    // that can say why. It must not stay silent.
+    console.error("[yayo] car-ai failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: '{"unavailable":true}' };
   }
 };

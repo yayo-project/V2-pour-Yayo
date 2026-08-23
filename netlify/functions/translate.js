@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — two-way chat translation (Groq, key stays server-side).
 // POST { texts: ["..."], target: "fr" | "en" | "ar" }
 // →    { texts: ["..."] }  (same order; unchanged if already in target)
@@ -32,7 +33,7 @@ exports.handler = async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: MODELS.FAST,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [
@@ -41,13 +42,16 @@ exports.handler = async (event) => {
         ]
       })
     });
-    if (!res.ok) throw new Error("groq " + res.status);
+    if (!res.ok) throw new Error("groq " + res.status + " " + (await res.text()).slice(0, 200));
     const data = await res.json();
     const out = JSON.parse(data.choices[0].message.content);
     if (!Array.isArray(out.texts) || out.texts.length !== texts.length) throw new Error("bad shape");
     return { statusCode: 200, headers, body: JSON.stringify({ texts: out.texts.map(String) }) };
   } catch (e) {
-    // Never break the chat: fall back to original text
+    // Never break the chat: fall back to original text. But say why in the
+    // function log — a silent fallback is how translation stayed dead for
+    // weeks with nothing anywhere reporting it.
+    console.error("[yayo] translate failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: JSON.stringify({ texts, untranslated: true }) };
   }
 };
