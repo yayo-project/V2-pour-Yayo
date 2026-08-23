@@ -50,3 +50,8 @@
 # Nightly: put extra cars to sleep when a promo ends, wake them when there's room
 [functions."reconcile-limits"]
   schedule = "0 2 * * *"
+
+# Nightly: remind a seller before his trade licence expires, and take the
+# Vérifié badge off by itself the day it does (§50)
+[functions."licence-watch"]
+  schedule = "30 3 * * *"

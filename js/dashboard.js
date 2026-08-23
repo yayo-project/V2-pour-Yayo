@@ -2252,6 +2252,82 @@ function adRenderBiz(type) {
 }
 
 // Full profile panel — review everything before deciding
+// ── The licence panel (§50) ──────────────────────────────────────────
+// Filled in by the admin while reading the scan, never by the seller.
+// Nothing here reaches a buyer: it exists so a payment name can be
+// checked against it, and so an expiry can be watched.
+function adLicenceDays(x) {
+  if (!x || !x.licence_expiry) return null;
+  const d = new Date(x.licence_expiry + "T00:00:00");
+  if (isNaN(d)) return null;
+  return Math.round((d - new Date(new Date().toDateString())) / 86400000);
+}
+function adLicenceState(x) {
+  const n = adLicenceDays(x);
+  if (n === null) return ["none", t("ad_lic_unset")];
+  // one day is not "1 jours" — the plural reads like a machine wrote it
+  if (n === -1) return ["off", t("ad_lic_expired1")];
+  if (n < 0) return ["off", t("ad_lic_expired").replace("{n}", Math.abs(n))];
+  if (n === 1) return ["warn", t("ad_lic_soon1")];
+  if (n <= 30) return ["warn", t("ad_lic_soon").replace("{n}", n)];
+  return ["ok", t("ad_lic_ok").replace("{n}", n)];
+}
+function adLicenceHtml(type, x) {
+  const v = k => escapeHtml(x[k] == null ? "" : String(x[k]));
+  const st = adLicenceState(x);
+  const f = (k, lbl, extra) => `
+    <div class="ad-lic-f">
+      <label for="lic-${k}">${t(lbl)}</label>
+      <input id="lic-${k}" type="${extra || "text"}" value="${v(k)}" maxlength="120">
+    </div>`;
+  return `
+  <div class="ad-lic">
+    <div class="ad-lic-head">
+      <b>${t("ad_lic_h")}</b>
+      <span class="ad-lic-st ${st[0]}">${st[1]}</span>
+    </div>
+    <p class="ad-lic-p">${t("ad_lic_p")}</p>
+    <div class="ad-lic-grid">
+      ${f("legal_name", "ad_lic_legal")}
+      ${f("trading_name", "ad_lic_trading")}
+      ${f("licence_number", "ad_lic_num")}
+      ${f("licence_authority", "ad_lic_auth")}
+      ${f("licence_expiry", "ad_lic_exp", "date")}
+      ${f("registered_address", "ad_lic_addr")}
+    </div>
+    <div class="ad-lic-foot">
+      <button class="ad-fix-btn" onclick="adSaveLicence('${type}','${x.id}')">${t("ad_lic_save")}</button>
+      <span class="ad-lic-when">${x.licence_checked_at
+        ? t("ad_lic_checked") + " " + adDate(x.licence_checked_at) : ""}</span>
+      <span class="ag-saved" id="lic-saved" hidden>${t("ag_saved")}</span>
+    </div>
+  </div>`;
+}
+async function adSaveLicence(type, id) {
+  const x = bizList(type).find(r => String(r.id) === String(id));
+  if (!x) return;
+  const get = k => { const el = document.getElementById("lic-" + k); return el ? el.value.trim() : ""; };
+  const p = {
+    legal_name: get("legal_name"), trading_name: get("trading_name"),
+    licence_number: get("licence_number"), licence_authority: get("licence_authority"),
+    licence_expiry: get("licence_expiry"), registered_address: get("registered_address")
+  };
+  await adBizAction(type, id,
+    () => adRpc("admin_set_licence", { kind: type, sid: id, p }),
+    row => {
+      Object.assign(row, p);
+      row.licence_expiry = p.licence_expiry || null;
+      row.licence_checked_at = new Date().toISOString();
+      // a licence with a future date clears the two automatic marks
+      if (row.licence_expiry && new Date(row.licence_expiry) > new Date()) {
+        row.licence_warned_at = null; row.licence_expired_at = null;
+      }
+    });
+  // adBizAction closes the panel; reopen it so he sees the new countdown
+  adOpenBiz(type, id);
+  flashSaved("lic-saved");
+}
+
 function adOpenBiz(type, id) {
   const x = bizList(type).find(r => String(r.id) === String(id));
   const box = document.getElementById(type === "dealer" ? "ad-d-detail" : "ad-a-detail");
@@ -2281,6 +2357,7 @@ function adOpenBiz(type, id) {
     ${gal.length ? `<div class="up-thumbs" id="ad-gal-thumbs">${gal.map((u, k) =>
       `<div class="up-thumb"><img src="${escapeHtml(u)}" alt="">
         <button type="button" title="${t("ad_gal_rm")}" onclick="event.stopPropagation();adRmPhoto('${type}','${x.id}',${k})">✕</button></div>`).join("")}</div>` : ""}
+    ${adLicenceHtml(type, x)}
     <div class="dash-td-actions ad-detail-actions">${bizActionsHtml(type, x)}</div>
   </div>`;
   // check the photos the way a buyer will see them: full screen

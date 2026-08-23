@@ -2097,3 +2097,81 @@ update public.listings
        ), '')
  where description is not null
    and description ~ '(\+|00)[0-9 ()., -]{8,}';
+
+-- ═══════════════════════════════════════════════════════════
+-- 50) THE LICENCE VERIFIES, IT NEVER SHOWS
+-- The trade licence scan stays where it is: the private
+-- "licenses" bucket, admin-only (§10). Nothing here is ever
+-- shown to a buyer.
+--
+-- What the admin records while READING that scan is a
+-- reference: the legal name a payment must match, and an
+-- expiry date a machine can watch. The dealer never types
+-- these himself — he would write what suits him, and the
+-- whole chain would be worthless at its root.
+--
+-- The trading name matters as much as the legal one: in the
+-- UAE they almost always differ ("Ibtisam Motors" vs
+-- "IBITISAM MOTORS FZCO"), and a check that ignores that
+-- would accuse honest dealers.
+-- ═══════════════════════════════════════════════════════════
+
+do $$
+declare tbl text;
+begin
+  foreach tbl in array array['dealers','shipping_agencies'] loop
+    execute format('alter table public.%I
+      add column if not exists legal_name         text,
+      add column if not exists trading_name       text,
+      add column if not exists licence_number     text,
+      add column if not exists licence_authority  text,
+      add column if not exists licence_expiry     date,
+      add column if not exists registered_address text,
+      add column if not exists licence_checked_at timestamptz,
+      add column if not exists licence_warned_at  timestamptz,
+      add column if not exists licence_expired_at timestamptz', tbl);
+  end loop;
+end $$;
+
+-- 50a) Only an admin writes these, and every write is logged.
+create or replace function public.admin_set_licence(kind text, sid uuid, p jsonb)
+returns void language plpgsql security definer set search_path = public as $$
+declare exp date;
+begin
+  perform _yayo_require(array['super_admin','admin_dealers']);
+  if kind not in ('dealer','agency') then return; end if;
+
+  -- an empty string is "not recorded", not a date
+  exp := nullif(p->>'licence_expiry','')::date;
+
+  if kind = 'dealer' then
+    update dealers set
+      legal_name         = nullif(btrim(p->>'legal_name'),''),
+      trading_name       = nullif(btrim(p->>'trading_name'),''),
+      licence_number     = nullif(btrim(p->>'licence_number'),''),
+      licence_authority  = nullif(btrim(p->>'licence_authority'),''),
+      registered_address = nullif(btrim(p->>'registered_address'),''),
+      licence_expiry     = exp,
+      licence_checked_at = now(),
+      -- a fresh licence clears the two automatic marks
+      licence_warned_at  = case when exp > current_date then null else licence_warned_at end,
+      licence_expired_at = case when exp > current_date then null else licence_expired_at end
+    where id = sid;
+  else
+    update shipping_agencies set
+      legal_name         = nullif(btrim(p->>'legal_name'),''),
+      trading_name       = nullif(btrim(p->>'trading_name'),''),
+      licence_number     = nullif(btrim(p->>'licence_number'),''),
+      licence_authority  = nullif(btrim(p->>'licence_authority'),''),
+      registered_address = nullif(btrim(p->>'registered_address'),''),
+      licence_expiry     = exp,
+      licence_checked_at = now(),
+      licence_warned_at  = case when exp > current_date then null else licence_warned_at end,
+      licence_expired_at = case when exp > current_date then null else licence_expired_at end
+    where id = sid;
+  end if;
+
+  perform _yayo_log('set_licence', kind, sid::text,
+    coalesce(nullif(btrim(p->>'legal_name'),''),'') ||
+    case when exp is null then '' else ' · exp ' || exp::text end);
+end $$;
