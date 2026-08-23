@@ -19,6 +19,7 @@ fr: {
   // Landing
   hero_title: "Votre voiture, de Dubai <em>à chez vous</em>",
   hero_sub: "Des voitures vérifiées à Dubai, un prix total transparent, une livraison suivie jusqu'à votre ville. 100% gratuit pour les acheteurs.",
+  hero_car_verified: "Vérifié", hero_car_cta: "Voir cette voiture",
   search_ph: "Cherchez : RAV4 Hybrid… ou budget : $18 000, Kinshasa", search_btn: "Rechercher",
   chip_suv: "SUV moins de $25k", chip_hybride: "Hybride", chip_pickup: "Pick-up", chip_places: "7 places",
   trust_1: "Vendeurs automobiles certifiés Yayo", trust_2: "Prix total sans surprise", trust_3: "Suivi de livraison", trust_4: "Support en français 7j/7",
@@ -630,6 +631,7 @@ en: {
   f_dealer: "Register your dealership", f_agency: "Become an agency", f_pricing: "Pricing", f_contact: "Contact",
   hero_title: "Your car, from Dubai <em>to your door</em>",
   hero_sub: "Verified cars in Dubai, a transparent total price, and tracked delivery to your city. 100% free for buyers.",
+  hero_car_verified: "Verified", hero_car_cta: "View this car",
   search_ph: "Search: RAV4 Hybrid… or budget: $18 000, Kinshasa", search_btn: "Search",
   chip_suv: "SUVs under $25k", chip_hybride: "Hybrid", chip_pickup: "Pick-up", chip_places: "7 seats",
   trust_1: "Yayo-certified car dealerships", trust_2: "Total price, no surprises", trust_3: "Delivery tracking", trust_4: "Support 7 days a week",
@@ -1212,6 +1214,7 @@ ar: {
   f_dealer: "سجّل معرضك", f_agency: "سجّل وكالتك", f_pricing: "الأسعار", f_contact: "اتصل بنا",
   hero_title: "سيارتك، من دبي <em>إلى باب بيتك</em>",
   hero_sub: "سيارات موثّقة في دبي، سعر إجمالي شفاف، وتسليم متتبع حتى مدينتك. مجاني 100% للمشترين.",
+  hero_car_verified: "موثّق", hero_car_cta: "شاهد هذه السيارة",
   search_ph: "ابحث: راف4 هايبرد… أو ميزانية: $18 000، كينشاسا", search_btn: "ابحث",
   chip_suv: "SUV بأقل من 25 ألف $", chip_hybride: "هجينة", chip_pickup: "بيك أب", chip_places: "٧ مقاعد",
   trust_1: "معارض سيارات موثّقة من يايو", trust_2: "سعر إجمالي بلا مفاجآت", trust_3: "تتبع التسليم", trust_4: "دعم طوال أيام الأسبوع",

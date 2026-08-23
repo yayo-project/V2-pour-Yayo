@@ -74,7 +74,8 @@ gtag('config', 'G-NR2LTEVKET');
 
 <!-- ═══ HERO ═══ -->
 <section class="hero">
-  <div class="wrap hero-in">
+  <div class="wrap hero-in hero-split">
+   <div class="hero-copy">
     <h1 data-i18n-html="hero_title">Votre voiture, de Dubai <em>à chez vous</em></h1>
     <p class="hero-sub" data-i18n="hero_sub">Des voitures vérifiées à Dubai, un prix total transparent, une livraison suivie jusqu'à votre ville. 100% gratuit pour les acheteurs.</p>
     <div class="search-shell">
@@ -91,6 +92,34 @@ gtag('config', 'G-NR2LTEVKET');
       <a class="chip" href="acheter.html?body=Pick-up" data-i18n="chip_pickup">Pick-up</a>
       <a class="chip" href="acheter.html?q=7%20places" data-i18n="chip_places">7 places</a>
     </div>
+   </div>
+
+   <!-- One real car from a verified dealer, priced, in stock, and clickable
+        straight through to its page. Rendered in the HTML so it paints with
+        the hero instead of popping in; app.js then refreshes it to whatever
+        the best verified car actually is today. -->
+   <a class="hero-car" id="hero-car"
+      href="/voiture/toyota-land-cruiser-vxr-omani-2026-aa4c91f2-54b4-4249-acf9-63373e8249c0">
+     <span class="hero-car-shot">
+       <img id="hero-car-img" width="1421" height="800" fetchpriority="high" decoding="async"
+            src="https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/car-photos/26dd0ec5-92a6-465e-9fa5-a8b07d636549/1787391104201-58s08.webp"
+            alt="Toyota Land Cruiser VXR 2026 — CGM AUTO, Dubai">
+     </span>
+     <span class="hero-car-badge">
+       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+       <b id="hero-car-dealer">CGM AUTO</b>
+       <em data-i18n="hero_car_verified">Vérifié</em>
+     </span>
+     <span class="hero-car-plate">
+       <span class="hcp-txt">
+         <b id="hero-car-name">Toyota Land Cruiser VXR Omani</b>
+         <span id="hero-car-meta">2026 · Dubai</span>
+       </span>
+       <span class="hcp-price" id="hero-car-price">$122 532</span>
+     </span>
+     <span class="hero-car-cta" data-i18n="hero_car_cta">Voir cette voiture</span>
+   </a>
+
     <div class="trust">
       <div class="trust-item">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>

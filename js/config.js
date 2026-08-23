@@ -49,6 +49,13 @@ const YAYO_CONFIG = {
   // ["assets/hero/aweer-1.jpg", "assets/hero/aweer-2.jpg", "assets/hero/aweer-3.jpg"]
   HERO_PHOTOS: [],
 
+  // The car in the hero, chosen by the founder for its photo — CGM AUTO's
+  // black Land Cruiser VXR. It is also written into index.html so it paints
+  // with the headline; this id is what keeps the two in step, and what lets
+  // the page heal itself into another verified Toyota the day this one sells.
+  // To change the hero car: put its listing id here AND update index.html.
+  HERO_CAR_ID: "aa4c91f2-54b4-4249-acf9-63373e8249c0",
+
   // Phone login (SMS one-time code). OFF until SMS credits are funded
   // (Brevo SMS hook — queue item #5). Flip to true to bring the phone
   // tab back on connexion.html; all the code stays in place.

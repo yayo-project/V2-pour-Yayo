@@ -72,6 +72,7 @@ async function loadCars() {
   // The strip below stays chronological — that one IS "what just arrived".
   const shown = new Set(CARS.map(c => c.id));
   ARRIVALS = ALL_CARS.filter(c => !shown.has(c.id)).slice(0, 10);
+  renderHeroCar(list);
   renderCars();
   renderArrivals();
   renderBudget();
@@ -179,6 +180,43 @@ function renderBudget() {
       <svg class="bud-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
     </a>`);
   g.innerHTML = rows.join("");
+}
+
+// ── The car in the hero ──
+// It ships in the HTML so it paints with the headline, but a hard-coded car
+// goes stale the day it sells. This puts the best car actually on sale into
+// the hero: a verified dealer, a real price, a real photo. If the query
+// finds nothing usable the markup is left exactly as it was — the hero must
+// never end up empty or pointing at a car that no longer exists.
+function renderHeroCar(list) {
+  const card = document.getElementById("hero-car");
+  if (!card || !Array.isArray(list) || !list.length) return;
+  const usable = list.filter(c =>
+    c.photo_url && Number(c.price) > 0 && c.dealer && c.dealer.verified);
+  if (!usable.length) return;
+  const byPrice = (a, b) => Number(b.price) - Number(a.price);
+  // The founder picked the car in the hero, and a picked car beats a computed
+  // one: photo quality is a judgement no sort can make. The query is only here
+  // so the day that car sells the hero heals itself instead of linking to a
+  // page that is gone — then, and only then, the best verified Toyota stands in.
+  const chosen = usable.find(c => String(c.id) === String(YAYO_CONFIG.HERO_CAR_ID || ""));
+  const toyotas = usable.filter(c => /toyota/i.test(c.car_name || ""));
+  const car = chosen || (toyotas.length ? toyotas : usable).sort(byPrice)[0];
+  if (!car) return;
+
+  const img = document.getElementById("hero-car-img");
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  const label = [car.car_name, car.year].filter(Boolean).join(" ");
+  card.href = yayoCarHref(car);
+  if (img && car.photo_url !== img.getAttribute("src")) {
+    img.src = car.photo_url;
+    img.alt = label + " — " + car.dealer.name + ", Dubai";
+  }
+  set("hero-car-name", car.car_name || "");
+  set("hero-car-dealer", car.dealer.name || "");
+  set("hero-car-price", yayoFmt(car.price));
+  set("hero-car-meta", [car.year, car.mileage ? Number(car.mileage).toLocaleString("fr-FR") + " km" : "Dubai"]
+    .filter(Boolean).join(" · "));
 }
 
 // ── Hero photos (real Al Aweer market shots) — activates the moment

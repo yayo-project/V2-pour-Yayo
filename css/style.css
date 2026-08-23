@@ -1442,3 +1442,96 @@ body.no-scroll{overflow:hidden}
   .mx-form .btn{padding:10px 12px;font-size:12.5px}
   .mx-av,.mx-head-av{width:36px;height:36px}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   HERO — the car has to be the first thing you see.
+   A landing page for a car marketplace that shows no car reads as
+   a template. This is one REAL vehicle from a verified dealer,
+   priced, in stock, and clickable straight to its page — not a
+   stock photo and not a full-bleed background behind the text.
+   The image stays a contained object with weight and shadow,
+   because that is what makes it read as expensive rather than as
+   wallpaper.
+   ══════════════════════════════════════════════════════════════ */
+.hero-split{display:grid;grid-template-columns:1.02fr .98fr;gap:clamp(28px,4vw,52px);
+  align-items:center;text-align:left}
+.hero-split .hero-copy{min-width:0}
+.hero-split .hero-copy h1{margin-left:0;margin-right:0;max-width:620px}
+.hero-split .hero-sub{margin-left:0;margin-right:0;max-width:500px}
+.hero-split .search-shell{margin-left:0;margin-right:0}
+.hero-split .hero-chips{justify-content:flex-start}
+.hero-split .trust{grid-column:1/-1}
+
+/* the card */
+.hero-car{position:relative;display:block;border-radius:22px;isolation:isolate;
+  transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+/* a soft teal bloom under the card — the difference between "an image on a
+   page" and "a lit object sitting on the page" */
+.hero-car::before{content:'';position:absolute;inset:8% 6% -6%;border-radius:26px;z-index:-1;
+  background:radial-gradient(ellipse at 50% 60%,rgba(31,216,201,.30),transparent 70%);
+  filter:blur(26px);opacity:.9;transition:opacity .35s}
+.hero-car:hover{transform:translateY(-3px)}
+.hero-car:hover::before{opacity:1}
+.hero-car-shot{display:block;position:relative;overflow:hidden;border-radius:22px;
+  aspect-ratio:16/9;background:#071B33;border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.75),0 2px 0 rgba(255,255,255,.06) inset}
+.hero-car-shot img{width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform .7s cubic-bezier(.2,.7,.3,1)}
+.hero-car:hover .hero-car-shot img{transform:scale(1.045)}
+
+/* verified dealer, top left — the trust mark sits ON the car, not beside it */
+.hero-car-badge{position:absolute;top:14px;left:14px;z-index:2;display:inline-flex;
+  align-items:center;gap:7px;padding:7px 12px 7px 9px;border-radius:50px;
+  background:rgba(7,27,51,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+[dir="rtl"] .hero-car-badge{left:auto;right:14px}
+.hero-car-badge svg{width:15px;height:15px;flex:none;color:#0A2540;background:#1D9BF0;
+  border-radius:50%;padding:2.5px;box-shadow:0 0 0 2px rgba(29,155,240,.35)}
+.hero-car-badge b{font-size:12.5px;font-weight:800;color:#fff;letter-spacing:-.2px;
+  max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero-car-badge em{font-style:normal;font-size:11px;font-weight:700;
+  color:var(--teal-bright);letter-spacing:.2px}
+
+/* name + price, on the glass at the foot of the photo */
+.hero-car-plate{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;
+  align-items:flex-end;justify-content:space-between;gap:14px;padding:34px 18px 16px;
+  border-radius:0 0 22px 22px;
+  background:linear-gradient(to top,rgba(4,17,32,.94) 12%,rgba(4,17,32,.65) 55%,transparent)}
+.hcp-txt{min-width:0}
+.hcp-txt b{display:block;font-size:clamp(15px,1.5vw,17.5px);font-weight:800;color:#fff;
+  letter-spacing:-.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hcp-txt span{display:block;font-size:12px;color:rgba(255,255,255,.66);margin-top:2px}
+.hcp-price{flex:none;font-size:clamp(17px,1.9vw,21px);font-weight:800;color:var(--teal-bright);
+  letter-spacing:-.6px;font-variant-numeric:tabular-nums;text-shadow:0 1px 12px rgba(31,216,201,.35)}
+
+/* invitation, on hover only — a mouse gets it, a thumb already knows to tap */
+.hero-car-cta{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%) scale(.96);
+  padding:11px 20px;border-radius:50px;background:rgba(255,255,255,.94);color:#0A2540;
+  font-size:13px;font-weight:800;letter-spacing:-.2px;white-space:nowrap;
+  box-shadow:0 12px 34px rgba(0,0,0,.4);opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s cubic-bezier(.2,.7,.3,1)}
+.hero-car:hover .hero-car-cta{opacity:1;transform:translate(-50%,-50%) scale(1)}
+@media(hover:none){.hero-car-cta{display:none}}
+
+@media(max-width:1000px){
+  /* stacked: the words first, then the car, still well above the fold */
+  .hero-split{display:block;text-align:center}
+  .hero-split .hero-copy h1,.hero-split .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-split .search-shell{margin-left:auto;margin-right:auto}
+  .hero-split .hero-chips{justify-content:center}
+  .hero-car{margin:26px auto 0;max-width:620px}
+}
+@media(max-width:560px){
+  /* Tighten everything above the car so the car itself clears the fold on a
+     phone. Every pixel spent on padding here is a pixel of bonnet lost. */
+  .hero-split{padding-top:34px;padding-bottom:30px}
+  .hero-split .hero-sub{margin-bottom:20px}
+  .hero-split .hero-chips{margin-top:11px}
+  .hero-car{margin-top:18px}
+  /* a wider crop on a phone: the car still reads, the fold stays close */
+  .hero-car-shot{aspect-ratio:16/10}
+  .hero-car-plate{padding:28px 14px 13px}
+  .hero-car-badge{top:11px;left:11px;padding:6px 10px 6px 8px}
+  .hero-car-badge b{max-width:110px;font-size:12px}
+  .hero-car::before{inset:10% 8% -4%;filter:blur(18px)}
+}
