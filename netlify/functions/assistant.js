@@ -66,6 +66,7 @@ Reply ONLY with JSON: {"reply":"..."}` },
     if (!out.reply || typeof out.reply !== "string") throw new Error("bad shape");
     return { statusCode: 200, headers, body: JSON.stringify({ reply: out.reply.slice(0, 900) }) };
   } catch (e) {
+    console.error("[yayo] assistant failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: '{"unavailable":true}' };
   }
 };

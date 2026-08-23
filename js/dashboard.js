@@ -2102,7 +2102,7 @@ function renderAdmin() {
   if (adCan("users")) adRenderUsers();
   if (adCan("team")) adRenderTeam();
   if (adCan("log")) adRenderLog();
-  if (adCan("stats")) adRenderStats();
+  if (adCan("stats")) { adRenderStats(); adRenderServices(); }
 }
 
 function adDate(s) {
@@ -3221,6 +3221,57 @@ function adRenderLog() {
 }
 
 // ── Statistics ──
+// ── Are the outside services actually alive? (§52) ───────────────────
+// Translation was dead for weeks and nothing said so, because every AI
+// function falls back quietly — right for a buyer mid-conversation, useless
+// for the person trying to find out why nothing is translated.
+// The verdict, kept apart from the drawing so it can be checked on its own:
+// this is the sentence that tells the founder what to go and fix.
+function adServiceState(h) {
+  if (!h || !h.key) return ["off", t("ad_svc_unreachable")];
+  if (!h.key.present) return ["off", t("ad_svc_nokey")];
+  if (h.key.whitespace) return ["off", t("ad_svc_space")];
+  if (!h.key.prefix_ok) return ["off", t("ad_svc_prefix")];
+  if (h.ok) return ["ok", "OK · " + (h.groq ? h.groq.ms : "?") + " ms"];
+  if (!h.groq) return ["off", "?"];
+  // Groq's own words, prefixed by what the status means for him
+  const hint = h.groq.status === 401 ? t("ad_svc_401")
+             : h.groq.status === 429 ? t("ad_svc_429")
+             : h.groq.status === 400 ? t("ad_svc_400")
+             : h.groq.status === 0   ? t("ad_svc_net") : "";
+  return ["off", (hint ? hint + " — " : "") + h.groq.status + " · " + (h.groq.error || "")];
+}
+
+async function adRenderServices() {
+  const box = document.getElementById("ad-services");
+  if (!box) return;
+  box.innerHTML = `<p class="dash-sub">${t("ad_svc_wait")}</p>`;
+  const row = (name, state, detail) => `
+    <div class="ad-svc-row">
+      <span class="ad-svc-dot ${state}"></span>
+      <b>${name}</b>
+      <span class="ad-svc-d">${escapeHtml(detail || "")}</span>
+    </div>`;
+  if (DEMO_ADMIN) {
+    box.innerHTML = row("Traduction & vocal", "ok", "OK · 340 ms")
+      + row("E-mails", "ok", t("ad_svc_set")) + row("Base de données", "ok", t("ad_svc_set"));
+    return;
+  }
+  let h;
+  try {
+    const r = await fetch("/.netlify/functions/ai-health", { cache: "no-store" });
+    h = await r.json();
+  } catch (e) {
+    box.innerHTML = row("Traduction & vocal", "off", t("ad_svc_unreachable"));
+    return;
+  }
+  const ai = adServiceState(h);
+  box.innerHTML =
+    row(t("ad_svc_ai"), ai[0], ai[1])
+    + row(t("ad_svc_mail"), h.brevo.present ? "ok" : "warn", t(h.brevo.present ? "ad_svc_set" : "ad_svc_unset"))
+    + row(t("ad_svc_db"), h.supabase.present ? "ok" : "off", t(h.supabase.present ? "ad_svc_set" : "ad_svc_unset"));
+}
+
 function adRenderStats() {
   const s = AD_STATS;
   const gaEl = document.getElementById("ad-ga-status");

@@ -52,6 +52,7 @@ exports.handler = async (event) => {
     if (!report) throw new Error("empty");
     return { statusCode: 200, headers, body: JSON.stringify({ report: String(report).trim().slice(0, 1200) }) };
   } catch (e) {
+    console.error("[yayo] condition failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: '{"unavailable":true}' };
   }
 };

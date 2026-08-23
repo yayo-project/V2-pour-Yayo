@@ -41,13 +41,16 @@ exports.handler = async (event) => {
         ]
       })
     });
-    if (!res.ok) throw new Error("groq " + res.status);
+    if (!res.ok) throw new Error("groq " + res.status + " " + (await res.text()).slice(0, 200));
     const data = await res.json();
     const out = JSON.parse(data.choices[0].message.content);
     if (!Array.isArray(out.texts) || out.texts.length !== texts.length) throw new Error("bad shape");
     return { statusCode: 200, headers, body: JSON.stringify({ texts: out.texts.map(String) }) };
   } catch (e) {
-    // Never break the chat: fall back to original text
+    // Never break the chat: fall back to original text. But say why in the
+    // function log — a silent fallback is how translation stayed dead for
+    // weeks with nothing anywhere reporting it.
+    console.error("[yayo] translate failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: JSON.stringify({ texts, untranslated: true }) };
   }
 };

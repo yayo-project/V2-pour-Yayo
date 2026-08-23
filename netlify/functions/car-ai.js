@@ -79,6 +79,9 @@ exports.handler = async (event) => {
 
     return { statusCode: 400, headers, body: '{"error":"task verdict|estimate required"}' };
   } catch (e) {
+    // The client hides the feature on failure, so the log is the only place
+    // that can say why. It must not stay silent.
+    console.error("[yayo] car-ai failed:", String(e.message || e).slice(0, 300));
     return { statusCode: 200, headers, body: '{"unavailable":true}' };
   }
 };
