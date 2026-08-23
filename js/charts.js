@@ -65,3 +65,28 @@ function yayoDailySeries(dates) {
   });
   return Object.keys(byDay).map(d => ({ d, n: byDay[d] }));
 }
+
+// Sparkline for a stat tile: the shape of the last N days, nothing else.
+// No axes, no grid, no labels — a tile is a headline, and a headline that
+// needs a legend has stopped being one. 2px line, endpoint marked.
+function yayoSpark(series, days) {
+  days = days || 30;
+  const byDay = {};
+  (series || []).forEach(p => { byDay[String(p.d).slice(0, 10)] = Number(p.n) || 0; });
+  const vals = [];
+  for (let i = days - 1; i >= 0; i--) {
+    vals.push(byDay[new Date(Date.now() - i * 86400000).toISOString().slice(0, 10)] || 0);
+  }
+  if (!vals.some(v => v > 0)) return "";
+  const W = 120, H = 30, P = 3;
+  const max = Math.max(1, ...vals);
+  const x = i => P + i * (W - P * 2) / (vals.length - 1);
+  const y = n => P + (H - P * 2) * (1 - n / max);
+  const pts = vals.map((n, i) => x(i).toFixed(1) + "," + y(n).toFixed(1)).join(" ");
+  const lx = x(vals.length - 1).toFixed(1), ly = y(vals[vals.length - 1]).toFixed(1);
+  return `<svg class="yy-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${lx}" cy="${ly}" r="2.6" fill="currentColor"/>
+  </svg>`;
+}

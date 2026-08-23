@@ -760,7 +760,8 @@ body.no-scroll{overflow:hidden}
 .ad-dl{font-size:13px;color:var(--ink-2);margin:4px 0}
 .ad-dl b{color:var(--ink)}
 .ad-reason{color:#8A6116}
-.ad-detail-actions{margin-top:12px}
+.ad-detail-actions{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;white-space:normal}
+.ad-detail-actions button{margin:0;min-height:38px;padding:8px 12px}
 .ad-top-line{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
 .ad-top-line:last-child{border-bottom:none}
 .ad-top-line span{color:var(--ink-3);font-weight:600;white-space:nowrap}
@@ -1213,3 +1214,39 @@ body.no-scroll{overflow:hidden}
 .ad-lic-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
 .ad-lic-when{font-size:12px;color:var(--ink-2)}
 @media (max-width:640px){.ad-lic-grid{grid-template-columns:1fr}}
+
+/* Chat: the account name on payment details, checked against the licence */
+.pay-note{max-width:88%;margin:10px 0 2px;padding:10px 13px;border-radius:12px;border:1px solid;font-size:13px;line-height:1.5}
+.pay-note b{display:block;font-weight:800;margin-bottom:2px}
+.pay-note.ok{background:rgba(31,216,201,.10);border-color:rgba(31,216,201,.5);color:#0B6F67}
+.pay-note.ok span{color:var(--ink-2)}
+.pay-note.bad{background:rgba(168,51,43,.08);border-color:rgba(168,51,43,.45);color:#A8332B}
+.pay-note.bad span{color:var(--ink)}
+[dir="rtl"] .pay-note{margin-left:auto}
+
+/* ── Admin analytics: three headlines, then named groups ────────────── */
+.ad-hero{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+.ad-hero-card{background:linear-gradient(135deg,var(--dark),var(--dark-3));color:#fff;border-radius:16px;padding:17px 19px 15px;display:flex;flex-direction:column;gap:2px;position:relative;overflow:hidden}
+.ad-hero-card .lbl{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#8FB3CF}
+.ad-hero-card .num{font-size:34px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.dash-delta{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.dash-delta em{font-style:normal;font-weight:600;opacity:.75}
+.ad-hero-card .dash-delta.up{color:var(--teal-glow)}
+.ad-hero-card .dash-delta.up::before{content:"▲";font-size:9px}
+.ad-hero-card .dash-delta.flat{color:#7D9DB8}
+.spark-wrap{margin-top:10px;color:var(--teal-bright);height:30px}
+.yy-spark{width:100%;height:30px;display:block}
+
+.ad-grp{margin-bottom:16px}
+.ad-grp-h{font-size:11.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+.ad-grp-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px}
+.ad-mini{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:1px}
+.ad-mini .num{font-size:21px;font-weight:800;color:var(--ink);line-height:1.15;font-variant-numeric:tabular-nums}
+.ad-mini .lbl{font-size:12px;color:var(--ink-2);line-height:1.35}
+
+@media (max-width:720px){
+  .ad-hero{grid-template-columns:1fr;gap:10px}
+  .ad-hero-card .num{font-size:30px}
+  .ad-grp-row{grid-template-columns:repeat(auto-fit,minmax(112px,1fr))}
+}
+.ad-analytics{display:block;margin-bottom:22px}

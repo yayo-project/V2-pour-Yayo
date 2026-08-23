@@ -548,6 +548,58 @@ function yayoStripContacts(text) {
   return out.trim();
 }
 
+// ── Payment details: check the name, warn, never block (§51) ─────────
+// The most expensive fraud in this corridor is money sent to an account in
+// somebody else's name. Yayo holds no bank details and asks for none — it
+// reads what the seller himself wrote and compares one name against the
+// licence an admin actually read. The comparison runs on the server so the
+// registered name never reaches a browser.
+function yayoLooksLikePayment(text) {
+  const s = String(text || "");
+  if (/\b[A-Z]{2}\d{2}[A-Z0-9]{9,30}\b/i.test(s)) return true;          // IBAN
+  const word = /(iban|swift|bic|account|a\/c|beneficiary|banque|bank|compte|virement|titulaire|b[ée]n[ée]ficiaire|حساب|تحويل|آيبان)/i.test(s);
+  return word && /\d[\d\s-]{7,}/.test(s);
+}
+const YAYO_PAY_SEEN = {};   // one call per message, not one per repaint
+async function yayoCheckPayment(convoId, text) {
+  if (!convoId || !yayoLooksLikePayment(text)) return null;
+  const key = convoId + "|" + text.slice(0, 120);
+  if (YAYO_PAY_SEEN[key]) return YAYO_PAY_SEEN[key];
+  try {
+    const r = await fetch("/.netlify/functions/payment-check", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: convoId, text })
+    });
+    if (!r.ok) return null;
+    const out = await r.json();
+    YAYO_PAY_SEEN[key] = out;
+    return out;
+  } catch (e) { return null; }   // a failed check must never hide the message
+}
+// The banner the buyer sees above a message carrying payment details.
+function yayoPaymentNoticeHtml(res) {
+  if (!res || res.status === "unknown") return "";
+  const ok = res.status === "match";
+  return `<div class="pay-note ${ok ? "ok" : "bad"}">
+    <b>${t(ok ? "pay_ok_h" : "pay_bad_h")}</b>
+    <span>${t(ok ? "pay_ok_p" : "pay_bad_p")}</span>
+  </div>`;
+}
+
+// Put the banner above an incoming bubble once the verdict arrives. Called
+// on every message the seller sends; does nothing at all unless the message
+// actually carries payment details.
+function yayoAttachPaymentNotice(bubble, convoId, text) {
+  if (!bubble || !yayoLooksLikePayment(text)) return;
+  yayoCheckPayment(convoId, text).then(res => {
+    const html = yayoPaymentNoticeHtml(res);
+    if (!html || !bubble.parentNode) return;
+    const wrap = document.createElement("div");
+    wrap.innerHTML = html;
+    bubble.parentNode.insertBefore(wrap.firstElementChild, bubble);
+  }, () => {});
+}
+
 // Called when a send is refused: counts the attempt against the business so
 // admin can see a pattern (§49). Never blocks the user if it fails.
 function yayoFlagContact(convoId) {

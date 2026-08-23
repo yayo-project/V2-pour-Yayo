@@ -3180,18 +3180,56 @@ function adRenderStats() {
   const gaEl = document.getElementById("ad-ga-status");
   gaEl.textContent = YAYO_CONFIG.GA4_ID ? t("ad_ga_set") + YAYO_CONFIG.GA4_ID : t("ad_ga_not_set");
   if (!s) { document.getElementById("ad-stats").innerHTML = `<p class="dash-empty">${t("ad_none_yet")}</p>`; return; }
-  const cards = [
-    ["ad_stat_users", s.users_total], ["ad_stat_today", s.signups_today], ["ad_stat_7d", s.signups_7d], ["ad_stat_30d", s.signups_30d],
-    ["ad_stat_active7", s.active_7d], ["ad_stat_active30", s.active_30d],
-    ["ad_stat_dealers", s.dealers], ["ad_stat_dealers_v", s.dealers_verified],
-    ["ad_stat_ags", s.agencies], ["ad_stat_ags_v", s.agencies_verified],
-    ["ad_stat_listings", s.listings_active], ["ad_stat_new7", s.listings_new_7d],
-    ["ad_stat_total_listings", s.listings_total], ["ad_stat_sold", s.sold],
-    ["ad_stat_msgs", s.messages], ["ad_stat_convos", s.conversations],
-    ["ad_stat_favs", s.favorites], ["ad_stat_reviews", s.reviews]
+  // Eighteen numbers of equal weight is a list, not a dashboard: nothing
+  // tells the reader which one to look at. Three lead, the rest support them
+  // in named groups, and each headline carries the one thing a bare number
+  // never has — whether it is moving.
+  const n = v => (v === null || v === undefined) ? "—" : v;
+  const delta = (v, label) => {
+    if (!v) return "";                        // no change is not news
+    return `<span class="dash-delta up">+${v} <em>${t(label)}</em></span>`;
+  };
+  const hero = [
+    { k: "ad_stat_users", v: s.users_total, d: delta(s.signups_7d, "ad_since7"),
+      spark: typeof yayoSpark === "function" ? yayoSpark(s.signups_by_day || [], 30) : "" },
+    { k: "ad_stat_listings", v: s.listings_active, d: delta(s.listings_new_7d, "ad_since7") },
+    { k: "ad_stat_convos", v: s.conversations, d: "" }
   ];
-  document.getElementById("ad-stats").innerHTML = cards.map(([k, v]) =>
-    `<div class="dash-stat"><span class="num">${v === null || v === undefined ? "—" : v}</span><span class="lbl">${t(k)}</span></div>`).join("");
+  const groups = [
+    ["ad_grp_people", [
+      ["ad_stat_today", s.signups_today], ["ad_stat_7d", s.signups_7d], ["ad_stat_30d", s.signups_30d],
+      ["ad_stat_active7", s.active_7d], ["ad_stat_active30", s.active_30d]
+    ]],
+    ["ad_grp_biz", [
+      ["ad_stat_dealers", s.dealers], ["ad_stat_dealers_v", s.dealers_verified],
+      ["ad_stat_ags", s.agencies], ["ad_stat_ags_v", s.agencies_verified]
+    ]],
+    ["ad_grp_stock", [
+      ["ad_stat_total_listings", s.listings_total], ["ad_stat_new7", s.listings_new_7d],
+      ["ad_stat_sold", s.sold], ["ad_stat_favs", s.favorites]
+    ]],
+    ["ad_grp_activity", [
+      ["ad_stat_msgs", s.messages], ["ad_stat_reviews", s.reviews]
+    ]]
+  ];
+  document.getElementById("ad-stats").innerHTML = `
+    <div class="ad-hero">
+      ${hero.map(h => `
+        <div class="ad-hero-card">
+          <span class="lbl">${t(h.k)}</span>
+          <span class="num">${n(h.v)}</span>
+          ${h.d || `<span class="dash-delta flat">${t("ad_flat")}</span>`}
+          ${h.spark ? `<div class="spark-wrap">${h.spark}</div>` : ""}
+        </div>`).join("")}
+    </div>
+    ${groups.map(([title, rows]) => `
+      <div class="ad-grp">
+        <h3 class="ad-grp-h">${t(title)}</h3>
+        <div class="ad-grp-row">
+          ${rows.map(([k, v]) => `
+            <div class="ad-mini"><span class="num">${n(v)}</span><span class="lbl">${t(k)}</span></div>`).join("")}
+        </div>
+      </div>`).join("")}`;
   document.getElementById("ad-spark").innerHTML = yayoLineChart(s.signups_by_day || [], 30);
   document.getElementById("ad-top-cars").innerHTML = yayoBarChart(
     (s.top_cars || []).map(c => ({ label: c.car_name, value: c.views })));

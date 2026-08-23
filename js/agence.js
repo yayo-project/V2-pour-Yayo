@@ -174,14 +174,18 @@ async function openAgChat() {
       const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
-    list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url));
+    // Checked on what the agency actually typed, never on the translation.
+    list.forEach(m => {
+      const b = addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url);
+      if (m.sender_id !== user.id) yayoAttachPaymentNotice(b, CONVO.id, m.content);
+    });
     if (!list.length) addBubble("yayo", t("chat_start"));
     // Live: the agency's replies appear instantly, translated
     if (window.__agLiveOff) window.__agLiveOff();
     window.__agLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
       if (m.image_url) { addBubble("them", "", m.image_url); return; }
       const tr = await yayoTranslate([m.content], YAYO_LANG);
-      addBubble("them", tr[0] || m.content);
+      yayoAttachPaymentNotice(addBubble("them", tr[0] || m.content), CONVO.id, m.content);
     });
   } catch (e) {
     console.error("[Yayo] openAgChat failed:", e);

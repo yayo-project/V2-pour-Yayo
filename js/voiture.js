@@ -603,14 +603,19 @@ async function openChat() {
       const tr = await yayoTranslate(theirs.map(m => m.content), YAYO_LANG);
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
-    list.forEach(m => addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url));
+    // The payment name is checked on what the seller actually typed, never on
+    // the translation — a translator has no business rewriting a company name.
+    list.forEach(m => {
+      const b = addBubble(m.sender_id === user.id ? "me" : "them", m.display || m.content, m.image_url);
+      if (m.sender_id !== user.id) yayoAttachPaymentNotice(b, CONVO.id, m.content);
+    });
     if (!list.length) addBubble("yayo", t("chat_start"));
     // Live: the dealer's replies appear instantly, translated, no refresh
     if (window.__vdLiveOff) window.__vdLiveOff();
     window.__vdLiveOff = yayoLiveMessages(CONVO.id, user.id, async m => {
       if (m.image_url) { addBubble("them", "", m.image_url); return; }
       const tr = await yayoTranslate([m.content], YAYO_LANG);
-      addBubble("them", tr[0] || m.content);
+      yayoAttachPaymentNotice(addBubble("them", tr[0] || m.content), CONVO.id, m.content);
     });
   } catch (e) {
     console.error("[Yayo] openChat failed:", e);

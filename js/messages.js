@@ -137,7 +137,12 @@ async function mxOpen(id) {
       theirs.forEach((m, i) => { m.display = tr[i]; });
     }
   }
-  MX_CUR.msgs.forEach(m => mxBubble(m.me, m.me ? m.text : (m.display || m.text), m.img));
+  // m.text stays the original wording; the payment name is checked on that,
+  // never on the translation.
+  MX_CUR.msgs.forEach(m => {
+    const b = mxBubble(m.me, m.me ? m.text : (m.display || m.text), m.img);
+    if (!m.me) yayoAttachPaymentNotice(b, MX_CUR.id, m.text);
+  });
   if (!MX_CUR.msgs.length) mxBubble(false, t("chat_start"));
 
   // Live: new replies pop in instantly (translated), no refresh needed
@@ -149,7 +154,7 @@ async function mxOpen(id) {
       text = tr[0] || m.content;
     }
     MX_CUR.msgs.push({ me: false, text: m.content, display: text, img: m.image_url });
-    mxBubble(false, text, m.image_url);
+    yayoAttachPaymentNotice(mxBubble(false, text, m.image_url), MX_CUR.id, m.content);
     try { yayoSB().rpc("yayo_mark_read", { cid: MX_CUR.id }).then(() => {}, () => {}); } catch (e) {}
   });
 }
