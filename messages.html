@@ -96,17 +96,41 @@ gtag('config', 'G-NR2LTEVKET');
     </div>
 
     <div id="mx-app" hidden>
-      <div class="dash-msg-layout">
-        <div class="vd-card dash-convos" id="mx-list"></div>
-        <div class="vd-card dash-thread">
+      <div class="dash-msg-layout mx-layout" id="mx-layout">
+        <div class="vd-card dash-convos mx-convos">
+          <div class="mx-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input id="mx-q" type="search" data-i18n-ph="msgs_search" placeholder="Rechercher une conversation…" autocomplete="off" oninput="mxRenderList()">
+          </div>
+          <div id="mx-list"></div>
+          <p id="mx-none" class="mx-none" hidden data-i18n="msgs_nomatch">Aucune conversation ne correspond.</p>
+        </div>
+        <div class="vd-card dash-thread mx-thread-card">
           <div id="mx-pick" class="dash-empty" data-i18n="d_pick_convo">Choisissez une conversation à gauche pour lire et répondre.</div>
           <div id="mx-thread" hidden>
-            <h2 class="vd-h" id="mx-title"></h2>
-            <div class="chat-box" id="mx-box"></div>
-            <form class="chat-form" onsubmit="return mxSend(event)">
+            <div class="mx-head">
+              <button type="button" class="mx-back" onclick="mxBack()" data-i18n-title="msgs_back" title="Retour" aria-label="Retour">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <span class="mx-head-av" id="mx-av"></span>
+              <span class="mx-head-txt">
+                <b id="mx-title"></b>
+                <span id="mx-sub"></span>
+              </span>
+            </div>
+            <div class="chat-box mx-box" id="mx-box"></div>
+            <div class="yv-bar" id="yv-bar" hidden></div>
+            <form class="chat-form mx-form" id="mx-form" onsubmit="return mxSend(event)">
               <input id="mx-input" type="text" data-i18n-ph="chat_ph" placeholder="Écrivez votre message…" autocomplete="off" maxlength="1000">
               <button type="button" class="chat-photo-btn" onclick="document.getElementById('mx-photo').click()" data-i18n-title="chat_photo_btn" title="Envoyer une photo">📷</button>
               <input id="mx-photo" type="file" accept="image/*" hidden onchange="mxSendPhoto(this.files)">
+              <button type="button" class="chat-tool" onclick="document.getElementById('mx-doc').click()" data-i18n-title="v_doc" title="Joindre un fichier" aria-label="Joindre un fichier">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.2-9.19a3.67 3.67 0 1 1 5.18 5.18l-9.2 9.2a1.83 1.83 0 1 1-2.59-2.6l8.5-8.49"/></svg>
+              </button>
+              <input id="mx-doc" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" hidden onchange="mxSendDoc(this.files)">
+              <button type="button" class="chat-tool" onclick="mxStartVoice()" data-i18n-title="v_rec" title="Message vocal" aria-label="Message vocal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg>
+              </button>
               <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
             </form>
             <p class="cost-note" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>

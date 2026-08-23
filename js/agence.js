@@ -224,6 +224,47 @@ async function sendChatPhoto(files) {
   }
 }
 
+// Voice and documents — an agency conversation is where shipping quotes,
+// packing lists and B/L drafts get sent, so a file has to travel here too.
+// The composer steps aside while recording, exactly as on the car page.
+function startVoice() {
+  if (isDemo() || !CONVO) { addBubble("yayo", t("chat_demo_reply")); return; }
+  const form = document.getElementById("chat-form");
+  if (form) form.hidden = true;
+  yayoVoiceStart(CONVO.id, sent => {
+    const b = addBubble("me", sent.transcript || "", sent);
+    yayoTick(b, false);
+  });
+  setTimeout(() => {
+    const bar = document.getElementById("yv-bar");
+    if (form && bar && bar.hidden) form.hidden = false;
+  }, 600);
+}
+document.addEventListener("click", e => {
+  if (e.target && (e.target.classList.contains("yv-stop") || e.target.classList.contains("yv-x"))) {
+    setTimeout(() => {
+      const bar = document.getElementById("yv-bar"), form = document.getElementById("chat-form");
+      if (form && bar && bar.hidden) form.hidden = false;
+    }, 120);
+  }
+});
+async function sendChatDoc(files) {
+  const f = files && files[0];
+  document.getElementById("chat-doc").value = "";
+  if (!f) return;
+  if (isDemo() || !CONVO) { addBubble("yayo", t("chat_demo_reply")); return; }
+  const b = addBubble("me", t("chat_photo_sending"));
+  try {
+    const url = await yayoSendDoc(CONVO.id, f);
+    if (!url) { b.remove(); return; }   // refused by type/size, already explained
+    yayoFillBubble(b, "", { file_url: url, file_name: f.name, file_size: f.size });
+    yayoTick(b, false);
+  } catch (err) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+    b.classList.add("chat-failed");
+  }
+}
+
 async function sendMsg(e) {
   e.preventDefault();
   const input = document.getElementById("chat-input");

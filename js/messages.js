@@ -10,6 +10,7 @@ let MX_USER = null;
 let MX_CONVOS = [];
 let MX_UNREAD = {};
 let MX_CUR = null;
+let MX_DAY = "";   // last day printed as a separator in the open thread
 
 function toggleMenu() { document.getElementById("mmenu").classList.toggle("open"); }
 function mxEsc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -92,14 +93,37 @@ function mxPreview(c) {
   const txt = c.last === "📷" ? t("chat_photo_lbl") : c.last;
   return (c.lastMine ? t("convo_you") + " " : "") + txt;
 }
+// The logo if the business uploaded one, otherwise its initials — the same
+// silhouette every messaging app uses, so the eye finds a conversation by
+// shape before it reads a word.
+function mxAvatarInner(c) {
+  if (c.logo) return `<img src="${mxEsc(c.logo)}" alt="" loading="lazy">`;
+  return mxEsc((c.who || "?").split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase());
+}
+function mxAvatar(c) {
+  return `<span class="mx-av${c.logo ? "" : " mx-av-txt"}">${mxAvatarInner(c)}</span>`;
+}
+
 function mxRenderList() {
-  document.getElementById("mx-list").innerHTML = MX_CONVOS.map(c => {
+  const q = (document.getElementById("mx-q") || {}).value || "";
+  const needle = q.trim().toLowerCase();
+  // Search covers who you spoke to, the car, and what was last said — the
+  // three things someone actually remembers about a conversation.
+  const shown = needle
+    ? MX_CONVOS.filter(c => (c.who + " " + c.car_name + " " + (c.last || "")).toLowerCase().includes(needle))
+    : MX_CONVOS;
+  const none = document.getElementById("mx-none");
+  if (none) none.hidden = shown.length > 0;
+  document.getElementById("mx-list").innerHTML = shown.map(c => {
     const n = MX_UNREAD[c.id] || 0;
     return `
-    <button class="dash-convo${MX_CUR && MX_CUR.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="mxOpen('${c.id}')">
-      <b>${mxEsc(c.who)}${c.demo ? ` <span class="convo-demo">${t("convo_demo")}</span>` : ""} <em class="convo-time">${mxTime(c.lastAt)}</em></b>
-      <span>${mxEsc(c.car_name)}</span>
-      ${c.last ? `<span class="convo-prev">${mxEsc(mxPreview(c)).slice(0, 70)}</span>` : ""}
+    <button class="dash-convo mx-convo${MX_CUR && MX_CUR.id === c.id ? " on" : ""}${n ? " unread" : ""}" onclick="mxOpen('${c.id}')">
+      ${mxAvatar(c)}
+      <span class="mx-convo-txt">
+        <b>${mxEsc(c.who)}${c.demo ? ` <span class="convo-demo">${t("convo_demo")}</span>` : ""} <em class="convo-time">${mxTime(c.lastAt)}</em></b>
+        <span>${mxEsc(c.car_name)}</span>
+        ${c.last ? `<span class="convo-prev">${mxEsc(mxPreview(c)).slice(0, 70)}</span>` : ""}
+      </span>
       ${n ? `<i class="unread-dot">${n}</i>` : ""}
     </button>`;
   }).join("");
@@ -115,7 +139,16 @@ async function mxOpen(id) {
   mxRenderList();
   document.getElementById("mx-pick").hidden = true;
   document.getElementById("mx-thread").hidden = false;
-  document.getElementById("mx-title").textContent = MX_CUR.who + " · " + MX_CUR.car_name;
+  document.getElementById("mx-title").textContent = MX_CUR.who;
+  document.getElementById("mx-sub").textContent = MX_CUR.car_name;
+  const av = document.getElementById("mx-av");
+  av.className = "mx-head-av" + (MX_CUR.logo ? "" : " mx-av-txt");
+  av.innerHTML = mxAvatarInner(MX_CUR);
+  // On a phone the thread takes the whole screen, like every messaging app.
+  // The list is not "above" the conversation — you are either in the list or
+  // in the conversation, and the back arrow says so.
+  document.getElementById("mx-layout").classList.add("mx-open");
+  MX_DAY = "";
   const box = document.getElementById("mx-box");
   box.innerHTML = "";
 
@@ -141,6 +174,7 @@ async function mxOpen(id) {
   // m.text stays the original wording; the payment name is checked on that,
   // never on the translation.
   MX_CUR.msgs.forEach(m => {
+    mxDaySep(m.created_at);
     const b = mxBubble(m.me, m.me ? m.text : (m.display || m.text), m);
     if (m.me) yayoTick(b, m.seen);
     else yayoAttachPaymentNotice(b, MX_CUR.id, m.text);
@@ -157,9 +191,100 @@ async function mxOpen(id) {
       text = tr[0] || said;
     }
     MX_CUR.msgs.push({ ...m, me: false, text: said, display: text, img: m.image_url });
+    mxDaySep(m.created_at || new Date().toISOString());
     yayoAttachPaymentNotice(mxBubble(false, text, m), MX_CUR.id, said);
     try { yayoSB().rpc("yayo_mark_read", { cid: MX_CUR.id }).then(() => {}, () => {}); } catch (e) {}
   });
+}
+
+// ── Day separators ──────────────────────────────────────────
+// "Aujourd'hui" / "Hier" / "14 août" between days, so a thread read weeks
+// later still says WHEN something was agreed. In a car deal that matters.
+function mxDayKey(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toDateString();
+}
+function mxDayLabel(d) {
+  const today = new Date(), yest = new Date();
+  yest.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return t("msgs_today");
+  if (d.toDateString() === yest.toDateString()) return t("msgs_yesterday");
+  const loc = YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR";
+  const opts = { day: "numeric", month: "long" };
+  if (d.getFullYear() !== today.getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString(loc, opts);
+}
+function mxDaySep(iso) {
+  const key = mxDayKey(iso);
+  if (!key || key === MX_DAY) return;
+  MX_DAY = key;
+  const s = document.createElement("div");
+  s.className = "mx-day";
+  s.innerHTML = `<span>${mxEsc(mxDayLabel(new Date(iso)))}</span>`;
+  document.getElementById("mx-box").appendChild(s);
+}
+
+// ── Back to the list (phones) ───────────────────────────────
+function mxBack() {
+  document.getElementById("mx-layout").classList.remove("mx-open");
+  document.getElementById("mx-thread").hidden = true;
+  document.getElementById("mx-pick").hidden = false;
+  if (window.__mxLiveOff) { window.__mxLiveOff(); window.__mxLiveOff = null; }
+  MX_CUR = null;
+  mxRenderList();
+}
+
+// ── Voice notes ─────────────────────────────────────────────
+// Same rule as everywhere else on Yayo: the SENDER reads the transcript
+// before it goes. The composer steps aside while recording so the screen
+// never offers two ways to send at once.
+function mxStartVoice() {
+  if (!MX_CUR) return;
+  if (MX_CUR.demo) { mxBubble(false, t("chat_demo")); return; }
+  const form = document.getElementById("mx-form");
+  if (form) form.hidden = true;
+  yayoVoiceStart(MX_CUR.id, sent => {
+    mxDaySep(new Date().toISOString());
+    const b = mxBubble(true, sent.transcript || "", sent);
+    yayoTick(b, false);
+    if (MX_CUR.msgs) MX_CUR.msgs.push({ ...sent, me: true, text: sent.transcript || "" });
+  });
+  // if the microphone is refused the bar never opens — bring the form back
+  setTimeout(() => {
+    const bar = document.getElementById("yv-bar");
+    if (form && bar && bar.hidden) form.hidden = false;
+  }, 600);
+}
+// the recorder always hands the composer back, however it ended
+document.addEventListener("click", e => {
+  if (e.target && (e.target.classList.contains("yv-stop") || e.target.classList.contains("yv-x"))) {
+    setTimeout(() => {
+      const bar = document.getElementById("yv-bar"), form = document.getElementById("mx-form");
+      if (form && bar && bar.hidden) form.hidden = false;
+    }, 120);
+  }
+});
+
+// ── Documents ───────────────────────────────────────────────
+async function mxSendDoc(files) {
+  const f = files && files[0];
+  document.getElementById("mx-doc").value = "";
+  if (!f || !MX_CUR) return;
+  if (MX_CUR.demo) { mxBubble(false, t("chat_demo")); return; }
+  mxDaySep(new Date().toISOString());
+  const b = mxBubble(true, t("chat_photo_sending"));
+  try {
+    const url = await yayoSendDoc(MX_CUR.id, f);
+    if (!url) { b.remove(); return; }   // refused by type/size, already explained
+    const row = { file_url: url, file_name: f.name, file_size: f.size };
+    yayoFillBubble(b, "", row);
+    yayoTick(b, false);
+    if (MX_CUR.msgs) MX_CUR.msgs.push({ ...row, me: true, text: "📎 " + f.name });
+  } catch (e) {
+    yayoFillBubble(b, t("chat_photo_fail"));
+    b.classList.add("chat-failed");
+  }
 }
 
 function mxBubble(me, text, img) {
@@ -178,6 +303,7 @@ async function mxSendPhoto(files) {
   document.getElementById("mx-photo").value = "";
   if (!f || !MX_CUR) return;
   if (MX_CUR.demo) { setTimeout(() => mxBubble(false, t("chat_demo_reply")), 500); return; }
+  mxDaySep(new Date().toISOString());
   const b = mxBubble(true, t("chat_photo_sending"));
   try {
     const url = await yayoSendChatPhoto(MX_CUR.id, f);
@@ -201,6 +327,7 @@ async function mxSend(e) {
     return false;
   }
   input.value = "";
+  mxDaySep(new Date().toISOString());
   const bubble = mxBubble(true, text);
   MX_CUR.msgs.push({ me: true, text });
   if (MX_CUR.demo) {
