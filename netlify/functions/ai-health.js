@@ -11,8 +11,9 @@
 //
 // GET /.netlify/functions/ai-health
 // → { ok, key: {present, length, prefix_ok}, groq: {status, ms, error}, model }
+const MODELS = require("./_models");
 const GROQ = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";      // the cheapest one the site uses
+const MODEL = MODELS.FAST;                 // the same one the chat translates with
 
 const H = {
   "Access-Control-Allow-Origin": "*",
@@ -42,18 +43,25 @@ exports.handler = async () => {
     const r = await fetch(GROQ, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key.trim() },
+      // JSON mode is tested, not assumed: translate, car-ai, assistant and
+      // import all depend on response_format, so a model that lacks it would
+      // fail exactly like a dead model — the failure we just spent a day on.
       body: JSON.stringify({
-        model: MODEL, temperature: 0, max_tokens: 5,
-        messages: [{ role: "user", content: "Reply with the single word: ok" }]
+        model: MODEL, temperature: 0, max_tokens: 30,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: 'Reply only with JSON: {"ok":true}' }]
       })
     });
     const ms = Date.now() - t0;
     const text = await r.text();
     if (r.ok) {
-      let reply = "";
-      try { reply = JSON.parse(text).choices[0].message.content.trim().slice(0, 20); } catch (e) {}
+      let reply = "", json_mode = false;
+      try {
+        reply = JSON.parse(text).choices[0].message.content.trim().slice(0, 40);
+        JSON.parse(reply); json_mode = true;
+      } catch (e) {}
       out.ok = true;
-      out.groq = { status: r.status, ms, reply };
+      out.groq = { status: r.status, ms, reply, json_mode };
     } else {
       // Groq's own words — this is the sentence that was missing
       let msg = text.slice(0, 300);

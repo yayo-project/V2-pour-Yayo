@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — turn a voice note into text the SENDER checks before it is sent.
 //
 // The sender reads it first ("Yayo a compris ceci — c'est bien ce que vous
@@ -58,7 +59,7 @@ exports.handler = async (event) => {
   try {
     const fd = new FormData();
     fd.append("file", new Blob([audio.body], { type: mime }), "voice." + ext);
-    fd.append("model", "whisper-large-v3");
+    fd.append("model", MODELS.VOICE);
     fd.append("response_format", "json");
     fd.append("temperature", "0");                       // no creative guessing
     if (["fr", "en", "ar"].indexOf(lang) > -1) fd.append("language", lang);

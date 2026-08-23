@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — Assistant Yayo, Mode 2: SUGGESTED replies only.
 // Drafts a reply for the DEALER to review, edit and send himself.
 // Nothing is ever sent to the buyer by this function.
@@ -41,7 +42,7 @@ exports.handler = async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: MODELS.BIG,
         temperature: 0.5,
         response_format: { type: "json_object" },
         messages: [

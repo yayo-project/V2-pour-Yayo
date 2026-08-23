@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — two-way chat translation (Groq, key stays server-side).
 // POST { texts: ["..."], target: "fr" | "en" | "ar" }
 // →    { texts: ["..."] }  (same order; unchanged if already in target)
@@ -32,7 +33,7 @@ exports.handler = async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: MODELS.FAST,
         temperature: 0,
         response_format: { type: "json_object" },
         messages: [

@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — AI condition report from a car photo (Groq vision).
 // The DEALER triggers it on his own listing photo; the text lands in the
 // description field for him to review and edit before saving (Mode 2 rule).
@@ -32,7 +33,7 @@ exports.handler = async (event) => {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: MODELS.VISION,
         temperature: 0.2,
         messages: [
           {

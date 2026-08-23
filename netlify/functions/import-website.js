@@ -1,3 +1,4 @@
+const MODELS = require("./_models");
 // YAYO — Website Import, extraction engine (step 3). Two stateless phases so
 // each call stays inside the serverless time budget (Netlify ~10s):
 //
@@ -831,7 +832,7 @@ async function groqJson(key, system, user) {
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
-    body: JSON.stringify({ model: "llama-3.3-70b-versatile", temperature: 0, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: user }] })
+    body: JSON.stringify({ model: MODELS.BIG, temperature: 0, response_format: { type: "json_object" }, messages: [{ role: "system", content: system }, { role: "user", content: user }] })
   });
   if (!res.ok) throw new Error("groq " + res.status);
   return JSON.parse((await res.json()).choices[0].message.content);
