@@ -182,41 +182,31 @@ function renderBudget() {
   g.innerHTML = rows.join("");
 }
 
-// ── The car in the hero ──
-// It ships in the HTML so it paints with the headline, but a hard-coded car
-// goes stale the day it sells. This puts the best car actually on sale into
-// the hero: a verified dealer, a real price, a real photo. If the query
-// finds nothing usable the markup is left exactly as it was — the hero must
-// never end up empty or pointing at a car that no longer exists.
+// ── The photograph in the hero ──
+// The hero shows a picture, not a listing: no dealer name, no price, no link.
+// Naming a business and a figure up there made the section read as an advert
+// for one dealership, and it put six-figure numbers in front of buyers who
+// came looking at eighteen thousand.
+//
+// So this function has one job left. The photo is hard-coded in the HTML so
+// it paints with the headline, and a hard-coded photo dies the day that car
+// is deleted. If the chosen listing is gone, another verified dealer's Toyota
+// quietly takes its place; otherwise nothing is touched.
 function renderHeroCar(list) {
-  const card = document.getElementById("hero-car");
-  if (!card || !Array.isArray(list) || !list.length) return;
-  const usable = list.filter(c =>
-    c.photo_url && Number(c.price) > 0 && c.dealer && c.dealer.verified);
-  if (!usable.length) return;
-  const byPrice = (a, b) => Number(b.price) - Number(a.price);
-  // The founder picked the car in the hero, and a picked car beats a computed
-  // one: photo quality is a judgement no sort can make. The query is only here
-  // so the day that car sells the hero heals itself instead of linking to a
-  // page that is gone — then, and only then, the best verified Toyota stands in.
-  const chosen = usable.find(c => String(c.id) === String(YAYO_CONFIG.HERO_CAR_ID || ""));
-  const toyotas = usable.filter(c => /toyota/i.test(c.car_name || ""));
-  const car = chosen || (toyotas.length ? toyotas : usable).sort(byPrice)[0];
-  if (!car) return;
-
   const img = document.getElementById("hero-car-img");
-  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
-  const label = [car.car_name, car.year].filter(Boolean).join(" ");
-  card.href = yayoCarHref(car);
-  if (img && car.photo_url !== img.getAttribute("src")) {
-    img.src = car.photo_url;
-    img.alt = label + " — " + car.dealer.name + ", Dubai";
-  }
-  set("hero-car-name", car.car_name || "");
-  set("hero-car-dealer", car.dealer.name || "");
-  set("hero-car-price", yayoFmt(car.price));
-  set("hero-car-meta", [car.year, car.mileage ? Number(car.mileage).toLocaleString("fr-FR") + " km" : "Dubai"]
-    .filter(Boolean).join(" · "));
+  if (!img || !Array.isArray(list) || !list.length) return;
+  const chosenId = String(YAYO_CONFIG.HERO_CAR_ID || "");
+  // still on sale → the founder's picture stays, exactly as written in the HTML
+  if (list.some(c => String(c.id) === chosenId && c.photo_url)) return;
+
+  const usable = list.filter(c => c.photo_url && c.dealer && c.dealer.verified);
+  if (!usable.length) return;
+  const toyotas = usable.filter(c => /toyota/i.test(c.car_name || ""));
+  const car = (toyotas.length ? toyotas : usable)
+    .sort((a, b) => Number(b.price || 0) - Number(a.price || 0))[0];
+  if (!car || car.photo_url === img.getAttribute("src")) return;
+  img.src = car.photo_url;
+  img.alt = t("hero_photo_alt");
 }
 
 // ── Hero photos (real Al Aweer market shots) — activates the moment

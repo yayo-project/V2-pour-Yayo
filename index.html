@@ -75,25 +75,6 @@ gtag('config', 'G-NR2LTEVKET');
 <!-- ═══ HERO ═══ -->
 <section class="hero hero-photo-mode">
 
-  <!-- The photograph. It is bled to the edges of the section and dissolved
-       into the navy on its inner side, so there is no frame and no seam —
-       it reads as photography, not as an asset dropped on a background.
-       One real car, from a verified dealer, still clickable through the
-       discreet credit: the picture is the design, the credit is the proof. -->
-  <div class="hero-photo">
-    <img id="hero-car-img" width="1421" height="800" fetchpriority="high" decoding="async"
-         src="https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/car-photos/26dd0ec5-92a6-465e-9fa5-a8b07d636549/1787391104201-58s08.webp"
-         alt="Toyota Land Cruiser VXR 2026 — CGM AUTO, Dubai">
-    <span class="hero-photo-veil" aria-hidden="true"></span>
-    <a class="hero-credit" id="hero-car" data-i18n-title="hero_car_cta" title="Voir cette voiture"
-       href="/voiture/toyota-land-cruiser-vxr-omani-2026-aa4c91f2-54b4-4249-acf9-63373e8249c0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-      <b id="hero-car-dealer">CGM AUTO</b>
-      <span id="hero-car-name">Toyota Land Cruiser VXR Omani</span>
-      <em id="hero-car-price">$122 532</em>
-    </a>
-  </div>
-
   <div class="wrap hero-in">
    <div class="hero-copy">
     <h1 data-i18n-html="hero_title">Votre voiture, de Dubai <em>à chez vous</em></h1>
@@ -106,6 +87,21 @@ gtag('config', 'G-NR2LTEVKET');
       </div>
       <button class="search-btn" onclick="doSearch()" data-i18n="search_btn">Rechercher</button>
     </div>
+  </div>
+
+  <!-- The photograph. Nothing is ever laid on top of it: on a desktop it
+       fills the right of the section and dissolves into the navy, on a phone
+       it is a clean full-width band between the search and the shortcuts.
+       A car with five buttons and four promises printed across it is not a
+       photograph, it is a busy slide. -->
+  <div class="hero-photo">
+    <img id="hero-car-img" width="1421" height="800" fetchpriority="high" decoding="async"
+         src="https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/car-photos/26dd0ec5-92a6-465e-9fa5-a8b07d636549/1787391104201-58s08.webp"
+         alt="Toyota Land Cruiser à Dubai, prête pour l'export vers l'Afrique">
+    <span class="hero-photo-veil" aria-hidden="true"></span>
+  </div>
+
+  <div class="wrap hero-in hero-in-2">
     <div class="hero-chips">
       <a class="chip" href="acheter.html?body=SUV&max=25000" data-i18n="chip_suv">SUV moins de $25k</a>
       <a class="chip" href="acheter.html?brand=Toyota">Toyota</a>
