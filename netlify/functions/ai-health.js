@@ -21,6 +21,35 @@ const H = {
   "Cache-Control": "no-store"
 };
 
+// Every model Yayo depends on, and the feature that dies with it. The old
+// check tested the translation model only, so when llama-4-scout was retired
+// in July the photo report was dead for a month with the panel showing green.
+// Groq answers 404 for a model that no longer exists, which is the whole
+// question — and asking costs no tokens, so all four can be checked at once.
+const USED = [
+  { role: "translation", model: MODELS.FAST,   feature: "chat_translation" },
+  { role: "reasoning",   model: MODELS.BIG,    feature: "verdicts_assistant_import" },
+  { role: "vision",      model: MODELS.VISION, feature: "photo_condition_report" },
+  { role: "voice",       model: MODELS.VOICE,  feature: "voice_notes" }
+];
+
+async function modelAlive(key, m) {
+  const t = Date.now();
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/models/" + encodeURIComponent(m.model), {
+      headers: { Authorization: "Bearer " + key.trim() }
+    });
+    const ms = Date.now() - t;
+    if (r.ok) return { ...m, ok: true, status: r.status, ms };
+    let msg = (await r.text()).slice(0, 200);
+    try { const j = JSON.parse(msg); msg = (j.error && (j.error.message || j.error.type)) || msg; } catch (e) {}
+    // 404 here means one thing only: Groq has retired this model.
+    return { ...m, ok: false, status: r.status, ms, retired: r.status === 404, error: String(msg).slice(0, 200) };
+  } catch (e) {
+    return { ...m, ok: false, status: 0, ms: Date.now() - t, error: String(e.message || e).slice(0, 150) };
+  }
+}
+
 exports.handler = async () => {
   const key = process.env.GROQ_API_KEY || "";
   const out = {
@@ -33,10 +62,15 @@ exports.handler = async () => {
       whitespace: key !== key.trim()            // the invisible classic
     },
     groq: null,
+    models: [],
     brevo: { present: !!process.env.BREVO_API_KEY },
     supabase: { present: !!process.env.SUPABASE_SERVICE_KEY }
   };
   if (!key) return { statusCode: 200, headers: H, body: JSON.stringify(out) };
+
+  // All four asked at once — the slowest answer sets the pace, not the sum
+  const models = await Promise.all(USED.map(m => modelAlive(key, m)));
+  out.models = models;
 
   const t0 = Date.now();
   try {
@@ -76,5 +110,12 @@ exports.handler = async () => {
   } catch (e) {
     out.groq = { status: 0, ms: Date.now() - t0, error: String(e.message || e).slice(0, 200) };
   }
+
+  // Green means every feature that leans on Groq can actually run. A working
+  // translation model while the vision model is gone is not "ok" — that is
+  // exactly the state nobody noticed for a month.
+  const dead = out.models.filter(m => !m.ok);
+  out.ok = out.ok && dead.length === 0;
+  out.retired = out.models.filter(m => m.retired).map(m => m.model);
   return { statusCode: 200, headers: H, body: JSON.stringify(out) };
 };

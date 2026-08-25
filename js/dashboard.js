@@ -3247,7 +3247,10 @@ function adServiceState(h) {
   if (!h.key.present) return ["off", t("ad_svc_nokey")];
   if (h.key.whitespace) return ["off", t("ad_svc_space")];
   if (!h.key.prefix_ok) return ["off", t("ad_svc_prefix")];
-  if (h.ok) return ["ok", "OK · " + (h.groq ? h.groq.ms : "?") + " ms"];
+  // This row is about the key and one real call. Whether each MODEL still
+  // exists is a separate question, answered on its own row below — otherwise
+  // a retired vision model would paint the key red, which it is not.
+  if (h.groq && h.groq.status === 200) return ["ok", "OK · " + h.groq.ms + " ms"];
   if (!h.groq) return ["off", "?"];
   // Groq's own words, prefixed by what the status means for him
   const hint = h.groq.status === 401 ? t("ad_svc_401")
@@ -3281,8 +3284,18 @@ async function adRenderServices() {
     return;
   }
   const ai = adServiceState(h);
+  // One line per model, because Groq retires them one at a time and the
+  // feature that dies is different every time. "The AI is down" was never
+  // useful; "the vision model was retired, so photo reports are off" is.
+  const models = Array.isArray(h.models) ? h.models.map(m => row(
+    t("ad_svc_m_" + m.role) || m.role,
+    m.ok ? "ok" : "off",
+    m.ok ? m.model + " · " + m.ms + " ms"
+         : (m.retired ? t("ad_svc_retired") : String(m.status || "?")) + " · " + m.model
+  )).join("") : "";
   box.innerHTML =
     row(t("ad_svc_ai"), ai[0], ai[1])
+    + models
     + row(t("ad_svc_mail"), h.brevo.present ? "ok" : "warn", t(h.brevo.present ? "ad_svc_set" : "ad_svc_unset"))
     + row(t("ad_svc_db"), h.supabase.present ? "ok" : "off", t(h.supabase.present ? "ad_svc_set" : "ad_svc_unset"));
 }
