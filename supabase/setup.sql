@@ -2695,6 +2695,10 @@ do $$
 declare tbl text; col text; cols text;
 begin
   foreach tbl in array array['dealers','shipping_agencies'] loop
+    -- from PUBLIC as well as anon: a privilege granted to the PUBLIC
+    -- pseudo-role survives a revoke aimed at anon, and the door would
+    -- stay open with nothing in the script admitting it
+    execute format('revoke select on public.%I from public', tbl);
     execute format('revoke select on public.%I from anon', tbl);
     cols := '';
     for col in
