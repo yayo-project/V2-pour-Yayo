@@ -36,7 +36,13 @@ const USED = [
 async function modelAlive(key, m) {
   const t = Date.now();
   try {
-    const r = await fetch("https://api.groq.com/openai/v1/models/" + encodeURIComponent(m.model), {
+    // NOT encodeURIComponent: a model id is a PATH, and "openai/gpt-oss-20b"
+    // percent-encoded becomes "openai%2Fgpt-oss-20b", which Groq answers 404
+    // to — so the panel reported three live models as retired. Twice in one
+    // day this check has accused a working model. Model ids are [a-z0-9./-];
+    // anything else is not a model id and has no business in a URL.
+    const id = String(m.model).replace(/[^A-Za-z0-9._\/-]/g, "");
+    const r = await fetch("https://api.groq.com/openai/v1/models/" + id, {
       headers: { Authorization: "Bearer " + key.trim() }
     });
     const ms = Date.now() - t;
