@@ -158,6 +158,10 @@ async function mxOpen(id) {
     return;
   }
 
+  // Once an offer has been accepted the contact filter lifts for this
+  // conversation (§52) — asked once, remembered for the session.
+  yayoCheckUnlocked(MX_CUR.id);
+
   if (MX_CUR.msgs === null) {
     try {
       const data = await yayoLoadMessages(MX_CUR.id, 200);
@@ -321,7 +325,7 @@ async function mxSend(e) {
   if (!text || !MX_CUR) return false;
   // Contact details do not travel before an order exists (§49). Checked
   // BEFORE the box is cleared, so his message is still there to edit.
-  if (yayoFindContacts(text).length) {
+  if (yayoContactsIn(MX_CUR.id, text).length) {
     mxBubble(false, t("chat_no_contact"));
     yayoFlagContact(MX_CUR.id);
     return false;
@@ -367,6 +371,12 @@ window.yayoOnNewMessage = (m) => {
     }
     mxRenderList();
   } else mxInit(); // brand-new conversation → rebuild the list
+};
+
+// Accepting an offer creates the order (§52). "Mes commandes" only exists in
+// the menu once there is one, so the menu is asked again the moment there is.
+window.yayoOnOrderCreated = () => {
+  if (typeof yayoOrdersMenu === "function") yayoOrdersMenu();
 };
 
 window.onLangChange = () => { mxRenderList(); };

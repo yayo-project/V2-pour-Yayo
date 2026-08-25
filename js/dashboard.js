@@ -1447,6 +1447,8 @@ window.yayoOnNewMessage = async (m) => {
 async function openConvo(id) {
   CUR_CONVO = CONVOS.find(c => String(c.id) === String(id));
   if (!CUR_CONVO) return;
+  // the contact filter lifts for this conversation once an offer is accepted (§52)
+  if (!DEMO && !DEMO_AG) yayoCheckUnlocked(CUR_CONVO.id);
   // Opening = reading: clear the unread badge on both the list and the header
   if (UNREAD[id]) {
     UNREAD[id] = 0;
@@ -1562,6 +1564,19 @@ async function dashSendDoc(files) {
   }
 }
 
+// ── The seller makes a priced offer (§52) ─────────────────────────
+// This is the only way an order is ever created. The buyer has no "I want to
+// buy" button, on purpose: a dealer would simply tell him to press it, and
+// the price — the one thing a dispute turns on — would never be written down.
+function dashMakeOffer() {
+  if (!CUR_CONVO) return;
+  if (DEMO || DEMO_AG) { addMsg(false, t("chat_demo")); return; }
+  yayoOfferSheet(CUR_CONVO.id, {
+    carName: CUR_CONVO.car_name || "",
+    onSent: () => openConvo(CUR_CONVO.id)   // reload so the offer card appears
+  });
+}
+
 async function dashSend(e) {
   e.preventDefault();
   const input = document.getElementById("msg-input");
@@ -1570,7 +1585,7 @@ async function dashSend(e) {
   // Contact details do not travel before an order exists (§49). Checked
   // BEFORE the box is cleared, so the seller's message is still there to
   // edit — this is the side the rule exists for.
-  if (yayoFindContacts(text).length) {
+  if (yayoContactsIn(CUR_CONVO.id, text).length) {
     addMsg(false, t("chat_no_contact"));
     if (!DEMO && !DEMO_AG) yayoFlagContact(CUR_CONVO.id);
     return false;

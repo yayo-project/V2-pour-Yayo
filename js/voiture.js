@@ -595,6 +595,7 @@ async function openChat() {
     }
     CONVO = convo;
     if (!CONVO) throw new Error("no convo");
+    yayoCheckUnlocked(CONVO.id);   // the filter lifts once an offer is accepted (§52)
     const list = await yayoLoadMessages(CONVO.id, 100);
     // Two-way translation: the dealer's replies arrive in the buyer's language.
     // From the buyer's side it is simply the dealer replying. (Photos pass as-is.)
@@ -702,7 +703,7 @@ async function sendMsg(e) {
   if (!text) return false;
   // Contact details do not travel before an order exists (§49). Checked
   // BEFORE the box is cleared, so his message is still there to edit.
-  if (yayoFindContacts(text).length) {
+  if (yayoContactsIn(CONVO && CONVO.id, text).length) {
     addBubble("yayo", t("chat_no_contact"));
     if (CONVO) yayoFlagContact(CONVO.id);
     return false;

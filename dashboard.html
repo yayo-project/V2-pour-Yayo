@@ -711,6 +711,11 @@ gtag('config', 'G-NR2LTEVKET');
                 <button type="button" class="chat-tool" onclick="dashStartVoice()" data-i18n-title="v_rec" title="Message vocal" aria-label="Message vocal">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4"/></svg>
                 </button>
+                <!-- The seller names the price. The buyer's acceptance is what
+                     creates the order — there is no buy button on the other side. -->
+                <button type="button" class="chat-tool chat-offer-btn" onclick="dashMakeOffer()" data-i18n-title="off_btn" title="Faire une offre" aria-label="Faire une offre">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </button>
                 <button type="submit" class="btn btn-solid" data-i18n="chat_send">Envoyer</button>
               </form>
             </div>
@@ -793,6 +798,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/voice.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/ai.js"></script>
+<script src="js/orders.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>

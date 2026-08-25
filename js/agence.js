@@ -168,6 +168,7 @@ async function openAgChat() {
     }
     CONVO = convo;
     if (!CONVO) throw new Error("no convo");
+    yayoCheckUnlocked(CONVO.id);   // the filter lifts once an offer is accepted (§52)
     const list = await yayoLoadMessages(CONVO.id, 100);
     const theirs = list.filter(m => m.sender_id !== user.id && !m.image_url && !m.file_url);
     if (theirs.length) {
@@ -272,7 +273,7 @@ async function sendMsg(e) {
   if (!text) return false;
   // Contact details do not travel before an order exists (§49). Checked
   // BEFORE the box is cleared, so his message is still there to edit.
-  if (yayoFindContacts(text).length) {
+  if (yayoContactsIn(CONVO && CONVO.id, text).length) {
     addBubble("yayo", t("chat_no_contact"));
     if (CONVO) yayoFlagContact(CONVO.id);
     return false;

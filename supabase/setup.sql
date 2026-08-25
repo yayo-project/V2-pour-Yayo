@@ -2202,3 +2202,320 @@ alter table public.messages
 
 -- Voice notes and documents live beside the chat photos, in a
 -- bucket that already exists and already has the right rules.
+
+-- ═══════════════════════════════════════════════════════════
+-- 52) AN ORDER IS CREATED BY AN ACCEPTED PRICED OFFER
+-- Two people could talk in Yayo forever and nothing ever became
+-- real. Everything after the handshake — the shipping form, the
+-- transport, the tracking, the invoice — needs something to hang
+-- on, and there was nothing.
+--
+-- The seller offers a PRICE with a validity, the buyer accepts,
+-- and the acceptance creates the order. Never a buyer-only "I
+-- want to buy" button: a dealer would simply tell the buyer to
+-- press it, and the price would never be written down.
+--
+-- An order holds OPTIONAL LINES — car, transport, later spare
+-- parts — so a car alone works, transport alone works (a car
+-- bought outside Yayo), and both work. Transport arranged later
+-- JOINS the existing order instead of opening a second one.
+-- ═══════════════════════════════════════════════════════════
+
+create table if not exists public.orders (
+  id         uuid primary key default gen_random_uuid(),
+  code       text unique not null,
+  buyer_id   uuid not null,
+  status     text not null default 'open'
+             check (status in ('open','closed','cancelled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.order_lines (
+  id              uuid primary key default gen_random_uuid(),
+  order_id        uuid not null references public.orders(id) on delete cascade,
+  kind            text not null check (kind in ('car','transport','part')),
+  dealer_id       uuid,
+  agency_id       uuid,
+  conversation_id uuid,
+  listing_id      uuid,
+  offer_id        uuid,
+  shipment_id     uuid,          -- step 8 hangs the existing shipments table here
+  label           text,
+  amount          numeric(12,2),
+  currency        text not null default 'USD',
+  status          text not null default 'agreed'
+                  check (status in ('agreed','cancelled')),
+  created_at      timestamptz not null default now()
+);
+
+create table if not exists public.offers (
+  id              uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null,
+  sender_id       uuid not null,
+  kind            text not null default 'car' check (kind in ('car','transport','part')),
+  listing_id      uuid,
+  label           text,
+  amount          numeric(12,2) not null check (amount > 0),
+  currency        text not null default 'USD',
+  valid_until     timestamptz,
+  note            text,
+  status          text not null default 'pending'
+                  check (status in ('pending','accepted','declined','expired','cancelled')),
+  order_id        uuid,
+  created_at      timestamptz not null default now(),
+  responded_at    timestamptz
+);
+
+create index if not exists offers_convo_idx     on public.offers(conversation_id, created_at desc);
+create index if not exists order_lines_ord_idx  on public.order_lines(order_id);
+create index if not exists orders_buyer_idx     on public.orders(buyer_id, created_at desc);
+
+-- An offer travels as a normal message, so it lands in the inbox
+-- preview, fires the unread badge, arrives live and sends the
+-- e-mail — all of that already works and none of it is rebuilt.
+alter table public.messages add column if not exists offer_id uuid;
+
+-- 52a) Who is the SELLER side of this conversation?
+-- A business is matched by the e-mail on its account, the same
+-- way every other policy in this file does it.
+create or replace function public.yayo_is_seller_of(cid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from conversations c
+    left join dealers d           on d.id = c.dealer_id
+    left join shipping_agencies a on a.id = c.agency_id
+    where c.id = cid
+      and (lower(coalesce(d.email,'')) = lower(coalesce(auth.jwt()->>'email',''))
+        or lower(coalesce(a.email,'')) = lower(coalesce(auth.jwt()->>'email','')))
+  );
+$$;
+
+create or replace function public.yayo_is_buyer_of(cid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from conversations c where c.id = cid and c.user_id = auth.uid());
+$$;
+
+-- 52b) A short code a human can say on the phone: YO-26-K3P9
+create or replace function public.yayo_order_code()
+returns text language plpgsql as $$
+declare c text; i int := 0;
+begin
+  loop
+    c := 'YO-' || to_char(now(),'YY') || '-' ||
+         upper(substr(replace(gen_random_uuid()::text,'-',''), 1, 4));
+    exit when not exists (select 1 from orders where code = c);
+    i := i + 1; exit when i > 20;   -- never spin forever
+  end loop;
+  return c;
+end $$;
+
+-- 52c) The seller makes a priced offer.
+-- Only the seller side may call this. The price and the validity
+-- are the whole point: an offer with no deadline is a chat message.
+create or replace function public.yayo_make_offer(
+  cid uuid, p_amount numeric, p_kind text default 'car',
+  p_listing uuid default null, p_valid_days int default 7,
+  p_note text default null, p_label text default null)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare oid uuid; c record; txt text;
+begin
+  if not yayo_is_seller_of(cid) then raise exception 'not the seller of this conversation'; end if;
+  if p_amount is null or p_amount <= 0 then raise exception 'a price is required'; end if;
+  select * into c from conversations where id = cid;
+  if c is null then raise exception 'conversation not found'; end if;
+
+  -- one live offer at a time: a new one replaces whatever was pending
+  update offers set status = 'cancelled', responded_at = now()
+   where conversation_id = cid and status = 'pending';
+
+  insert into offers (conversation_id, sender_id, kind, listing_id, label, amount,
+                      valid_until, note)
+  values (cid, auth.uid(), coalesce(p_kind,'car'), p_listing,
+          coalesce(nullif(btrim(p_label),''), c.car_name), p_amount,
+          now() + (greatest(coalesce(p_valid_days,7),1) || ' days')::interval,
+          nullif(btrim(p_note),''))
+  returning id into oid;
+
+  -- the message the buyer actually sees in the thread
+  txt := 'Offre : ' || to_char(p_amount,'FM999G999G999') || ' USD';
+  insert into messages (conversation_id, sender_id, content, offer_id)
+  values (cid, auth.uid(), txt, oid);
+
+  return oid;
+end $$;
+
+-- 52d) The buyer accepts or declines. Acceptance is what creates
+-- the order — and what joins a second line to an order that
+-- already exists, so transport never opens a second order.
+create or replace function public.yayo_respond_offer(oid uuid, accept boolean)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare o record; c record; ord record; txt text;
+begin
+  select * into o from offers where id = oid;
+  if o is null then raise exception 'offer not found'; end if;
+  if not yayo_is_buyer_of(o.conversation_id) then raise exception 'not your offer to answer'; end if;
+  if o.status <> 'pending' then raise exception 'this offer has already been answered'; end if;
+  if o.valid_until is not null and o.valid_until < now() then
+    update offers set status = 'expired', responded_at = now() where id = oid;
+    raise exception 'this offer has expired';
+  end if;
+
+  select * into c from conversations where id = o.conversation_id;
+
+  if not accept then
+    update offers set status = 'declined', responded_at = now() where id = oid;
+    insert into messages (conversation_id, sender_id, content)
+    values (o.conversation_id, auth.uid(), 'Offre refusée');
+    return jsonb_build_object('accepted', false);
+  end if;
+
+  -- reuse this buyer's open order; only make a new one if there is none
+  select * into ord from orders where buyer_id = auth.uid() and status = 'open'
+   order by created_at desc limit 1;
+  if ord is null then
+    insert into orders (code, buyer_id) values (yayo_order_code(), auth.uid())
+    returning * into ord;
+  end if;
+
+  insert into order_lines (order_id, kind, dealer_id, agency_id, conversation_id,
+                           listing_id, offer_id, label, amount, currency)
+  values (ord.id, o.kind, c.dealer_id, c.agency_id, o.conversation_id,
+          o.listing_id, o.id, o.label, o.amount, o.currency);
+
+  update offers set status = 'accepted', responded_at = now(), order_id = ord.id where id = oid;
+  update orders set updated_at = now() where id = ord.id;
+
+  txt := 'Offre acceptée — commande ' || ord.code;
+  insert into messages (conversation_id, sender_id, content)
+  values (o.conversation_id, auth.uid(), txt);
+
+  return jsonb_build_object('accepted', true, 'order_id', ord.id, 'code', ord.code);
+end $$;
+
+-- 52e) The buyer's orders, newest first, with their lines.
+create or replace function public.yayo_my_orders()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(x order by x->>'created_at' desc), '[]'::jsonb) from (
+    select jsonb_build_object(
+      'id', o.id, 'code', o.code, 'status', o.status,
+      'created_at', o.created_at,
+      'lines', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', l.id, 'kind', l.kind, 'label', l.label, 'amount', l.amount,
+          'currency', l.currency, 'status', l.status,
+          'conversation_id', l.conversation_id, 'listing_id', l.listing_id,
+          'shipment_id', l.shipment_id,
+          'seller', coalesce(d.name, a.name),
+          'seller_kind', case when l.agency_id is not null then 'agency' else 'dealer' end
+        ) order by l.created_at)
+        from order_lines l
+        left join dealers d           on d.id = l.dealer_id
+        left join shipping_agencies a on a.id = l.agency_id
+        where l.order_id = o.id and l.status <> 'cancelled'
+      ), '[]'::jsonb)
+    ) as x
+    from orders o
+    where o.buyer_id = auth.uid()
+  ) s;
+$$;
+
+-- 52f) Has this conversation produced an accepted offer?
+-- This is the switch the contact filter reads: before an order,
+-- no numbers travel; after one, the parties need to reach each
+-- other and the filter lifts (§49).
+create or replace function public.yayo_convo_unlocked(cid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from offers where conversation_id = cid and status = 'accepted'
+  ) and (yayo_is_buyer_of(cid) or yayo_is_seller_of(cid));
+$$;
+
+-- 52g) Stage 1 of contact: once an offer is accepted, the BUYER
+-- receives the seller's business identity — and nothing flows
+-- back the other way. The licence is never part of this: it
+-- exists to verify, never to display.
+create or replace function public.yayo_seller_identity(cid uuid)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare c record; j jsonb;
+begin
+  if not yayo_is_buyer_of(cid) then return null; end if;
+  if not exists (select 1 from offers where conversation_id = cid and status = 'accepted')
+    then return null; end if;
+  select * into c from conversations where id = cid;
+
+  if c.dealer_id is not null then
+    select to_jsonb(d) into j from dealers d where d.id = c.dealer_id;
+  else
+    select to_jsonb(a) into j from shipping_agencies a where a.id = c.agency_id;
+  end if;
+  if j is null then return null; end if;
+
+  -- named keys only. Reading j->>'x' is safe whether or not the
+  -- column exists, and nothing about the licence is ever included.
+  return jsonb_build_object(
+    'name',         coalesce(j->>'trading_name', j->>'name'),
+    'legal_name',   j->>'legal_name',
+    'address',      j->>'registered_address',
+    'city',         j->>'city',
+    'phone',        coalesce(j->>'phone', j->>'whatsapp'),
+    'email',        j->>'email',
+    'verified',     coalesce((j->>'verified')::boolean, false)
+  );
+end $$;
+
+-- 52h) Row level security.
+-- Nothing is written directly: every write goes through the
+-- functions above, which check who is asking. These policies
+-- only decide who may READ.
+alter table public.orders      enable row level security;
+alter table public.order_lines enable row level security;
+alter table public.offers      enable row level security;
+
+drop policy if exists orders_buyer_read on public.orders;
+create policy orders_buyer_read on public.orders
+  for select to authenticated using (buyer_id = auth.uid());
+
+-- a seller sees the orders that carry one of their own lines
+drop policy if exists orders_seller_read on public.orders;
+create policy orders_seller_read on public.orders
+  for select to authenticated using (
+    exists (select 1 from order_lines l where l.order_id = orders.id
+            and (l.dealer_id in (select d.id from dealers d
+                   where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+              or l.agency_id in (select a.id from shipping_agencies a
+                   where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))))
+  );
+
+drop policy if exists lines_read on public.order_lines;
+create policy lines_read on public.order_lines
+  for select to authenticated using (
+    order_id in (select o.id from orders o where o.buyer_id = auth.uid())
+    or dealer_id in (select d.id from dealers d
+         where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+    or agency_id in (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))
+  );
+
+drop policy if exists offers_read on public.offers;
+create policy offers_read on public.offers
+  for select to authenticated using (
+    yayo_is_buyer_of(conversation_id) or yayo_is_seller_of(conversation_id)
+  );
+
+-- 52i) An offer that nobody answered stops being live on its own.
+create or replace function public.yayo_expire_offers()
+returns int language sql security definer set search_path = public as $$
+  with done as (
+    update offers set status = 'expired', responded_at = now()
+     where status = 'pending' and valid_until is not null and valid_until < now()
+    returning 1
+  ) select count(*)::int from done;
+$$;
+
+grant execute on function public.yayo_make_offer(uuid,numeric,text,uuid,int,text,text) to authenticated;
+grant execute on function public.yayo_respond_offer(uuid,boolean)  to authenticated;
+grant execute on function public.yayo_my_orders()                  to authenticated;
+grant execute on function public.yayo_convo_unlocked(uuid)         to authenticated;
+grant execute on function public.yayo_seller_identity(uuid)        to authenticated;
+grant execute on function public.yayo_expire_offers()              to authenticated;

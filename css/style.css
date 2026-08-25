@@ -1581,3 +1581,138 @@ body.no-scroll{overflow:hidden}
   .hero-photo{opacity:.5}
   .hero-photo-veil{background:linear-gradient(90deg,var(--dark) 0%,rgba(10,37,64,.7) 45%,rgba(10,37,64,.2) 100%)}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   OFFERS AND ORDERS (§52)
+   An offer is the one message in a thread that is worth money, so
+   it does not look like a message. It is a card with the price
+   set large, the deadline stated, and two unambiguous buttons —
+   because "accept" here is the moment a deal becomes real and a
+   buyer must never click it by accident.
+   ══════════════════════════════════════════════════════════════ */
+.chat-offer-wrap{background:none!important;border:none!important;padding:0!important;
+  max-width:min(300px,92%)}
+.yo-card{background:var(--card);border:1.5px solid var(--teal-bright);border-radius:14px;
+  padding:13px 15px 12px;box-shadow:0 8px 22px rgba(10,37,64,.14);color:var(--ink)}
+.yo-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
+.yo-tag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--teal-dark)}
+.yo-mine{font-size:10.5px;font-weight:700;color:var(--ink-3)}
+.yo-price{font-size:25px;font-weight:800;letter-spacing:-1px;line-height:1.15;
+  color:var(--ink);font-variant-numeric:tabular-nums}
+.yo-what{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+.yo-note{font-size:12.5px;color:var(--ink-2);margin-top:7px;line-height:1.5;
+  border-left:2px solid var(--line);padding-left:9px}
+[dir="rtl"] .yo-note{border-left:none;border-right:2px solid var(--line);
+  padding-left:0;padding-right:9px}
+.yo-foot{margin-top:9px}
+.yo-state{font-size:11.5px;font-weight:700;color:var(--ink-3)}
+.yo-done{font-size:12px;font-weight:800;color:var(--teal-dark)}
+.yo-done:hover{text-decoration:underline}
+.yo-acts{display:flex;gap:8px;margin-top:11px}
+.yo-acts button{flex:1;border-radius:10px;padding:10px 8px;font-family:inherit;
+  font-size:13px;font-weight:800;cursor:pointer;transition:.16s;min-height:42px}
+.yo-no{background:var(--bg);border:1px solid var(--line);color:var(--ink-2)}
+.yo-no:hover{border-color:var(--ink-3);color:var(--ink)}
+.yo-yes{background:var(--teal);border:none;color:#fff}
+.yo-yes:hover{background:var(--teal-dark)}
+.yo-acts button:disabled{opacity:.55;cursor:default}
+.yo-busy{opacity:.7}
+/* answered offers stop shouting */
+.yo-accepted{border-color:var(--teal)}
+.yo-declined,.yo-expired,.yo-cancelled{border-color:var(--line);opacity:.82}
+.yo-declined .yo-price,.yo-expired .yo-price,.yo-cancelled .yo-price{
+  color:var(--ink-3);text-decoration:line-through;text-decoration-thickness:1.5px}
+.yo-load{border-color:var(--line)}
+.yo-skel{display:block;height:44px;border-radius:9px;background:var(--bg-soft)}
+
+/* the seller's compose sheet */
+.yo-sheet{position:fixed;inset:0;z-index:130;background:rgba(7,27,51,.55);
+  display:flex;align-items:flex-end;justify-content:center;padding:0;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+@media(min-width:640px){.yo-sheet{align-items:center;padding:20px}}
+.yo-panel{background:var(--card);width:100%;max-width:420px;border-radius:18px 18px 0 0;
+  padding:20px 20px 18px;box-shadow:0 -10px 50px rgba(0,0,0,.35);color:var(--ink)}
+@media(min-width:640px){.yo-panel{border-radius:18px}}
+.yo-panel h3{font-size:17px;font-weight:800;letter-spacing:-.4px}
+.yo-sub{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin:5px 0 14px}
+.yo-for{font-size:13px;font-weight:700;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:9px 12px;margin-bottom:14px}
+.yo-lbl{display:block;font-size:12px;font-weight:800;margin-bottom:5px;color:var(--ink-2)}
+.yo-amt{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);
+  border-radius:11px;padding:2px 13px;margin-bottom:13px;background:#fff}
+.yo-amt:focus-within{border-color:var(--teal-bright);box-shadow:0 0 0 3px rgba(31,216,201,.15)}
+.yo-amt span{font-size:19px;font-weight:800;color:var(--ink-3)}
+.yo-amt input{flex:1;min-width:0;border:none;outline:none;background:none;font-family:inherit;
+  font-size:22px;font-weight:800;color:var(--ink);padding:11px 0;
+  font-variant-numeric:tabular-nums}
+.yo-panel select,.yo-panel textarea{width:100%;border:1.5px solid var(--line);border-radius:11px;
+  padding:11px 13px;font-family:inherit;font-size:15px;color:var(--ink);background:#fff;
+  outline:none;margin-bottom:13px;resize:none}
+.yo-panel select:focus,.yo-panel textarea:focus{border-color:var(--teal-bright)}
+.yo-warn{background:#FDECEC;color:#B3261E;border-radius:10px;padding:9px 12px;
+  font-size:12.5px;line-height:1.5;margin-bottom:12px}
+.yo-btns{display:flex;gap:9px}
+.yo-btns button{flex:1;border-radius:11px;padding:13px 10px;font-family:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;transition:.16s;min-height:46px}
+.yo-cancel{background:var(--bg);border:1px solid var(--line);color:var(--ink-2)}
+.yo-send{background:var(--teal);border:none;color:#fff}
+.yo-send:hover{background:var(--teal-dark)}
+.yo-send:disabled{opacity:.6;cursor:default}
+
+/* ── "Mes commandes" ───────────────────────────────────────── */
+.ord-list{display:flex;flex-direction:column;gap:12px}
+.ord-card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:15px 17px;box-shadow:var(--sh)}
+.ord-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-bottom:11px}
+.ord-code{font-size:14px;font-weight:800;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.ord-date{font-size:11.5px;color:var(--ink-3)}
+/* what the order is waiting for — the only sentence most buyers will read */
+.ord-wait{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;
+  border-radius:50px;padding:6px 13px;background:var(--bg-soft);color:var(--ink-2)}
+.ord-wait.ord-you{background:var(--teal-tint);color:var(--teal-dark)}
+.ord-line{display:flex;align-items:center;gap:11px;padding:10px 0;
+  border-top:1px dashed var(--line)}
+.ord-line-k{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--ink-3);flex:none;width:74px}
+.ord-line-t{flex:1;min-width:0}
+.ord-line-t b{display:block;font-size:13.5px;font-weight:700;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.ord-line-t span{font-size:11.5px;color:var(--ink-3)}
+.ord-line-a{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;flex:none}
+.ord-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px solid var(--line)}
+.ord-total{font-size:12.5px;color:var(--ink-2)}
+.ord-total b{font-size:16px;font-weight:800;color:var(--ink);
+  font-variant-numeric:tabular-nums;margin-left:6px}
+[dir="rtl"] .ord-total b{margin-left:0;margin-right:6px}
+@media(max-width:560px){
+  .ord-card{padding:14px}
+  /* On a phone, three columns leaves the name about 150px and it comes out as
+     "Toyota Land Cruiser VXR Om…" — which is not a line item, it is a riddle.
+     The kind and the price share the top row, and the name gets the whole
+     width underneath. */
+  .ord-line{display:grid;grid-template-columns:1fr auto;
+    grid-template-areas:"kind amount" "text text";column-gap:10px;row-gap:3px}
+  .ord-line-k{grid-area:kind;width:auto;padding-top:2px}
+  .ord-line-a{grid-area:amount}
+  .ord-line-t{grid-area:text;min-width:0}
+  .ord-line-t b{white-space:normal;line-height:1.35}
+}
+
+/* the seller's identity, released by an accepted offer (stage 1 of contact) */
+.ord-id-box{padding:0 0 10px}
+.ord-id{background:var(--teal-tint);border:1px solid var(--teal-bright);border-radius:12px;
+  padding:12px 14px}
+.ord-id-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--teal-dark);margin-bottom:8px}
+.ord-id-row{display:flex;justify-content:space-between;gap:14px;padding:4px 0;font-size:12.5px}
+.ord-id-row span{color:var(--ink-2);flex:none}
+.ord-id-row b{font-weight:700;text-align:right;word-break:break-word}
+[dir="rtl"] .ord-id-row b{text-align:left}
+.ord-id-warn{font-size:11.5px;line-height:1.55;color:var(--ink-2);margin-top:9px;
+  padding-top:9px;border-top:1px dashed rgba(10,37,64,.18)}
+/* the offer button sits with the other composer tools but reads as money */
+.chat-offer-btn{color:var(--teal-dark);border-color:var(--teal-bright)}
+.chat-offer-btn:hover{background:var(--teal-tint)}

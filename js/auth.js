@@ -195,6 +195,16 @@ async function initAuthNav() {
       a.innerHTML = "<b>♥ <span data-i18n='nav_fav'>" + t("nav_fav") + "</span></b> <span data-i18n='fav_p'>" + t("fav_p") + "</span>";
       el.parentNode.insertBefore(a, el);
     }
+    // "Mes commandes" — hidden until an order actually exists (§52). An empty
+    // menu entry teaches a buyer that Yayo has a page where nothing happens.
+    if (!isBiz && !el.parentNode.querySelector("[data-orders-link]")) {
+      const c = document.createElement("a");
+      c.href = "commandes.html";
+      c.setAttribute("data-orders-link", "1");
+      c.hidden = true;
+      c.innerHTML = "<b>📦 <span data-i18n='nav_commandes'>" + t("nav_commandes") + "</span></b> <span data-i18n='ord_p'>" + t("ord_p") + "</span>";
+      el.parentNode.insertBefore(c, el);
+    }
     // "Déconnexion" entry at the end of the mobile menu
     if (!el.parentNode.querySelector("[data-logout-nav]")) {
       const o = document.createElement("a");
@@ -205,6 +215,8 @@ async function initAuthNav() {
       el.parentNode.insertBefore(o, el.nextSibling);
     }
   });
+  // reveals the orders entry only if this buyer has one
+  if (!isBiz && typeof yayoOrdersMenu === "function") yayoOrdersMenu();
 }
 document.addEventListener("DOMContentLoaded", initAuthNav);
 
@@ -536,6 +548,28 @@ function yayoFindContacts(text) {
   return hits;
 }
 
+// ── The filter lifts once there is an order (§52) ──────────────────
+// Before an accepted offer, no number leaves Yayo. After one, the two
+// parties genuinely need to reach each other — the export documents alone
+// require it — so the same text goes through untouched. Every chat surface
+// asks this instead of calling yayoFindContacts directly.
+const YAYO_UNLOCKED = new Set();
+function yayoMarkUnlocked(cid) { if (cid) YAYO_UNLOCKED.add(String(cid)); }
+function yayoIsUnlocked(cid) { return YAYO_UNLOCKED.has(String(cid)); }
+function yayoContactsIn(cid, text) {
+  return yayoIsUnlocked(cid) ? [] : yayoFindContacts(text);
+}
+// Asked once when a conversation opens; the answer is remembered for the
+// rest of the session, because an order never un-happens.
+async function yayoCheckUnlocked(cid) {
+  if (!cid || yayoIsUnlocked(cid)) return yayoIsUnlocked(cid);
+  try {
+    const { data } = await yayoSB().rpc("yayo_convo_unlocked", { cid });
+    if (data === true) yayoMarkUnlocked(cid);
+    return data === true;
+  } catch (e) { return false; }   // §52 not run yet — stay locked, never open by accident
+}
+
 // Remove them instead of refusing — used on imported text, where refusing
 // would mean dropping the dealer's whole car description.
 function yayoStripContacts(text) {
@@ -632,7 +666,8 @@ async function yayoLoadMessages(convoId, limit) {
   const q = cols => sb.from("messages").select(cols)
     .eq("conversation_id", convoId).order("created_at", { ascending: true }).limit(limit || 200);
   // newest schema first; each fallback costs detail, never the conversation
-  let r = await q("sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size");
+  let r = await q("id, sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size, offer_id");
+  if (r.error) r = await q("sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size");
   if (r.error) r = await q("sender_id, content, created_at, image_url, seen");
   if (r.error) r = await q("sender_id, content, created_at, image_url");
   if (r.error) r = await q("sender_id, content, created_at");
@@ -645,6 +680,15 @@ async function yayoLoadMessages(convoId, limit) {
 function yayoFillBubble(el, text, img) {
   const m = (img && typeof img === "object") ? img : null;
   const src = m ? m.image_url : img;
+
+  // An offer is a message like any other, so every chat surface — the car
+  // page, the agency page, the buyer's inbox and the dealer dashboard —
+  // learns to show it from this one place, and none of them repeat it.
+  if (m && m.offer_id && typeof yayoRenderOffer === "function") {
+    el.classList.add("chat-offer-wrap");
+    yayoRenderOffer(el, m.offer_id);
+    return;
+  }
 
   if (m && m.audio_url && typeof yayoVoiceHtml === "function") {
     el.classList.add("chat-voice");

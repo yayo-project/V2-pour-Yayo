@@ -270,7 +270,7 @@ async function yvSend() {
   // A number said out loud is a number said (§49). The transcript goes
   // through exactly the same filter as a typed message — this is why the
   // transcript is kept rather than thrown away after translation.
-  if (YV.transcript && typeof yayoFindContacts === "function" && yayoFindContacts(YV.transcript).length) {
+  if (YV.transcript && typeof yayoContactsIn === "function" && yayoContactsIn(YV.convoId, YV.transcript).length) {
     const box = document.querySelector(".yv-box");
     if (box) {
       box.innerHTML = `
