@@ -2370,9 +2370,19 @@ begin
     return jsonb_build_object('accepted', false);
   end if;
 
-  -- reuse this buyer's open order; only make a new one if there is none
-  select * into ord from orders where buyer_id = auth.uid() and status = 'open'
-   order by created_at desc limit 1;
+  -- Which order does this line belong to? One rule: join the most recent open
+  -- order that does NOT already have a line of this kind.
+  --
+  -- Transport agreed after a car joins that car's order, and a car bought
+  -- after transport was booked joins that one — which is what the corridor
+  -- actually does. But a SECOND car opens a SECOND order, because two cars
+  -- from two dealers are two deals, and merging them would put one dealer's
+  -- price on another dealer's invoice.
+  select * into ord from orders o2
+   where o2.buyer_id = auth.uid() and o2.status = 'open'
+     and not exists (select 1 from order_lines l
+                      where l.order_id = o2.id and l.kind = o.kind and l.status <> 'cancelled')
+   order by o2.created_at desc limit 1;
   if ord is null then
     insert into orders (code, buyer_id) values (yayo_order_code(), auth.uid())
     returning * into ord;
