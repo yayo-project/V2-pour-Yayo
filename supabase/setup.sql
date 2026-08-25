@@ -2641,3 +2641,110 @@ create policy alert_own on public.price_alerts
 -- nothing reads password_hash and nothing ever will. A hash that
 -- is never used cannot be stolen if it is not there.
 update public.users set password_hash = null where password_hash is not null;
+
+-- ═══════════════════════════════════════════════════════════
+-- 54) A DEALER'S PAPERWORK IS NOT PART OF HIS SHOP WINDOW
+--
+-- §53 closed five tables. This is the same fault one table over,
+-- and it breaks two rules that are written down as locked:
+--
+--   "NO contact details are ever public — no phone, WhatsApp or
+--    email visible to anyone browsing, from dealers OR agencies"
+--   "THE TRADE LICENCE IS NEVER SHOWN TO ANYONE ... those fields
+--    exist to VERIFY, not to display"
+--
+-- dealers and shipping_agencies answer every column to anyone:
+-- whatsapp, email, licence_number, licence_authority,
+-- licence_expiry, registered_address, legal_name, license_path,
+-- rejected_reason, contact_attempts. And the marketplace asks for
+-- them itself — index, acheter and voiture all select dealers(*),
+-- so the licence data was travelling to every visitor's browser
+-- on every page load, displayed or not.
+--
+-- The rows must stay public: that is the shop window. So this is
+-- done with COLUMN privileges rather than row policies. Table-wide
+-- SELECT is revoked, then granted back column by column, skipping
+-- the private ones. The two readers who legitimately need a whole
+-- row — the business looking at itself, and an admin verifying a
+-- licence — get it through security definer functions instead.
+-- ═══════════════════════════════════════════════════════════
+
+-- Columns nobody browsing may read. Anything not on this list
+-- stays public, so the shop window keeps working exactly as it did.
+create or replace function public.yayo_private_biz_cols()
+returns text[] language sql immutable as $$
+  select array[
+    'email','whatsapp','phone',
+    'license_path','licence_number','licence_authority','licence_expiry',
+    'licence_checked_at','licence_warned_at','licence_expired_at','licence_asked_at',
+    'legal_name','trading_name','registered_address',
+    'rejected_reason','contact_attempts',
+    'plan','normal_limit','promo_limit','promo_until',
+    'import_domain','import_claimed_at','welcomed_at'
+  ]
+$$;
+
+-- Done for `anon` only, on purpose. Anonymous is where the whole
+-- internet reads from, and it is the marketplace's own queries
+-- that were shipping licence data to every visitor. Narrowing
+-- `authenticated` the same way means moving the dealer dashboard
+-- and the admin panel onto the two functions below — worth doing,
+-- but not blind: it is the dealer's own screen, and breaking it is
+-- an outage. The functions are written and waiting for that pass.
+do $$
+declare tbl text; col text; cols text;
+begin
+  foreach tbl in array array['dealers','shipping_agencies'] loop
+    execute format('revoke select on public.%I from anon', tbl);
+    cols := '';
+    for col in
+      select column_name from information_schema.columns
+       where table_schema = 'public' and table_name = tbl
+         and not (column_name = any (public.yayo_private_biz_cols()))
+       order by ordinal_position
+    loop
+      cols := cols || case when cols = '' then '' else ', ' end || quote_ident(col);
+    end loop;
+    if cols <> '' then
+      execute format('grant select (%s) on public.%I to anon', cols, tbl);
+    end if;
+  end loop;
+end $$;
+
+-- 54a) A business looking at its own record gets all of it.
+-- Its own e-mail, its own licence — none of that is a secret from
+-- the person it belongs to.
+create or replace function public.yayo_my_business()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare j jsonb; mail text;
+begin
+  mail := lower(coalesce(auth.jwt()->>'email',''));
+  if mail = '' then return null; end if;
+  select to_jsonb(d) into j from dealers d where lower(d.email) = mail
+   order by d.verified desc nulls last, d.created_at asc limit 1;
+  if j is not null then return jsonb_set(j, '{kind}', '"dealer"'); end if;
+  select to_jsonb(a) into j from shipping_agencies a where lower(a.email) = mail
+   order by a.verified desc nulls last, a.created_at asc limit 1;
+  if j is not null then return jsonb_set(j, '{kind}', '"agency"'); end if;
+  return null;
+end $$;
+
+-- 54b) The admin verifying a licence needs the whole row, and is
+-- the only other person who does.
+create or replace function public.admin_list_businesses(kind text default 'dealer')
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare j jsonb;
+begin
+  if public.yayo_admin_role() is null then raise exception 'admins only'; end if;
+  if kind = 'agency' then
+    select coalesce(jsonb_agg(to_jsonb(a) order by a.created_at desc), '[]'::jsonb)
+      into j from shipping_agencies a;
+  else
+    select coalesce(jsonb_agg(to_jsonb(d) order by d.created_at desc), '[]'::jsonb)
+      into j from dealers d;
+  end if;
+  return j;
+end $$;
+
+grant execute on function public.yayo_my_business()              to authenticated;
+grant execute on function public.admin_list_businesses(text)     to authenticated;

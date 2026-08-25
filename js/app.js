@@ -31,7 +31,7 @@ async function loadCars() {
   try {
     let { data, error } = await sb
       .from("listings")
-      .select("*, dealers(*)")
+      .select("*, dealers(" + YAYO_BIZ_PUBLIC + ")")
       .eq("active", true)
       .eq("sold", false)
       .order("created_at", { ascending: false })

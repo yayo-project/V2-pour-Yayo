@@ -36,7 +36,7 @@ async function loadCar() {
     try {
       let { data, error } = await yayoSB()
         .from("listings")
-        .select("*, dealers(*)")
+        .select("*, dealers(" + YAYO_BIZ_PUBLIC + ")")
         .eq("id", CAR_ID).maybeSingle();
       if (data && (data.hidden || data.dormant)) data = null; // hidden by admin, or asleep after a plan change (§32)
       // pending/suspended dealer = listing not public yet (admin approval first)
@@ -414,7 +414,7 @@ async function loadAgencies() {
   if (String(CAR_ID).startsWith("demo") || CAR_ID === "") { AGENCIES = DEMO_AGENCIES; renderTransport(); return; }
   try {
     const { data } = await yayoSB().from("shipping_agencies")
-      .select("*").limit(60);
+      .select(YAYO_AGENCY_PUBLIC).limit(60);
     AGENCIES = (data || []).filter(a => yayoBizLive(a)).map(a => {
       let d = a.routes;
       if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { d = null; } }

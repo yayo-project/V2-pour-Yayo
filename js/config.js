@@ -194,6 +194,15 @@ function yayoLandedTotal(price, destKey, shipOverride, carName) {
 // is what earns the blue badge. A dealership the founder met in person is
 // approved on the spot; the badge still has to be earned.
 // Falls back to the old single flag while §38 has not been run yet.
+// What a buyer's browser is allowed to know about a business (§54). The
+// pages used to ask for dealers(*), which meant the licence number, the
+// registered address, the WhatsApp and the e-mail travelled to every
+// visitor on every page load — displayed or not, they were in the response.
+// Naming the columns is the fix; the database enforces it as well.
+const YAYO_BIZ_PUBLIC =
+  "id,name,city,country,verified,active,suspended,approved,logo_url,photos,description";
+const YAYO_AGENCY_PUBLIC = YAYO_BIZ_PUBLIC + ",routes";
+
 function yayoBizLive(b) {
   if (!b || b.suspended) return false;
   return (b.approved === undefined || b.approved === null) ? !!b.verified : !!b.approved;
