@@ -2529,3 +2529,115 @@ grant execute on function public.yayo_my_orders()                  to authentica
 grant execute on function public.yayo_convo_unlocked(uuid)         to authenticated;
 grant execute on function public.yayo_seller_identity(uuid)        to authenticated;
 grant execute on function public.yayo_expire_offers()              to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 53) THE DOOR THAT WAS NEVER LOCKED  ***RUN THIS FIRST***
+--
+-- Found on 2026-08-25 while checking something else. Five tables
+-- were readable by anyone holding the publishable key — and that
+-- key ships inside js/config.js, which every visitor downloads.
+-- It is not a secret and was never meant to be one: row level
+-- security is what is supposed to stand behind it, and on these
+-- five tables nothing did.
+--
+--   users          42 rows — including password_hash, and the
+--                  identifier column, which holds the phone
+--                  numbers and e-mail addresses of the old-Yayo
+--                  accounts
+--   conversations  10 rows — including last_message previews
+--   messages        1 row  — and it contained a phone number
+--   favorites       4 rows
+--   price_alerts    2 rows
+--
+-- The new tables from §52 (orders, order_lines, offers) were
+-- already closed, which is how this was noticed: they returned
+-- nothing while the older tables answered freely.
+--
+-- Every existing policy on these five is dropped first. A single
+-- leftover permissive policy would keep the door open, and the
+-- names of what is already there cannot be assumed.
+-- ═══════════════════════════════════════════════════════════
+
+do $$
+declare tbl text; pol record;
+begin
+  foreach tbl in array array['users','conversations','messages','favorites','price_alerts'] loop
+    execute format('alter table public.%I enable row level security', tbl);
+    for pol in select policyname from pg_policies
+               where schemaname = 'public' and tablename = tbl loop
+      execute format('drop policy %I on public.%I', pol.policyname, tbl);
+    end loop;
+  end loop;
+end $$;
+
+-- 53a) users — nobody reads anybody else.
+-- The admin list goes through admin_list_users (security definer)
+-- and the login row through yayo_ensure_user, so neither needs a
+-- read policy here. Nothing else ever reads this table.
+create policy users_read_self on public.users
+  for select to authenticated
+  using (id = auth.uid() or public.yayo_admin_role() is not null);
+create policy users_insert_self on public.users
+  for insert to authenticated with check (id = auth.uid());
+create policy users_update_self on public.users
+  for update to authenticated
+  using (id = auth.uid()) with check (id = auth.uid());
+
+-- 53b) conversations — the buyer, the business, the admin.
+-- The business is matched by the e-mail on its account, the same
+-- way every other policy in this file does it.
+create policy convo_read on public.conversations
+  for select to authenticated using (
+    user_id = auth.uid()
+    or dealer_id in (select d.id from dealers d
+         where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+    or agency_id in (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))
+    or public.yayo_admin_role() is not null
+  );
+-- a buyer opens the conversation; the business never creates one
+create policy convo_insert_buyer on public.conversations
+  for insert to authenticated with check (user_id = auth.uid());
+create policy convo_update on public.conversations
+  for update to authenticated using (
+    user_id = auth.uid()
+    or dealer_id in (select d.id from dealers d
+         where lower(d.email) = lower(coalesce(auth.jwt()->>'email','')))
+    or agency_id in (select a.id from shipping_agencies a
+         where lower(a.email) = lower(coalesce(auth.jwt()->>'email','')))
+  );
+
+-- 53c) messages — only the two people in the conversation.
+-- yayo_is_buyer_of / yayo_is_seller_of are the §52 helpers, and
+-- being security definer they answer without dragging the
+-- conversations policy into every row check.
+create policy msg_read on public.messages
+  for select to authenticated using (
+    public.yayo_is_buyer_of(conversation_id)
+    or public.yayo_is_seller_of(conversation_id)
+    or public.yayo_admin_role() is not null
+  );
+-- you may only send AS yourself, and only into your own conversation
+create policy msg_insert on public.messages
+  for insert to authenticated with check (
+    sender_id = auth.uid()
+    and (public.yayo_is_buyer_of(conversation_id)
+         or public.yayo_is_seller_of(conversation_id))
+  );
+-- read receipts and the inbox preview are written by security
+-- definer functions (yayo_mark_read, yayo_touch_convo), so no
+-- update policy is needed and none is given.
+
+-- 53d) a buyer's own lists
+create policy fav_own on public.favorites
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy alert_own on public.price_alerts
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- 53e) The old passwords are dead weight.
+-- Logging in has gone through Supabase Auth since the rebuild;
+-- nothing reads password_hash and nothing ever will. A hash that
+-- is never used cannot be stolen if it is not there.
+update public.users set password_hash = null where password_hash is not null;
