@@ -1716,3 +1716,9 @@ body.no-scroll{overflow:hidden}
 /* the offer button sits with the other composer tools but reads as money */
 .chat-offer-btn{color:var(--teal-dark);border-color:var(--teal-bright)}
 .chat-offer-btn:hover{background:var(--teal-tint)}
+/* The official accounts, in the footer of every page */
+.foot-social{display:inline-flex;align-items:center;gap:6px}
+.foot-social a{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;color:rgba(255,255,255,.62);transition:.15s}
+.foot-social a:hover{color:var(--teal-bright);background:rgba(255,255,255,.08)}
+.foot-social a:focus-visible{outline:2px solid var(--teal-bright);outline-offset:2px}
+.foot-social svg{width:17px;height:17px;fill:currentColor}

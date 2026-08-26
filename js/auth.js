@@ -283,6 +283,36 @@ function initReportLink() {
 }
 document.addEventListener("DOMContentLoaded", initReportLink);
 
+// ── The official accounts, on every page ─────────────────────────────
+// Two jobs at once. Google ties the brand to the accounts when the site
+// links out and the accounts link back (rel="me" both ways), which is the
+// same work as telling it Yayo is a company rather than a word. And a buyer
+// who can see the real accounts has something to check an impostor against
+// — the accounts are named on a-propos.html as the ONLY ones.
+// Added here rather than in the markup: the footer lives in a hundred files.
+const YAYO_SOCIAL = [
+  ["X", "https://x.com/yayotrade",
+    "M18.9 2H22l-6.8 7.8L23 22h-6.3l-4.9-6.4L6.2 22H3l7.3-8.3L2.4 2h6.4l4.4 5.9L18.9 2Zm-1.1 18h1.7L7.3 3.8H5.5L17.8 20Z"],
+  ["Instagram", "https://www.instagram.com/yayotrade/",
+    "M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2Zm0 3.2A6.6 6.6 0 1 0 18.6 12 6.6 6.6 0 0 0 12 5.4Zm0 10.9A4.3 4.3 0 1 1 16.3 12 4.3 4.3 0 0 1 12 16.3Zm6.9-11.1a1.5 1.5 0 1 1-1.5-1.5 1.5 1.5 0 0 1 1.5 1.5Z"],
+  ["Facebook", "https://www.facebook.com/yayotrade/",
+    "M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z"],
+  ["TikTok", "https://www.tiktok.com/@yayotrade",
+    "M16.6 2h-3v13.4a2.4 2.4 0 1 1-2.4-2.4c.2 0 .4 0 .6.1v-3a5.4 5.4 0 1 0 4.8 5.3V8.9a6.5 6.5 0 0 0 3.8 1.2V7.2a3.7 3.7 0 0 1-3.8-3.6V2Z"]
+];
+function initSocialLinks() {
+  const foot = document.querySelector(".footer-bottom");
+  if (!foot || foot.querySelector(".foot-social")) return;
+  const wrap = document.createElement("span");
+  wrap.className = "foot-social";
+  wrap.innerHTML = YAYO_SOCIAL.map(([name, url, path]) =>
+    `<a href="${url}" rel="me noopener" target="_blank" aria-label="Yayo ${name}" title="Yayo ${name}">
+       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"/></svg>
+     </a>`).join("");
+  foot.appendChild(wrap);
+}
+document.addEventListener("DOMContentLoaded", initSocialLinks);
+
 // ── Mobile menu: get out of the way as soon as something is chosen ──
 // The menu used to stay open after tapping a language button (FR/EN/AR) or an
 // in-page link, covering the screen with no obvious way back — and the page
