@@ -132,7 +132,12 @@ exports.handler = async (event) => {
   // guide that does not render at all.
   try {
     const make = readConst(shell, "BP_MAKE");
-    const cityKey = readConst(shell, "BP_CITY");
+    // The per-brand guides declare BP_CITY. The four general ones
+    // (importer-voiture-dubai-<city>) do not: they name the city inside their
+    // calculator as a local `key`. The filename always carries it, in both
+    // shapes, so that is what decides.
+    const fromFile = (/^importer-.*-dubai-([a-z]+)\.html$/.exec(name) || [])[1] || "";
+    const cityKey = DEST[readConst(shell, "BP_CITY")] ? readConst(shell, "BP_CITY") : fromFile;
     const cityName = readConst(shell, "BP_CITY_NAME") || (DEST[cityKey] || {}).name || "";
     if (!DEST[cityKey]) return { statusCode: 200, headers: HEADERS, body: shell };
 
