@@ -43,6 +43,19 @@
 [functions."car-page"]
   included_files = ["voiture.html"]
 
+# The ~100 import guides are served through a renderer for the same reason the
+# car pages are: everything that makes one guide different from another is
+# drawn by JavaScript, so the HTML Google downloads is identical boilerplate.
+# This puts the real stock and the real numbers in the HTML itself.
+[[redirects]]
+  from = "/importer-*"
+  to = "/.netlify/functions/import-page"
+  status = 200
+  force = true
+
+[functions."import-page"]
+  included_files = ["importer-*.html"]
+
 # Weekly founder digest — every Monday 08:00 UTC (12:00 Dubai)
 [functions."weekly-stats"]
   schedule = "0 8 * * 1"
