@@ -48,6 +48,7 @@ fr: {
   badge_good: "✓ Bon prix", badge_nego: "~ Négociable", a_dubai: "à Dubai", rendu: "Rendu", sur_place: "à Dubai",
   count_none: "Aucune voiture trouvée", count_car: "voiture", count_cars: "voitures", count_rendu: "rendu",
   // Marketplace
+  mkt_h1: "Acheter une voiture à Dubai, livrée à Kinshasa, Douala, Abidjan ou Dakar",
   mkt_filters: "Filtres", sort_recent: "Plus récentes", sort_pa: "Prix : croissant", sort_pd: "Prix : décroissant", sort_yd: "Année : récente", sort_ka: "Kilométrage : bas",
   fg_brand: "Marque", fg_price: "Prix (Dubai, $)", fg_year: "Année minimum", fg_body: "Carrosserie", fg_fuel: "Carburant",
   year_all: "Toutes années", ph_min: "Min", ph_max: "Max",
@@ -690,6 +691,7 @@ en: {
   pro_line: "Are you a dealership or shipping agency in Dubai? <b>Join Yayo →</b>",
   badge_good: "✓ Fair price", badge_nego: "~ Negotiable", a_dubai: "in Dubai", rendu: "Landed", sur_place: "in Dubai",
   count_none: "No cars found", count_car: "car", count_cars: "cars", count_rendu: "landed",
+  mkt_h1: "Buy a car in Dubai, delivered to Kinshasa, Douala, Abidjan or Dakar",
   mkt_filters: "Filters", sort_recent: "Most recent", sort_pa: "Price: low to high", sort_pd: "Price: high to low", sort_yd: "Year: newest", sort_ka: "Mileage: lowest",
   fg_brand: "Brand", fg_price: "Price (Dubai, $)", fg_year: "Minimum year", fg_body: "Body type", fg_fuel: "Fuel",
   year_all: "All years", ph_min: "Min", ph_max: "Max",
@@ -1305,6 +1307,7 @@ ar: {
   pro_line: "هل أنت معرض أو وكالة شحن في دبي؟ <b>انضم إلى يايو ←</b>",
   badge_good: "✓ سعر جيد", badge_nego: "~ قابل للتفاوض", a_dubai: "في دبي", rendu: "حتى", sur_place: "في دبي",
   count_none: "لا توجد سيارات", count_car: "سيارة", count_cars: "سيارات", count_rendu: "حتى",
+  mkt_h1: "اشترِ سيارة من دبي، تُسلَّم إلى كينشاسا أو دوالا أو أبيدجان أو داكار",
   mkt_filters: "الفلاتر", sort_recent: "الأحدث", sort_pa: "السعر: تصاعدي", sort_pd: "السعر: تنازلي", sort_yd: "السنة: الأحدث", sort_ka: "العداد: الأقل",
   fg_brand: "الماركة", fg_price: "السعر (دبي، $)", fg_year: "أقل سنة صنع", fg_body: "نوع الهيكل", fg_fuel: "الوقود",
   year_all: "كل السنوات", ph_min: "الأدنى", ph_max: "الأعلى",

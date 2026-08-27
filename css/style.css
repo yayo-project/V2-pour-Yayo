@@ -104,7 +104,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 /* ── SECTIONS ── */
 .section{padding:52px 0}
 .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
-.sec-head h2{font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:-.9px;line-height:1.15}
+.sec-head h2,.sec-head h1{font-size:clamp(22px,3vw,30px);font-weight:800;letter-spacing:-.9px;line-height:1.15}
 .sec-head p{color:var(--ink-3);font-size:14px;margin-top:3px}
 .sec-link{font-size:14px;font-weight:700;color:var(--teal);display:flex;align-items:center;gap:5px;white-space:nowrap}
 .sec-link:hover{gap:9px}
@@ -1722,3 +1722,12 @@ body.no-scroll{overflow:hidden}
 .foot-social a:hover{color:var(--teal-bright);background:rgba(255,255,255,.08)}
 .foot-social a:focus-visible{outline:2px solid var(--teal-bright);outline-offset:2px}
 .foot-social svg{width:17px;height:17px;fill:currentColor}
+
+/* The marketplace h1. It exists for the page's subject to be stated once, in
+   the tag that carries the most weight. It is deliberately quiet: on this
+   page the search box is what people came for. */
+.mkt-h1{font-size:clamp(15px,2vw,17px);font-weight:700;letter-spacing:-.3px;
+  color:var(--ink-2);line-height:1.35;margin:0 0 12px;max-width:620px}
+@media(max-width:560px){
+  .mkt-h1{font-size:14px;margin-bottom:10px}
+}
