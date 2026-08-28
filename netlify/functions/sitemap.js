@@ -19,6 +19,10 @@ const SITE = "https://yayo.digital";
 const STATIC = [
   ["", "1.0", true],
   ["acheter.html", "0.9", true],
+  // The crawlable index of every car. It is the only page on the site whose
+  // HTML actually links to a car page, so it is the route by which the 685
+  // car URLs stop being orphans. It is not translated: it is a list of links.
+  ["voitures", "0.9", false],
   ["importer-voiture-dubai-kinshasa.html", "0.8", true],
   ["importer-voiture-dubai-douala.html", "0.8", true],
   ["importer-voiture-dubai-abidjan.html", "0.8", true],

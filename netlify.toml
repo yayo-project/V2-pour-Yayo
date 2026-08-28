@@ -56,6 +56,23 @@
 [functions."import-page"]
   included_files = ["importer-*.html"]
 
+# The crawlable index of every car. Search Console had 431 URLs as
+# "Discovered – currently not indexed", because nothing on the site linked to
+# a car page: the homepage and the marketplace both draw their cars with
+# JavaScript, so the HTML carries no anchors at all. A sitemap says a URL
+# exists; an internal link says it matters. This is where the links live.
+[[redirects]]
+  from = "/voitures"
+  to = "/.netlify/functions/cars-index"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/voitures/*"
+  to = "/.netlify/functions/cars-index"
+  status = 200
+  force = true
+
 # Weekly founder digest — every Monday 08:00 UTC (12:00 Dubai)
 [functions."weekly-stats"]
   schedule = "0 8 * * 1"
