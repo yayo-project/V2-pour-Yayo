@@ -230,7 +230,12 @@ exports.handler = async (event) => {
     } : null;
 
     const blocks = [`<script type="application/ld+json" id="bp-stock-ld">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`];
-    if (faq) blocks.push(`<script type="application/ld+json" id="bp-faq-ld">${JSON.stringify(faq).replace(/</g, "\\u003c")}</script>`);
+    // The four general guides ship with their own FAQ block. A second FAQPage
+    // on the same page is not twice as good, it is ambiguous — Google picks
+    // one and there is no telling which.
+    if (faq && !/FAQPage/.test(shell)) {
+      blocks.push(`<script type="application/ld+json" id="bp-faq-ld">${JSON.stringify(faq).replace(/</g, "\\u003c")}</script>`);
+    }
     out = out.replace(/<\/head>/i, blocks.join("\n") + "\n</head>");
 
     return { statusCode: 200, headers: HEADERS, body: out };

@@ -37,7 +37,13 @@ gtag('js', new Date());
 gtag('config', 'G-NR2LTEVKET');
 </script>
 <link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- The hero photograph is what Largest Contentful Paint measures on this
+     page. Preloading it starts the download with the stylesheet instead of
+     after it, which is the difference between the car appearing and the
+     visitor deciding the site is broken. Their connection is a slow 4G in
+     Kinshasa, not an office in Dubai. -->
+<link rel="preload" as="image" fetchpriority="high"
+      href="https://wkjxdkeqffsjarjxlsyh.supabase.co/storage/v1/object/public/car-photos/26dd0ec5-92a6-465e-9fa5-a8b07d636549/1787391104201-58s08.webp">
 </head>
 <body>
 <!-- App boot screen: paints instantly (inline style), removed by config.js -->
@@ -362,6 +368,11 @@ gtag('config', 'G-NR2LTEVKET');
   </div>
 </footer>
 
+<!-- Supabase used to load in the <head>, where it blocked the page from
+     rendering while 100 KB came down from a third-party CDN. Nothing above
+     this point needs it, and it still runs before config.js, so execution
+     order is unchanged — it simply stops holding up the first paint. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/i18n.js"></script>

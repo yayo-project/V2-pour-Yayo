@@ -39,7 +39,6 @@ gtag('js', new Date());
 gtag('config', 'G-NR2LTEVKET');
 </script>
 <link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <!-- App boot screen: paints instantly (inline style), removed by config.js -->
@@ -255,6 +254,10 @@ gtag('config', 'G-NR2LTEVKET');
   </div>
 </footer>
 
+<!-- Moved out of the <head>: 100 KB from a third-party CDN was blocking the
+     first paint, and nothing above this point needs it. Still runs before
+     config.js, so execution order is unchanged. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/analytics.js"></script>
 <script src="js/i18n.js"></script>
