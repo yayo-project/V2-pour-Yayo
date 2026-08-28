@@ -190,7 +190,10 @@ exports.handler = async (event) => {
     //    this page's own figures in the answers. Every number here is either
     //    the country's published structure or the stock actually on the site,
     //    so nothing is claimed that the page does not already show.
-    const pct = n => String(Math.round(n * 1000) / 10).replace(".", ",") + " %";
+    // Two decimals, trailing zeros dropped. Cameroon's VAT is 19,25 % and
+    // rounding it to 19,3 % on a page whose whole argument is that the real
+    // numbers are shown would be a strange place to be approximate.
+    const pct = n => String(Math.round(n * 10000) / 100).replace(".", ",") + " %";
     const d = DEST[cityKey];
     const thing = make || "voiture";
     const faq = min > 0 ? {
