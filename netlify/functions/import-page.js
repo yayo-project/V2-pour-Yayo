@@ -186,8 +186,49 @@ exports.handler = async (event) => {
         }
       }))
     };
-    out = out.replace(/<\/head>/i,
-      `<script type="application/ld+json" id="bp-stock-ld">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n</head>`);
+    // 5. The three questions this page exists to answer, as FAQ data, with
+    //    this page's own figures in the answers. Every number here is either
+    //    the country's published structure or the stock actually on the site,
+    //    so nothing is claimed that the page does not already show.
+    const pct = n => String(Math.round(n * 1000) / 10).replace(".", ",") + " %";
+    const d = DEST[cityKey];
+    const thing = make || "voiture";
+    const faq = min > 0 ? {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: `Combien coûte l'importation d'une ${thing} de Dubai à ${cityName} ?`,
+          acceptedAnswer: { "@type": "Answer", text:
+            `En ce moment, les ${thing} disponibles à Dubai sur Yayo démarrent à ${money(min)}. ` +
+            `Rendue à ${cityName}, cette voiture revient à environ ${money(landedTotal(min, cityKey))}, ` +
+            `transport maritime, droits de douane, TVA et frais de port compris. Il s'agit d'une estimation : ` +
+            `le transport est facturé par l'agence que vous choisissez et la douane par le gouvernement.` }
+        },
+        {
+          "@type": "Question",
+          name: `Quels sont les droits de douane sur une voiture importée à ${cityName} ?`,
+          acceptedAnswer: { "@type": "Answer", text:
+            `Environ ${pct(d.customs.duty)} de droits de douane` +
+            (d.customs.extra ? `, ${pct(d.customs.extra)} de taxes et prélèvements` : "") +
+            `, puis ${pct(d.customs.vat)} de TVA. Tout se calcule sur la valeur CIF, c'est-à-dire le prix de la ` +
+            `voiture plus le transport, et non sur le prix affiché seul. La TVA s'applique après les droits, pas à côté.` }
+        },
+        {
+          "@type": "Question",
+          name: `Faut-il payer le montant total au vendeur ?`,
+          acceptedAnswer: { "@type": "Answer", text:
+            `Non. Le prix de la voiture va au vendeur à Dubai, le transport à l'agence maritime, ` +
+            `et les droits et la TVA au gouvernement. Ce sont trois paiements distincts, à des moments différents. ` +
+            `Le total affiché est le coût complet du projet, pas une somme à virer à une seule personne.` }
+        }
+      ]
+    } : null;
+
+    const blocks = [`<script type="application/ld+json" id="bp-stock-ld">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`];
+    if (faq) blocks.push(`<script type="application/ld+json" id="bp-faq-ld">${JSON.stringify(faq).replace(/</g, "\\u003c")}</script>`);
+    out = out.replace(/<\/head>/i, blocks.join("\n") + "\n</head>");
 
     return { statusCode: 200, headers: HEADERS, body: out };
   } catch (e) {

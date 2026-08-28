@@ -22,30 +22,25 @@ const SB_URL = "https://wkjxdkeqffsjarjxlsyh.supabase.co";
 const SB_ANON = "sb_publishable_-mDN0Rd9q8q2SJuJPsn_qw_ieHvuSB8";
 const SITE = "https://yayo.digital";
 
-// Same customs structure as js/config.js. Freight and duty are ESTIMATES and
-// are labelled as such everywhere they appear — never presented as final.
-const DEST = {
-  kinshasa: { name: "Kinshasa", ship: 3200, fees: 1070, duty: 0.10, extra: 0.10, vat: 0.16 },
-  douala:   { name: "Douala",   ship: 2800, fees: 1070, duty: 0.30, extra: 0.00, vat: 0.1925 },
-  abidjan:  { name: "Abidjan",  ship: 3500, fees: 1070, duty: 0.20, extra: 0.025, vat: 0.18 },
-  dakar:    { name: "Dakar",    ship: 3300, fees: 1070, duty: 0.20, extra: 0.024, vat: 0.18 }
-};
-
-function landed(price, key) {
-  const d = DEST[key];
-  if (!d) return null;
-  const cif = Number(price) + d.ship;
-  const duty = cif * d.duty;
-  const extra = cif * d.extra;
-  const vat = (cif + duty + extra) * d.vat;
-  return Math.round(cif + duty + extra + vat + d.fees);
-}
+// This file used to carry its own copy of the freight and customs numbers,
+// and that copy had gone stale: it still said 10% duty plus a 10% levy for
+// Kinshasa, where js/config.js has said 20% plus 3% for some time. The result
+// was that the description Google and WhatsApp showed for a car quoted a
+// landed cost about $2 000 below the one the page itself displayed a moment
+// later, on all 685 car pages.
+//
+// One table now, in _dest.js, checked against the client across four prices
+// and four cities. Freight and duty remain ESTIMATES and are labelled as such
+// everywhere they appear.
+const { DEST, landedTotal, money } = require("./_dest");
+const landed = (price, key) => (DEST[key] ? landedTotal(price, key) : null);
 
 const esc = s => String(s == null ? "" : s)
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-const money = n => "$" + Math.round(Number(n) || 0).toLocaleString("en-US").replace(/,/g, " ");
+// money() comes from _dest.js with the rest of the cost engine — a second
+// definition here would shadow it and start the two drifting apart again.
 
 // A car's URL slug: keywords first, uuid last so the lookup is exact.
 // "Toyota Land Cruiser", 2021 -> toyota-land-cruiser-2021-<uuid>
