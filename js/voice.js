@@ -375,14 +375,26 @@ async function yayoSendDoc(convoId, file, onSent) {
     conversation_id: convoId, sender_id: user.id, content: "📎 " + file.name,
     file_url: url, file_name: file.name.slice(0, 120), file_size: file.size
   };
-  let { error } = await yayoSB().from("messages").insert(row);
+  let { data: made, error } = await yayoSB().from("messages").insert(row).select("id").single();
   if (error) {
     const again = await yayoSB().from("messages")
       .insert({ conversation_id: convoId, sender_id: user.id, content: row.content });
     if (again.error) throw again.error;
   }
   yayoNotifyMessage(convoId);
-  if (onSent) onSent({ file_url: url, file_name: file.name, file_size: file.size });
+  // Yayo reads the paper and compares the company printed on it against the
+  // one an admin verified (§55). Three outcomes, and only "a different
+  // company" ever stops a document. Fire and forget: a checker that is slow
+  // or down must never hold up sending.
+  if (made && made.id) {
+    try {
+      fetch("/.netlify/functions/doc-check", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_id: made.id })
+      }).catch(() => {});
+    } catch (e) { /* the document is already sent */ }
+  }
+  if (onSent) onSent({ file_url: url, file_name: file.name, file_size: file.size, id: made && made.id });
   return url;
 }
 function yayoDocHtml(m) {
@@ -394,5 +406,25 @@ function yayoDocHtml(m) {
   return `<a class="yv-doc" href="${esc(m.file_url)}" target="_blank" rel="noopener">
     <span class="yv-doc-i">${esc(ext)}</span>
     <span class="yv-doc-t"><b>${esc(m.file_name || "document")}</b><span>${kb}</span></span>
-  </a>`;
+  </a>${yayoDocStatusHtml(m)}`;
+}
+
+// What the check concluded, said plainly to whoever is looking (§55).
+// A held document is only ever seen by the person who sent it, so the wording
+// speaks to him: it explains what was found, not that he is suspected.
+function yayoDocStatusHtml(m) {
+  const s = m && m.doc_status;
+  if (!s || s === "checking") return "";
+  const esc = x => String(x || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (s === "verified") {
+    return `<span class="yv-doc-s yv-doc-ok" title="${esc(m.doc_company || "")}">✓ ${t("doc_ok")}</span>`;
+  }
+  if (s === "unverifiable") {
+    return `<span class="yv-doc-s yv-doc-warn">${t("doc_unreadable")}</span>`;
+  }
+  if (s === "held") {
+    return `<span class="yv-doc-s yv-doc-held">${t("doc_held")}${
+      m.doc_company ? `<em>${esc(m.doc_company)}</em>` : ""}</span>`;
+  }
+  return "";
 }

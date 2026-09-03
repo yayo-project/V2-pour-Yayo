@@ -2779,3 +2779,120 @@ grant execute on function public.admin_list_businesses(text)     to authenticate
 
 grant select on public.dealers            to authenticated;
 grant select on public.shipping_agencies  to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 55) A DOCUMENT HAS THREE OUTCOMES, NEVER TWO
+--
+-- When a seller sends a document in chat — an invoice, a
+-- purchase agreement, an export paper — Yayo reads it and
+-- compares the company printed on it against the company an
+-- admin verified. What happens next has to have three answers,
+-- not two, and that is the whole point of this section:
+--
+--   MATCHES        delivered, marked verified.
+--   UNREADABLE     DELIVERED anyway, marked unverifiable,
+--                  admin notified.
+--   OTHER COMPANY  held. The buyer does not receive it. The
+--                  seller and the admin are both told.
+--
+-- Blocking on "unreadable" would kill honest sales every day.
+-- A phone photo taken in a dim showroom is usually unreadable,
+-- and a UAE trading name differs from the legal name on the
+-- licence almost always. A system that treats "I could not
+-- read it" as "this is fraud" is a system dealers stop using.
+--
+-- Only "a different company's name is on this paper" is worth
+-- stopping, because that is the shape of the scam this exists
+-- to catch: an invoice from a company the buyer never agreed
+-- to pay.
+-- ═══════════════════════════════════════════════════════════
+
+alter table public.messages
+  add column if not exists doc_status  text,     -- null | checking | verified | unverifiable | held
+  add column if not exists doc_company text,     -- the name actually printed on the document
+  add column if not exists doc_note    text,     -- why, in one line, for the admin
+  add column if not exists held        boolean not null default false;
+
+create index if not exists messages_held_idx on public.messages(conversation_id) where held;
+
+-- 55a) A held document does not reach the person it was sent to.
+-- This replaces the §53 read policy and keeps everything it did:
+-- only the two people in a conversation, plus an admin. The one
+-- addition is that a held message stays visible to whoever SENT
+-- it — a seller must be able to see what was stopped and why,
+-- or he cannot fix it — and stays invisible to the other side.
+drop policy if exists msg_read on public.messages;
+create policy msg_read on public.messages
+  for select to authenticated using (
+    (
+      (public.yayo_is_buyer_of(conversation_id) or public.yayo_is_seller_of(conversation_id))
+      and (coalesce(held, false) = false or sender_id = auth.uid())
+    )
+    or public.yayo_admin_role() is not null
+  );
+
+-- 55b) The verdict is written by the checker, never by the client.
+-- The Netlify function calls this with the service key. Marking
+-- your own document "verified" from a browser console has to be
+-- impossible, so this is the only door and it is server-side.
+create or replace function public.yayo_set_doc_status(
+  p_message uuid, p_status text, p_company text default null, p_note text default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_status not in ('checking','verified','unverifiable','held') then
+    raise exception 'unknown document status: %', p_status;
+  end if;
+  update messages
+     set doc_status  = p_status,
+         doc_company = coalesce(nullif(btrim(p_company), ''), doc_company),
+         doc_note    = coalesce(nullif(btrim(p_note), ''), doc_note),
+         held        = (p_status = 'held')
+   where id = p_message;
+end $$;
+revoke execute on function public.yayo_set_doc_status(uuid,text,text,text) from anon, authenticated;
+
+-- 55c) What the admin needs to look at, newest first.
+-- Everything that was held, and everything that could not be
+-- read — the second list matters as much as the first, because
+-- a seller whose documents never come out readable is either
+-- struggling with a camera or hiding something, and only a
+-- human can tell which.
+create or replace function public.admin_doc_flags()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(x order by x->>'created_at' desc), '[]'::jsonb) from (
+    select jsonb_build_object(
+      'id', m.id, 'created_at', m.created_at,
+      'status', m.doc_status, 'company', m.doc_company, 'note', m.doc_note,
+      'file_name', m.file_name, 'file_url', m.file_url,
+      'conversation_id', m.conversation_id,
+      'seller', coalesce(d.name, a.name),
+      'verified_name', coalesce(d.trading_name, d.legal_name, d.name,
+                                a.trading_name, a.legal_name, a.name)
+    ) as x
+    from messages m
+    join conversations c on c.id = m.conversation_id
+    left join dealers d           on d.id = c.dealer_id
+    left join shipping_agencies a on a.id = c.agency_id
+    where m.doc_status in ('held','unverifiable')
+      and public.yayo_admin_role() is not null
+    limit 200
+  ) s;
+$$;
+grant execute on function public.admin_doc_flags() to authenticated;
+
+-- 55d) An admin can overrule the machine, in both directions.
+-- A held document that turns out to be legitimate must be
+-- releasable, and a document that passed but looks wrong must be
+-- stoppable. The checker is a first pass, not a judge.
+create or replace function public.admin_doc_release(p_message uuid, p_release boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if public.yayo_admin_role() is null then raise exception 'admins only'; end if;
+  update messages
+     set held = not p_release,
+         doc_status = case when p_release then 'verified' else 'held' end,
+         doc_note = case when p_release then 'Libéré par un administrateur'
+                         else 'Retenu par un administrateur' end
+   where id = p_message;
+end $$;
+grant execute on function public.admin_doc_release(uuid,boolean) to authenticated;

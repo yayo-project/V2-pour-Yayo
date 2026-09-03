@@ -696,7 +696,7 @@ async function yayoLoadMessages(convoId, limit) {
   const q = cols => sb.from("messages").select(cols)
     .eq("conversation_id", convoId).order("created_at", { ascending: true }).limit(limit || 200);
   // newest schema first; each fallback costs detail, never the conversation
-  let r = await q("id, sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size, offer_id");
+  let r = await q("id, sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size, offer_id, doc_status, doc_company");
   if (r.error) r = await q("sender_id, content, created_at, image_url, seen, audio_url, transcript, duration_ms, waveform, file_url, file_name, file_size");
   if (r.error) r = await q("sender_id, content, created_at, image_url, seen");
   if (r.error) r = await q("sender_id, content, created_at, image_url");
