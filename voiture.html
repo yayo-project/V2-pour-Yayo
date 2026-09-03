@@ -190,6 +190,11 @@ gtag('config', 'G-NR2LTEVKET');
           </form>
           <p class="vd-free" data-i18n="chat_note">La conversation reste sur Yayo — c'est votre protection.</p>
         </div>
+        <!-- A fake listing or a seller asking for money outside Yayo is
+             reported from the page it happened on, not from a footer three
+             clicks away. Opens already set to "annonce suspecte", with this
+             car attached so the admin knows which one. -->
+        <p class="vd-report"><a href="#" onclick="vdReport(event)" data-i18n="rp_link">Signaler un problème</a></p>
       </aside>
     </div>
 
@@ -255,6 +260,7 @@ gtag('config', 'G-NR2LTEVKET');
 <script src="js/i18n.js"></script>
 <script src="js/demo.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/report.js"></script>
 <script src="js/translate.js"></script>
 <script src="js/voice.js"></script>
 <script src="js/fav.js"></script>

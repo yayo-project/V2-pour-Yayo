@@ -1745,3 +1745,49 @@ body.no-scroll{overflow:hidden}
 .cars-pages{margin-top:22px;font-size:13.5px;display:flex;flex-wrap:wrap;gap:10px}
 .cars-pages a{color:var(--teal-dark);font-weight:600}
 .cars-pages b{color:var(--ink)}
+
+/* ── "Signaler un problème" ─────────────────────────────────
+   Discreet on purpose. It must be findable when something is wrong and
+   invisible when nothing is. */
+.rp-link{font-size:12px;color:rgba(255,255,255,.55);text-decoration:underline;
+  text-underline-offset:2px}
+.rp-link:hover{color:var(--teal-bright)}
+.rp-sheet{position:fixed;inset:0;z-index:140;background:rgba(7,27,51,.55);
+  display:flex;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+@media(min-width:640px){.rp-sheet{align-items:center;padding:20px}}
+.rp-panel{position:relative;background:var(--card);width:100%;max-width:440px;
+  border-radius:18px 18px 0 0;padding:22px 20px 18px;color:var(--ink);
+  box-shadow:0 -10px 50px rgba(0,0,0,.35);max-height:92vh;overflow-y:auto}
+@media(min-width:640px){.rp-panel{border-radius:18px}}
+.rp-x{position:absolute;top:12px;right:12px;width:32px;height:32px;border:none;
+  border-radius:50%;background:var(--bg-soft);color:var(--ink-2);cursor:pointer;
+  font-size:15px;line-height:1}
+[dir="rtl"] .rp-x{right:auto;left:12px}
+.rp-x:hover{background:#F1D9D6;color:#A8332B}
+.rp-panel h3{font-size:17px;font-weight:800;letter-spacing:-.4px;padding-right:34px}
+.rp-sub{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin:6px 0 14px}
+.rp-about{font-size:13px;font-weight:700;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;padding:9px 12px;margin-bottom:14px}
+.rp-lbl{display:block;font-size:12px;font-weight:800;margin-bottom:5px;color:var(--ink-2)}
+.rp-panel select,.rp-panel textarea,.rp-panel input{width:100%;border:1.5px solid var(--line);
+  border-radius:11px;padding:11px 13px;font-family:inherit;font-size:16px;color:var(--ink);
+  background:#fff;outline:none;margin-bottom:13px;resize:none}
+.rp-panel select:focus,.rp-panel textarea:focus,.rp-panel input:focus{border-color:var(--teal-bright)}
+.rp-warn{background:#FDECEC;color:#B3261E;border-radius:10px;padding:9px 12px;
+  font-size:12.5px;line-height:1.5;margin-bottom:12px}
+.rp-btns{display:flex;gap:9px}
+.rp-btns button{flex:1;border-radius:11px;padding:13px 10px;font-family:inherit;
+  font-size:14px;font-weight:800;cursor:pointer;transition:.16s;min-height:46px}
+.rp-cancel{background:var(--bg);border:1px solid var(--line);color:var(--ink-2)}
+.rp-send{background:var(--teal);border:none;color:#fff}
+.rp-send:hover{background:var(--teal-dark)}
+.rp-send:disabled{opacity:.6;cursor:default}
+.rp-done{text-align:center;padding:12px 0 4px}
+.rp-tick{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;
+  border-radius:50%;background:var(--teal-tint);color:var(--teal-dark);font-size:22px;
+  font-weight:800;margin-bottom:12px}
+.rp-done p{font-size:14px;font-weight:600;margin-bottom:16px}
+.vd-report{margin-top:14px;text-align:center}
+.vd-report a{font-size:12px;color:var(--ink-3);text-decoration:underline;text-underline-offset:2px}
+.vd-report a:hover{color:#B3261E}

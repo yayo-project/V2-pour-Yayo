@@ -656,6 +656,20 @@ async function sendChatPhoto(files) {
   }
 }
 
+// Report this listing. Pre-set to "annonce suspecte" and carrying the car,
+// so the admin gets the one thing a free-text report usually leaves out:
+// which car it was about.
+function vdReport(e) {
+  if (e) e.preventDefault();
+  const name = CAR ? (CAR.car_name || "") : "";
+  const dealer = CAR && CAR.dealer ? CAR.dealer.name : "";
+  yayoReportOpen({
+    kind: "listing",
+    about: [name, dealer].filter(Boolean).join(" · "),
+    url: location.href
+  });
+}
+
 // Voice and documents — the composer steps aside while recording so the
 // screen never shows two ways to send at once.
 function startVoice() {
