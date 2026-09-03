@@ -2752,3 +2752,30 @@ end $$;
 
 grant execute on function public.yayo_my_business()              to authenticated;
 grant execute on function public.admin_list_businesses(text)     to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 54b) MAKE SURE THE DEALER'S OWN DASHBOARD STILL OPENS
+--
+-- §54 revoked SELECT on dealers and shipping_agencies from the
+-- PUBLIC pseudo-role as well as from anon, as belt and braces:
+-- a privilege granted to PUBLIC survives a revoke aimed only at
+-- anon, and the door would have stayed open silently.
+--
+-- But PUBLIC includes every role. If the original grant on these
+-- two tables was made to PUBLIC rather than to authenticated
+-- directly, then that revoke also took access away from logged-in
+-- users — which is the dealer looking at his own dashboard and
+-- the admin reviewing a licence.
+--
+-- This restores exactly what authenticated had before §54 ran.
+-- It is not a weakening: closing anonymous was the point, and
+-- anonymous stays closed. Narrowing authenticated too is a
+-- separate pass that needs the dashboard moved onto
+-- yayo_my_business and admin_list_businesses first, and that
+-- cannot be done without a real login to test against.
+--
+-- Safe to run whether or not anything was actually lost.
+-- ═══════════════════════════════════════════════════════════
+
+grant select on public.dealers            to authenticated;
+grant select on public.shipping_agencies  to authenticated;
