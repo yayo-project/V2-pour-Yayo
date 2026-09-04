@@ -30,7 +30,10 @@ const ANON = "sb_publishable_-mDN0Rd9q8q2SJuJPsn_qw_ieHvuSB8";
 const ALLOWED_BUCKETS = ["car-photos", "agency-photos"];
 const PAGE = 24;                    // objects listed per page
 const PARALLEL = 4;                 // images processed at once
-const MIN_BYTES = 300 * 1024;       // below this, not worth rewriting
+// Measured on the real stock: a qualifying photo comes back at 139-167 KB, so
+// 200 KB is low enough to catch most of the library and still high enough that
+// a second run skips everything the first run already wrote.
+const MIN_BYTES = 200 * 1024;       // below this, not worth rewriting
 const MAX_BYTES = 25 * 1024 * 1024; // above this, something is wrong — skip
 const WIDTH = 1600;                 // longest edge Yayo ever displays
 const QUALITY = 78;
