@@ -2896,3 +2896,67 @@ begin
    where id = p_message;
 end $$;
 grant execute on function public.admin_doc_release(uuid,boolean) to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 55b) THE DOCUMENT VERDICT WAS WRITEABLE BY ANYONE
+--
+-- §55 ended with:
+--     revoke execute on function yayo_set_doc_status(...) from anon, authenticated;
+--
+-- which does nothing. Postgres grants EXECUTE on a new function
+-- to PUBLIC by default, and a revoke aimed at anon does not
+-- remove a grant held by PUBLIC. Exactly the trap §54 hit and
+-- fixed there, repeated here and not caught until the function
+-- was called from outside.
+--
+-- Proved with the publishable key: an anonymous POST to
+-- yayo_set_doc_status returned 204. So anyone could mark any
+-- document "verified", or release one that had been HELD for
+-- carrying another company's name — which is the entire thing
+-- §55 exists to prevent.
+--
+-- Two layers now, because one of them was already trusted once.
+-- ═══════════════════════════════════════════════════════════
+
+-- Layer 1: take the grant away from PUBLIC, which is where it
+-- actually lives.
+revoke execute on function public.yayo_set_doc_status(uuid,text,text,text) from public;
+revoke execute on function public.yayo_set_doc_status(uuid,text,text,text) from anon, authenticated;
+
+-- Layer 2: refuse anyone who is not the checker, inside the
+-- function itself, so a future grant cannot quietly reopen this.
+-- The Netlify function calls with the service key, which arrives
+-- as the service_role. A browser never does.
+--
+-- If this guard is ever wrong, documents stop being marked and
+-- are simply delivered unmarked, which is where the product was
+-- before §55. It fails to the safe side, never to the open one.
+create or replace function public.yayo_set_doc_status(
+  p_message uuid, p_status text, p_company text default null, p_note text default null)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'yayo_set_doc_status is for the document checker only';
+  end if;
+  if p_status not in ('checking','verified','unverifiable','held') then
+    raise exception 'unknown document status: %', p_status;
+  end if;
+  update messages
+     set doc_status  = p_status,
+         doc_company = coalesce(nullif(btrim(p_company), ''), doc_company),
+         doc_note    = coalesce(nullif(btrim(p_note), ''), doc_note),
+         held        = (p_status = 'held')
+   where id = p_message;
+end $$;
+
+revoke execute on function public.yayo_set_doc_status(uuid,text,text,text) from public;
+revoke execute on function public.yayo_set_doc_status(uuid,text,text,text) from anon, authenticated;
+
+-- 55c) The same check on the two admin functions. Both already
+-- test yayo_admin_role() inside, so this changes nothing about
+-- who can act — it just stops a stranger being able to call
+-- them at all and learn from the error which is which.
+revoke execute on function public.admin_doc_flags() from public;
+revoke execute on function public.admin_doc_release(uuid,boolean) from public;
+grant  execute on function public.admin_doc_flags() to authenticated;
+grant  execute on function public.admin_doc_release(uuid,boolean) to authenticated;
