@@ -671,12 +671,73 @@ function yayoFlagContact(convoId) {
   catch (e) { /* counting is a bonus, never a blocker */ }
 }
 
+// ── Photo compression, before anything is uploaded ──
+// A phone camera writes a 4 000 px, 4 MB picture. Nothing on Yayo ever shows a
+// photo larger than about 1 600 px, so the extra pixels cost storage once and
+// cost every buyer bandwidth for ever — on a Kinshasa mobile connection that is
+// the difference between a car page that opens and one that does not. Shrinking
+// on the device also makes the upload itself several times faster.
+// Anything unusual (not an image, an animated GIF, no canvas, a result that is
+// not actually smaller) returns the original file untouched: compression must
+// never be the reason an upload fails.
+const YAYO_IMG_MAX = 1600;      // longest edge, pixels
+const YAYO_IMG_QUALITY = 0.82;  // JPEG quality — visually indistinguishable
+const YAYO_IMG_SKIP_BELOW = 180 * 1024;
+
+function yayoDecodeImage(file) {
+  // createImageBitmap is fast and reads the EXIF rotation of phone photos.
+  // Older Safari has neither, so fall back to a plain <img>.
+  if (typeof createImageBitmap === "function") {
+    return createImageBitmap(file, { imageOrientation: "from-image" })
+      .catch(() => createImageBitmap(file))
+      .catch(() => yayoDecodeImageEl(file));
+  }
+  return yayoDecodeImageEl(file);
+}
+function yayoDecodeImageEl(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
+    img.src = url;
+  });
+}
+async function yayoCompressImage(file, opts) {
+  const o = opts || {};
+  const max = o.max || YAYO_IMG_MAX;
+  const quality = o.quality || YAYO_IMG_QUALITY;
+  try {
+    if (!file || !file.type || !file.type.startsWith("image/")) return file;
+    if (file.type === "image/gif") return file;            // keep the animation
+    if (file.size < (o.skipBelow || YAYO_IMG_SKIP_BELOW)) return file;
+    const src = await yayoDecodeImage(file);
+    const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
+    if (!sw || !sh) return file;
+    const scale = Math.min(1, max / Math.max(sw, sh));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+    if (src.close) src.close();
+    const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+    if (!blob || blob.size >= file.size) return file;      // no gain — keep the original
+    const name = (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
+  } catch (e) {
+    return file;
+  }
+}
+
 // ── Photos in chat (shared by all 4 chat surfaces) ──
 // Upload the picked photo to Storage, then post it as a chat message.
 async function yayoSendChatPhoto(convoId, file) {
   if (!file || !file.type.startsWith("image/")) throw new Error("image only");
   const user = await yayoUser();
   if (!user) throw new Error("not signed in");
+  file = await yayoCompressImage(file);
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const path = "chat/" + convoId + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 6) + "." + ext;
   const { error } = await yayoSB().storage.from("car-photos").upload(path, file, { contentType: file.type });

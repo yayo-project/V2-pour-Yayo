@@ -384,14 +384,22 @@ function logoView(item, elId, name) {
   const init = (name || "?").trim().split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
   el.innerHTML = `<span class="pf-logo-empty">${escapeHtml(init)}</span>`;
 }
+// Every picture leaving this dashboard goes through auth.js's compressor first
+// (a 4 MB phone photo becomes ~300 KB at the size Yayo actually displays).
+// Guarded, so a page that somehow loads dashboard.js alone still uploads.
+async function shrinkPic(file) {
+  return typeof yayoCompressImage === "function" ? await yayoCompressImage(file) : file;
+}
+
 // Upload one media item to Storage (demo mode: keep the local preview)
 async function uploadMedia(bucket, folder, item, prefix) {
   if (!item) return null;
   if (item.url) return item.url;
   if (DEMO || DEMO_AG) return item.preview;
-  const ext = (item.file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const file = await shrinkPic(item.file);
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
   const path = folder + "/" + prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
-  const { error } = await yayoSB().storage.from(bucket).upload(path, item.file, { contentType: item.file.type });
+  const { error } = await yayoSB().storage.from(bucket).upload(path, file, { contentType: file.type });
   if (error) throw error;
   return yayoSB().storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
@@ -1047,9 +1055,10 @@ async function uploadPhotos() {
   for (const p of PHOTOS) {
     if (p.url) { out.push(p.url); continue; }
     if (DEMO) { out.push(p.preview); continue; } // demo: local preview only
-    const ext = (p.file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const file = await shrinkPic(p.file);
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const path = DEALER.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
-    const { error } = await yayoSB().storage.from("car-photos").upload(path, p.file, { contentType: p.file.type });
+    const { error } = await yayoSB().storage.from("car-photos").upload(path, file, { contentType: file.type });
     if (error) throw error;
     const { data } = yayoSB().storage.from("car-photos").getPublicUrl(path);
     out.push(data.publicUrl);
@@ -2118,6 +2127,82 @@ function renderAdmin() {
   if (adCan("team")) adRenderTeam();
   if (adCan("log")) adRenderLog();
   if (adCan("stats")) { adRenderStats(); adRenderServices(); }
+  // Rewriting stored files is the founder's call alone
+  const imgc = document.getElementById("ad-imgc-card");
+  if (imgc) imgc.hidden = !(AD_ROLE === "super_admin" && !DEMO_ADMIN);
+}
+
+// ── Shrink the photos already in Storage (§ admin maintenance) ──
+// The work happens in the compress-photos function; this only drives it and
+// shows progress, because one browser call cannot outlive Netlify's 10-second
+// limit. State comes back with every answer and goes straight back in, so the
+// walk continues exactly where it stopped — and stopping is safe at any moment.
+const COMPRESS_FN = "/.netlify/functions/compress-photos";
+const IMGC_BUCKETS = ["car-photos", "agency-photos"];
+// base = buckets already finished, cur = the bucket being walked now
+let IMGC = { running: false, bucket: 0, state: null, base: { rewritten: 0, savedBytes: 0 }, cur: { rewritten: 0, savedBytes: 0, failed: 0 } };
+function imgcCount() { return IMGC.base.rewritten + IMGC.cur.rewritten; }
+function imgcSaved() { return IMGC.base.savedBytes + IMGC.cur.savedBytes; }
+
+function imgcMB(bytes) { return (bytes / 1048576).toFixed(1); }
+function imgcSay(msg) {
+  const el = document.getElementById("ad-imgc-status");
+  if (el) el.textContent = msg;
+}
+function adCompressStop() {
+  IMGC.running = false;
+  document.getElementById("ad-imgc-stop").hidden = true;
+  document.getElementById("ad-imgc-run").disabled = false;
+  imgcSay(t("ad_imgc_stopped").replace("{mb}", imgcMB(imgcSaved())).replace("{n}", imgcCount()));
+}
+
+async function adCompressStart() {
+  if (IMGC.running) return;
+  IMGC = { running: true, bucket: 0, state: null, base: { rewritten: 0, savedBytes: 0 }, cur: { rewritten: 0, savedBytes: 0, failed: 0 } };
+  document.getElementById("ad-imgc-run").disabled = true;
+  document.getElementById("ad-imgc-stop").hidden = false;
+  imgcSay(t("ad_imgc_working").replace("{n}", "0").replace("{mb}", "0.0"));
+
+  try {
+    const { data } = await yayoSB().auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if (!token) throw new Error("no session");
+
+    while (IMGC.running && IMGC.bucket < IMGC_BUCKETS.length) {
+      const res = await fetch(COMPRESS_FN, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, bucket: IMGC_BUCKETS[IMGC.bucket], state: IMGC.state })
+      });
+      const j = await res.json();
+      if (j.error && !j.state) throw new Error(j.error);
+
+      // the server keeps the running total for this bucket inside state.stats
+      const s = j.stats || {};
+      IMGC.cur = { rewritten: s.rewritten || 0, savedBytes: s.savedBytes || 0, failed: s.failed || 0 };
+      IMGC.state = j.state || null;
+      imgcSay(t("ad_imgc_working").replace("{n}", imgcCount()).replace("{mb}", imgcMB(imgcSaved())));
+
+      if (j.done) {                                       // this bucket is finished
+        IMGC.base.rewritten += IMGC.cur.rewritten;
+        IMGC.base.savedBytes += IMGC.cur.savedBytes;
+        IMGC.cur = { rewritten: 0, savedBytes: 0, failed: 0 };
+        IMGC.bucket++;
+        IMGC.state = null;
+      }
+    }
+
+    if (IMGC.running) {
+      IMGC.running = false;
+      document.getElementById("ad-imgc-stop").hidden = true;
+      document.getElementById("ad-imgc-run").disabled = false;
+      imgcSay(t("ad_imgc_done").replace("{n}", imgcCount()).replace("{mb}", imgcMB(imgcSaved())));
+    }
+  } catch (e) {
+    IMGC.running = false;
+    document.getElementById("ad-imgc-stop").hidden = true;
+    document.getElementById("ad-imgc-run").disabled = false;
+    imgcSay(t("ad_imgc_fail") + (e.message || e));
+  }
 }
 
 function adDate(s) {
@@ -2633,8 +2718,9 @@ async function adUploadPhotos(type, id, files) {
     // added to what the business already has, never replacing it
     const urls = yayoPhotoList(x && x.photos).slice();
     if (typeof yayoToast === "function") yayoToast(t("ad_gal_working").replace("{n}", files.length));
-    for (const f of files.slice(0, 12 - urls.length)) {
-      if (!f.type.startsWith("image/")) continue;
+    for (const raw of files.slice(0, 12 - urls.length)) {
+      if (!raw.type.startsWith("image/")) continue;
+      const f = await shrinkPic(raw);
       const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const path = id + "/gallery-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
       const up = await yayoSB().storage.from(bucket).upload(path, f, { contentType: f.type });
@@ -2656,6 +2742,7 @@ async function adUploadLogo(type, id, file) {
   try {
     if (!file.type.startsWith("image/")) throw new Error("image only");
     const bucket = type === "dealer" ? "car-photos" : "agency-photos";
+    file = await shrinkPic(file);
     const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
     const path = id + "/logo-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + ext;
     const up = await yayoSB().storage.from(bucket).upload(path, file, { contentType: file.type });

@@ -13,6 +13,13 @@
 [functions]
   directory = "netlify/functions"
 
+# Netlify's Image CDN will only resize remote images from domains listed here.
+# compress-photos uses it to shrink the car photos already sitting in Supabase
+# Storage — the imported ones arrived at the size the dealer's own site served,
+# which is several times larger than anything Yayo displays.
+[images]
+  remote_images = ['https://wkjxdkeqffsjarjxlsyh\.supabase\.co/storage/v1/object/public/.*']
+
 # /sitemap.xml is generated live so every real listing is indexed by Google
 [[redirects]]
   from = "/sitemap.xml"

@@ -246,6 +246,15 @@ gtag('config', 'G-NR2LTEVKET');
           <p class="dash-sub" data-i18n="ad_svc_p">Traduction, estimations et messages vocaux dépendent d'un service externe. S'il tombe, Yayo continue de fonctionner sans eux — et vous le voyez ici.</p>
           <div id="ad-services" class="ad-svc"></div>
         </div>
+        <div class="vd-card" id="ad-imgc-card" hidden style="margin-bottom:16px">
+          <h2 class="vd-h" data-i18n="ad_imgc_h">Alléger les photos</h2>
+          <p class="dash-sub" data-i18n="ad_imgc_p">Les photos importées arrivent à la taille du site du vendeur, souvent 4 Mo chacune. Yayo n'en affiche jamais plus de 1 600 px. Cette opération les réduit sur place : aucune annonce n'est modifiée, aucun lien ne change, et vous pouvez arrêter puis reprendre quand vous voulez.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn btn-primary" id="ad-imgc-run" onclick="adCompressStart()" data-i18n="ad_imgc_run">Lancer</button>
+            <button class="btn btn-ghost-dark" id="ad-imgc-stop" hidden onclick="adCompressStop()" data-i18n="ad_imgc_stop">Arrêter</button>
+          </div>
+          <p class="dash-sub" id="ad-imgc-status" style="margin-top:12px"></p>
+        </div>
         <div class="ad-two-col">
           <div class="vd-card">
             <h2 class="vd-h" data-i18n="ad_trend_signups">Inscriptions — 30 derniers jours</h2>
