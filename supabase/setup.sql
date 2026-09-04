@@ -2960,3 +2960,103 @@ revoke execute on function public.admin_doc_flags() from public;
 revoke execute on function public.admin_doc_release(uuid,boolean) from public;
 grant  execute on function public.admin_doc_flags() to authenticated;
 grant  execute on function public.admin_doc_release(uuid,boolean) to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 56) THE SHIPMENT BELONGS TO THE ORDER
+--
+-- The shipments table, its seven steps, shipment_events, the
+-- agency's controls and the buyer's timeline on suivi.html were
+-- all built long ago (§26). The order was built last week (§52).
+-- Nothing connected them, so a buyer had a commande on one page
+-- and a suivi on another with no relationship between them, and
+-- had to know that the two were about the same car.
+--
+-- This joins them, and deliberately does NOT rebuild anything.
+--
+-- One decision worth writing down: an accepted transport offer
+-- does NOT create a shipment. It would have to invent a status,
+-- and the only honest one available is "picked_up", which would
+-- tell the buyer his car had been collected when nobody had
+-- touched it. So the agency still creates the shipment when it
+-- is real, exactly as today, and the moment it does, it attaches
+-- itself to the order by itself.
+-- ═══════════════════════════════════════════════════════════
+
+-- 56a) A new shipment finds its order line and joins it.
+-- Matched on the conversation first, because that is exact. If
+-- the agency created the shipment outside a conversation, fall
+-- back to this buyer's open transport line with that agency.
+create or replace function public.yayo_attach_shipment()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  update order_lines l
+     set shipment_id = new.id
+   from orders o
+   where l.order_id = o.id
+     and l.kind = 'transport'
+     and l.status <> 'cancelled'
+     and l.shipment_id is null
+     and o.buyer_id = new.user_id
+     and (
+       (new.conversation_id is not null and l.conversation_id = new.conversation_id)
+       or (new.conversation_id is null and l.agency_id = new.agency_id)
+     );
+  return new;
+end $$;
+
+drop trigger if exists yayo_attach_shipment on public.shipments;
+create trigger yayo_attach_shipment after insert on public.shipments
+  for each row execute function public.yayo_attach_shipment();
+
+-- Anything already sitting unattached gets joined once, now.
+update public.order_lines l
+   set shipment_id = s.id
+  from public.shipments s, public.orders o
+ where l.order_id = o.id
+   and l.kind = 'transport'
+   and l.shipment_id is null
+   and o.buyer_id = s.user_id
+   and (l.conversation_id = s.conversation_id or l.agency_id = s.agency_id);
+
+-- 56b) "Mes commandes" now carries the shipment with the line:
+-- where it is, when it is expected, and when the agency last
+-- said anything. Replaces the §52e version.
+create or replace function public.yayo_my_orders()
+returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce(jsonb_agg(x order by x->>'created_at' desc), '[]'::jsonb) from (
+    select jsonb_build_object(
+      'id', o.id, 'code', o.code, 'status', o.status,
+      'created_at', o.created_at,
+      'lines', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', l.id, 'kind', l.kind, 'label', l.label, 'amount', l.amount,
+          'currency', l.currency, 'status', l.status,
+          'conversation_id', l.conversation_id, 'listing_id', l.listing_id,
+          'shipment_id', l.shipment_id,
+          'seller', coalesce(d.name, a.name),
+          'seller_kind', case when l.agency_id is not null then 'agency' else 'dealer' end,
+          -- the live shipment, when there is one
+          'ship_status', s.status,
+          'ship_eta', s.eta,
+          'ship_updated', s.updated_at,
+          'ship_last_note', (select e.note from shipment_events e
+                              where e.shipment_id = s.id and e.note is not null
+                              order by e.created_at desc limit 1)
+        ) order by l.created_at)
+        from order_lines l
+        left join dealers d           on d.id = l.dealer_id
+        left join shipping_agencies a on a.id = l.agency_id
+        left join shipments s         on s.id = l.shipment_id
+        where l.order_id = o.id and l.status <> 'cancelled'
+      ), '[]'::jsonb)
+    ) as x
+    from orders o
+    where o.buyer_id = auth.uid()
+  ) s;
+$$;
+
+-- The grant has to be restated: create or replace keeps the old
+-- privileges, but saying so costs nothing and a missing grant here
+-- is a silently empty orders page.
+revoke execute on function public.yayo_my_orders() from public;
+grant  execute on function public.yayo_my_orders() to authenticated;

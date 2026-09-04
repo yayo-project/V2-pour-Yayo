@@ -276,6 +276,7 @@ function yoOrderCard(o) {
           </span>
           <span class="ord-line-a">${yoMoney(l.amount, l.currency)}</span>
         </div>
+        ${yoShipHtml(l)}
         <div class="ord-id-box" id="ord-id-${yoEsc(l.id)}" hidden></div>`).join("")}
       <div class="ord-foot">
         <span class="ord-total">${t("ord_total")}<b>${yoMoney(total, "USD")}</b></span>
@@ -285,13 +286,57 @@ function yoOrderCard(o) {
     </article>`;
 }
 
+// The seven steps the agency reports, in order (§26).
+const YO_SHIP_STEPS = ["picked_up", "container", "departed", "at_sea", "arrived", "customs", "ready"];
+// Customs is not Yayo's step and not the agency's: it is cleared by the buyer
+// or his broker, with the government. Saying so is the difference between a
+// tracker and a promise nobody made.
+const YO_SHIP_OUTSIDE = ["customs"];
+
+// The step names already exist for suivi.html and the agency dashboard.
+// Reusing them means the buyer reads the same words in both places.
+function yoShipLabel(status) {
+  return t("sh_st_" + status) || status || "";
+}
+
+// Where the car is, drawn from the shipment attached to the transport line.
+function yoShipHtml(line) {
+  if (!line.shipment_id || !line.ship_status) return "";
+  const i = YO_SHIP_STEPS.indexOf(line.ship_status);
+  const pct = i < 0 ? 0 : Math.round(((i + 1) / YO_SHIP_STEPS.length) * 100);
+  const outside = YO_SHIP_OUTSIDE.indexOf(line.ship_status) > -1;
+  const eta = line.ship_eta
+    ? new Date(line.ship_eta).toLocaleDateString(
+        YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR",
+        { day: "numeric", month: "long" })
+    : "";
+  return `
+    <div class="ord-ship${outside ? " ord-ship-outside" : ""}">
+      <div class="ord-ship-top">
+        <b>${yoEsc(yoShipLabel(line.ship_status))}</b>
+        ${eta ? `<span>${t("ord_eta")} ${yoEsc(eta)}</span>` : ""}
+      </div>
+      <div class="ord-ship-bar"><i style="width:${pct}%"></i></div>
+      ${outside ? `<div class="ord-ship-note">${t("ord_ship_outside")}</div>` : ""}
+      ${line.ship_last_note ? `<div class="ord-ship-note">${yoEsc(line.ship_last_note)}</div>` : ""}
+      <a class="ord-ship-link" href="suivi.html">${t("ord_ship_all")} ›</a>
+    </div>`;
+}
+
 // What is this order waiting for, in one honest sentence.
 function yayoOrderWaiting(order) {
   const lines = order.lines || [];
   const hasCar = lines.some(l => l.kind === "car");
-  const hasTransport = lines.some(l => l.kind === "transport");
-  if (hasCar && !hasTransport) return { txt: t("ord_wait_transport"), you: true };
-  if (hasTransport && !hasCar) return { txt: t("ord_wait_car_optional"), you: false };
-  if (hasCar && hasTransport) return { txt: t("ord_wait_agency"), you: false };
+  const transport = lines.find(l => l.kind === "transport");
+  // Once the car is actually moving, that is the answer — a progress line
+  // beats a generic "waiting for the agency" every time.
+  if (transport && transport.ship_status) {
+    if (transport.ship_status === "ready") return { txt: t("ord_ship_ready"), you: true };
+    if (transport.ship_status === "customs") return { txt: t("ord_ship_customs"), you: true };
+    return { txt: yoShipLabel(transport.ship_status), you: false };
+  }
+  if (hasCar && !transport) return { txt: t("ord_wait_transport"), you: true };
+  if (transport && !hasCar) return { txt: t("ord_wait_car_optional"), you: false };
+  if (hasCar && transport) return { txt: t("ord_wait_agency"), you: false };
   return { txt: t("ord_wait_none"), you: false };
 }
