@@ -3058,5 +3058,15 @@ $$;
 -- The grant has to be restated: create or replace keeps the old
 -- privileges, but saying so costs nothing and a missing grant here
 -- is a silently empty orders page.
+--
+-- Both revokes, not one. Supabase hands `anon` its own EXECUTE on
+-- every new function in this schema, and that direct grant survives
+-- a revoke aimed at PUBLIC -- the same trap §54 spells out for
+-- tables, one object type over. Revoking only PUBLIC left this
+-- section with no marker anyone outside could read: an anonymous
+-- call still answered, so "did 56 run?" could not be measured from
+-- outside at all. With both lines, a stranger being refused is
+-- proof the section reached its last statement.
 revoke execute on function public.yayo_my_orders() from public;
+revoke execute on function public.yayo_my_orders() from anon;
 grant  execute on function public.yayo_my_orders() to authenticated;
