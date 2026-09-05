@@ -1824,3 +1824,61 @@ body.no-scroll{overflow:hidden}
 .ord-ship-link{display:inline-block;margin-top:8px;font-size:12px;font-weight:700;
   color:var(--teal-dark)}
 .ord-ship-link:hover{text-decoration:underline}
+/* ── The order on paper (step 9) ──────────────────────────────────
+   Blocks that belong on the printed sheet and nowhere else. They are
+   display:none by default, so nothing here can leak onto the screen. */
+.ord-print{display:none}
+.ord-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+@media print{
+  @page{size:A4;margin:14mm}
+  /* Everything that is not this one order goes: the navigation, the other
+     orders, and every button, because a button on paper is a dead end. */
+  #yayo-boot,.topbar,.mobile-menu,.footer,.sec-head,#ord-loading,#ord-login,
+  #ord-empty,.yo-sheet,.rp-sheet,.ord-ship-bar,.ord-ship-link,.ord-wait,
+  /* The screen total goes too. On paper it would sit last and boldest —
+     the one lump sum the split above exists to prevent, and the number a
+     buyer is most likely to mistake for what he owes the dealer. */
+  .ord-foot{display:none!important}
+  .ord-card:not(.ord-printing){display:none!important}
+  .ord-print{display:block!important}
+
+  html,body{background:#fff!important;color:#000;font-size:11pt}
+  .dash-page{padding:0!important}
+  .wrap{max-width:none!important;padding:0!important;margin:0!important}
+  .ord-list{display:block!important}
+  .ord-card{border:0!important;box-shadow:none!important;background:#fff!important;
+    padding:0!important;margin:0!important}
+
+  .ord-print-head{display:flex!important;align-items:center;
+    justify-content:space-between;gap:16px;padding-bottom:10px;
+    border-bottom:2px solid #0A2540;margin-bottom:16px}
+  .ord-print-logo{height:30px;width:auto}
+  .ord-print-t{text-align:right}
+  [dir="rtl"] .ord-print-t{text-align:left}
+  .ord-print-t b{display:block;font-size:13pt;color:#0A2540}
+  .ord-print-t span{font-size:9pt;color:#3F5473}
+
+  .ord-head{border:0!important;padding:0 0 12px!important}
+  .ord-code{font-size:14pt}
+  /* A line, its shipment and its seller block belong together on one page. */
+  .ord-line{break-inside:avoid;padding:8px 0!important;
+    border-bottom:1px solid #DFE6EE!important}
+  .ord-id,.ord-ship{background:#fff!important;border:1px solid #DFE6EE!important;
+    break-inside:avoid}
+  .ord-ship-step{font-size:10pt;font-weight:700;margin-top:4px}
+
+  /* The one figure on the sheet: what the seller is owed. Freight, customs
+     and port fees are named in words underneath, never as a Yayo total —
+     Yayo does not set those prices. */
+  .ord-split{break-inside:avoid;margin-top:14px;padding-top:10px;
+    border-top:2px solid #0A2540}
+  .ord-split-r{display:flex;justify-content:space-between;gap:16px;
+    padding:5px 0;font-size:11pt}
+  .ord-split-r b{font-weight:800}
+  .ord-split-n{font-size:9pt;color:#3F5473;margin-top:6px;line-height:1.5}
+  .ord-print-legal{font-size:8.5pt;color:#3F5473;line-height:1.6;
+    margin-top:18px;padding-top:10px;border-top:1px solid #DFE6EE}
+  /* No "(https://…)" printed after every link. */
+  a[href]:after{content:""!important}
+}

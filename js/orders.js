@@ -14,7 +14,7 @@
 // identically and none of them repeat this code.
 // ═══════════════════════════════════════════════════════════════
 
-const YO = { offers: new Map(), me: null };
+const YO = { offers: new Map(), me: null, orders: new Map() };
 
 function yoEsc(s) {
   return String(s == null ? "" : s)
@@ -23,6 +23,11 @@ function yoEsc(s) {
 function yoMoney(n, cur) {
   const v = "$" + Math.round(Number(n) || 0).toLocaleString("fr-FR").replace(/[ ]/g, " ");
   return (cur && cur !== "USD") ? (Math.round(Number(n) || 0) + " " + cur) : v;
+}
+// One locale for every date on this page. Three copies of the same ternary
+// is how a French buyer ends up reading one of his dates in English.
+function yoLocale() {
+  return YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR";
 }
 // "il reste 3 jours" / "expire aujourd'hui" — a deadline nobody can read is
 // not a deadline.
@@ -220,6 +225,7 @@ async function yayoOrdersPage() {
   if (!orders.length) return show("ord-empty");
   show("ord-app");
   wrap.innerHTML = orders.map(yoOrderCard).join("");
+  orders.forEach(o => YO.orders.set(String(o.id), o));
   orders.forEach(o => (o.lines || []).forEach(l => yoFillIdentity(l)));
 }
 
@@ -253,13 +259,28 @@ function yoOrderCard(o) {
   const lines = o.lines || [];
   const wait = yayoOrderWaiting(o);
   const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-  const when = o.created_at
-    ? new Date(o.created_at).toLocaleDateString(
-        YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR",
-        { day: "numeric", month: "long", year: "numeric" })
-    : "";
+  // One figure on this sheet, and it is the seller's. Yayo does not set
+  // freight prices, so it does not restate one as a total of its own: the
+  // agency's own accepted price prints on its own line above, and everything
+  // else is named in words. A buyer who reads only the bold number has to
+  // read the one he actually owes the dealer.
+  const toSeller = lines.filter(l => l.kind === "car")
+    .reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const day = { day: "numeric", month: "long", year: "numeric" };
+  const when = o.created_at ? new Date(o.created_at).toLocaleDateString(yoLocale(), day) : "";
+  const printed = new Date().toLocaleDateString(yoLocale(), day);
+
   return `
-    <article class="ord-card">
+    <article class="ord-card" data-ord="${yoEsc(o.id)}">
+      <!-- Paper only. A printed sheet needs a letterhead; the screen already
+           has the topbar and would just repeat itself. -->
+      <div class="ord-print ord-print-head">
+        <img src="assets/logo-dark.png" alt="Yayo" class="ord-print-logo">
+        <div class="ord-print-t">
+          <b>${t("ord_doc_title")}</b>
+          <span>${t("ord_doc_printed")} ${yoEsc(printed)}</span>
+        </div>
+      </div>
       <div class="ord-head">
         <div>
           <div class="ord-code">${yoEsc(o.code)}</div>
@@ -278,11 +299,20 @@ function yoOrderCard(o) {
         </div>
         ${yoShipHtml(l)}
         <div class="ord-id-box" id="ord-id-${yoEsc(l.id)}" hidden></div>`).join("")}
+      <div class="ord-print ord-split">
+        ${toSeller ? `<div class="ord-split-r"><span>${t("ord_pay_seller")}</span><b>${yoMoney(toSeller, "USD")}</b></div>` : ""}
+        <p class="ord-split-n">${t("ord_pay_note")}</p>
+      </div>
       <div class="ord-foot">
         <span class="ord-total">${t("ord_total")}<b>${yoMoney(total, "USD")}</b></span>
-        ${lines[0] && lines[0].conversation_id
-          ? `<a class="btn btn-ghost-dark btn-sm" href="messages.html">${t("ord_open")}</a>` : ""}
+        <span class="ord-acts">
+          <button type="button" class="btn btn-ghost-dark btn-sm ord-print-btn"
+                  onclick="yayoPrintOrder('${yoEsc(o.id)}', this)">${t("ord_print")}</button>
+          ${lines[0] && lines[0].conversation_id
+            ? `<a class="btn btn-ghost-dark btn-sm ord-open-btn" href="messages.html">${t("ord_open")}</a>` : ""}
+        </span>
       </div>
+      <p class="ord-print ord-print-legal">${t("ord_doc_legal")}</p>
     </article>`;
 }
 
@@ -306,9 +336,7 @@ function yoShipHtml(line) {
   const pct = i < 0 ? 0 : Math.round(((i + 1) / YO_SHIP_STEPS.length) * 100);
   const outside = YO_SHIP_OUTSIDE.indexOf(line.ship_status) > -1;
   const eta = line.ship_eta
-    ? new Date(line.ship_eta).toLocaleDateString(
-        YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR",
-        { day: "numeric", month: "long" })
+    ? new Date(line.ship_eta).toLocaleDateString(yoLocale(), { day: "numeric", month: "long" })
     : "";
   return `
     <div class="ord-ship${outside ? " ord-ship-outside" : ""}">
@@ -317,6 +345,9 @@ function yoShipHtml(line) {
         ${eta ? `<span>${t("ord_eta")} ${yoEsc(eta)}</span>` : ""}
       </div>
       <div class="ord-ship-bar"><i style="width:${pct}%"></i></div>
+      <!-- The bar is a background colour, and browsers drop those when they
+           print. On paper the same fact has to arrive as words. -->
+      ${i > -1 ? `<div class="ord-print ord-ship-step">${yoEsc(t("ord_step_of").replace("{n}", i + 1).replace("{m}", YO_SHIP_STEPS.length))}</div>` : ""}
       ${outside ? `<div class="ord-ship-note">${t("ord_ship_outside")}</div>` : ""}
       ${line.ship_last_note ? `<div class="ord-ship-note">${yoEsc(line.ship_last_note)}</div>` : ""}
       <a class="ord-ship-link" href="suivi.html">${t("ord_ship_all")} ›</a>
@@ -339,4 +370,35 @@ function yayoOrderWaiting(order) {
   if (transport && !hasCar) return { txt: t("ord_wait_car_optional"), you: false };
   if (hasCar && transport) return { txt: t("ord_wait_agency"), you: false };
   return { txt: t("ord_wait_none"), you: false };
+}
+
+// ── The order on paper (step 9) ────────────────────────────────────
+// The browser's own print engine makes the PDF. A PDF library would cost
+// ~300 KB, an embedded font, and Arabic letters that refuse to join — print
+// gets all three right for nothing, on a phone as well as a desktop.
+//
+// The seller's identity is fetched BEFORE the dialog opens, not after: it
+// arrives asynchronously, and a sheet printed half a second early is a sheet
+// with the seller's block missing.
+async function yayoPrintOrder(id, btn) {
+  const card = document.querySelector('.ord-card[data-ord="' + id + '"]');
+  if (!card) return;
+  const order = YO.orders.get(String(id));
+  const label = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = t("ord_print_wait"); }
+  try {
+    if (order) await Promise.all((order.lines || []).map(l => yoFillIdentity(l)));
+  } catch (e) { /* the sheet is still worth printing without it */ }
+  if (btn) { btn.disabled = false; btn.textContent = label; }
+
+  card.classList.add("ord-printing");
+  const done = () => {
+    card.classList.remove("ord-printing");
+    window.removeEventListener("afterprint", done);
+  };
+  window.addEventListener("afterprint", done);
+  // Safari on iOS does not reliably fire afterprint, and without a backstop
+  // the page would stay stuck showing a single order.
+  setTimeout(done, 60000);
+  window.print();
 }
