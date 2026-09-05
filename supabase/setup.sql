@@ -3070,3 +3070,94 @@ $$;
 revoke execute on function public.yayo_my_orders() from public;
 revoke execute on function public.yayo_my_orders() from anon;
 grant  execute on function public.yayo_my_orders() to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- 57) THE FOUNDER CAN READ AN ORDER
+--
+-- The order record is the strongest thing Yayo holds. RLS is on
+-- for orders, order_lines and offers, and all three carry READ
+-- policies only — there is no insert, update or delete policy on
+-- any of them, so an accepted price cannot be rewritten by a
+-- dealer, a buyer, an agency, or the site itself. Every write
+-- happens inside yayo_make_offer and yayo_respond_offer (§52)
+-- and nowhere else. That is worth more than storing a PDF: a PDF
+-- is a picture of a claim and anyone can edit one.
+--
+-- But those read policies grant the BUYER and the SELLER. They
+-- never grant an admin. So when a buyer writes "problem with
+-- order YO-26-K3P9", the evidence existed and was unreachable —
+-- the founder had to open Supabase by hand to see it.
+--
+-- This is the reading window, and it is read-only on purpose.
+-- There is deliberately no admin function that edits an order:
+-- the whole value of the record is that nobody can, the founder
+-- included. A mistake is corrected by a NEW offer in the
+-- conversation, which lands next to the old one and leaves its
+-- own trace, rather than by quietly overwriting what was agreed.
+-- ═══════════════════════════════════════════════════════════
+
+-- Blank search returns the 50 most recent. A code (YO-26-K3P9)
+-- or a piece of the buyer's e-mail narrows it.
+create or replace function public.admin_find_orders(q text default null)
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare j jsonb;
+begin
+  -- support handles "problem with my order", so support can read them.
+  perform _yayo_require(array['super_admin','admin_support']);
+
+  select coalesce(jsonb_agg(x order by x->>'created_at' desc), '[]'::jsonb) into j from (
+    select jsonb_build_object(
+      'id', o.id, 'code', o.code, 'status', o.status, 'created_at', o.created_at,
+      'buyer_id', o.buyer_id,
+      'buyer_email', (select u.email::text from auth.users u where u.id = o.buyer_id),
+      'lines', coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'id', l.id, 'kind', l.kind, 'label', l.label,
+          'amount', l.amount, 'currency', l.currency, 'status', l.status,
+          'conversation_id', l.conversation_id, 'listing_id', l.listing_id,
+          'seller', coalesce(d.name, a.name),
+          'seller_kind', case when l.agency_id is not null then 'agency' else 'dealer' end,
+          -- The offer the line came from: the price someone named, and the
+          -- moment the buyer said yes. This is the part that settles a
+          -- disagreement, so it travels with the line rather than being
+          -- looked up separately.
+          'offer', case when f.id is null then null else jsonb_build_object(
+             'amount', f.amount, 'currency', f.currency, 'note', f.note,
+             'sent_at', f.created_at, 'accepted_at', f.responded_at,
+             'valid_until', f.valid_until) end,
+          'ship', case when s.id is null then null else jsonb_build_object(
+             'status', s.status, 'eta', s.eta, 'updated_at', s.updated_at,
+             'last_note', (select e.note from shipment_events e
+                            where e.shipment_id = s.id and e.note is not null
+                            order by e.created_at desc limit 1)) end
+        ) order by l.created_at)
+        from order_lines l
+        left join dealers d           on d.id = l.dealer_id
+        left join shipping_agencies a on a.id = l.agency_id
+        left join offers f            on f.id = l.offer_id
+        left join shipments s         on s.id = l.shipment_id
+        -- cancelled lines are INCLUDED here, unlike the buyer's own page:
+        -- a line that was cancelled is often the thing being argued about.
+        where l.order_id = o.id
+      ), '[]'::jsonb)
+    ) as x
+    from orders o
+    where q is null or q = ''
+       or o.code ilike '%' || q || '%'
+       or exists (select 1 from auth.users u
+                   where u.id = o.buyer_id and u.email ilike '%' || q || '%')
+    order by o.created_at desc
+    limit 50
+  ) s;
+
+  return j;
+end $$;
+
+-- Both revokes, never one. Supabase's default privileges hand `anon` its
+-- own EXECUTE on every new function in this schema, and that direct grant
+-- survives a revoke aimed at PUBLIC — §54 spells out the same trap for
+-- tables, and §56 was invisible from outside for exactly this reason.
+-- With both lines, a stranger being refused proves this section ran.
+revoke execute on function public.admin_find_orders(text) from public;
+revoke execute on function public.admin_find_orders(text) from anon;
+grant  execute on function public.admin_find_orders(text) to authenticated;
