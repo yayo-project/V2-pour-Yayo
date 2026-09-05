@@ -1999,12 +1999,13 @@ async function saveAgProfile(e) {
 // super_admin > admin_dealers / admin_support / admin_stats
 // ═══════════════════════════════════════════════
 let AD_ROLE = null;
-let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null, AD_REPORTS = [], AD_REQUESTS = [];
+let AD_DEALERS = [], AD_AGS = [], AD_LISTINGS = [], AD_USERS = [], AD_TEAM = [], AD_LOG = [], AD_STATS = null, AD_REPORTS = [], AD_REQUESTS = [], AD_ORDERS = [];
 
 const AD_PERMS = {
-  super_admin:   ["stats", "dealers", "agencies", "listings", "requests", "reports", "users", "team", "log"],
+  super_admin:   ["stats", "dealers", "agencies", "listings", "orders", "requests", "reports", "users", "team", "log"],
   admin_dealers: ["dealers", "agencies"],
-  admin_support: ["listings", "requests", "reports", "users"],
+  // support is who fields "problem with my order", so support can read them
+  admin_support: ["listings", "orders", "requests", "reports", "users"],
   admin_stats:   ["stats"]
 };
 function adCan(section) { return (AD_PERMS[AD_ROLE] || []).includes(section); }
@@ -2056,6 +2057,22 @@ function adminDemoData() {
     { id: "rp-2", created_at: iso(2), kind: "listing", message: "Cette annonce montre une photo qui ne correspond pas au modèle indiqué.", contact: null, url: "https://yayo.digital/voiture.html?id=demo-3", status: "en_cours" },
     { id: "rp-3", created_at: iso(6), kind: "other", message: "Bravo pour le site, mais les prix en francs CFA seraient utiles.", contact: null, url: "https://yayo.digital/", status: "resolu" }
   ];
+  AD_ORDERS = [
+    { id: "adm-o1", code: "YO-26-K3P9", status: "open", created_at: iso(8), buyer_email: "acheteur.kin@example.com", lines: [
+      { id: "adm-l1", kind: "car", label: "Toyota Land Cruiser VX 2019", amount: 24500, currency: "USD", status: "agreed",
+        seller: "Mohamed Hakim Motors", seller_kind: "dealer", conversation_id: "adm-c1",
+        offer: { amount: 24500, currency: "USD", note: "Prix ferme, pneus neufs.", sent_at: iso(10), accepted_at: iso(8), valid_until: iso(3) }, ship: null },
+      { id: "adm-l2", kind: "transport", label: "Dubai → Kinshasa, conteneur 40'", amount: 1850, currency: "USD", status: "agreed",
+        seller: "Congo Freight Lines", seller_kind: "agency", conversation_id: "adm-c2",
+        offer: { amount: 1850, currency: "USD", note: null, sent_at: iso(7), accepted_at: iso(6), valid_until: iso(1) },
+        ship: { status: "at_sea", eta: iso(-37), updated_at: iso(2), last_note: "Navire MSC Aurora, escale à Djeddah." } }
+    ] },
+    { id: "adm-o2", code: "YO-26-B7T2", status: "open", created_at: iso(2), buyer_email: "marie.douala@example.com", lines: [
+      { id: "adm-l3", kind: "car", label: "Hyundai Tucson 2021", amount: 17900, currency: "USD", status: "cancelled",
+        seller: "Naz international motors", seller_kind: "dealer", conversation_id: "adm-c3",
+        offer: { amount: 17900, currency: "USD", note: null, sent_at: iso(4), accepted_at: iso(2), valid_until: iso(-3) }, ship: null }
+    ] }
+  ];
   AD_REQUESTS = [
     { id: "cr-1", created_at: iso(0), make: "Toyota", model: "Prado 2021", budget_usd: 32000, city: "kinshasa", contact: "acheteur.kin@example.com", source_q: "prado 2021 kinshasa", status: "nouveau" },
     { id: "cr-2", created_at: iso(1), make: "Toyota", model: "Land Cruiser 76", budget_usd: 45000, city: "kinshasa", contact: "+243812345678", source_q: "land cruiser 76", status: "nouveau" },
@@ -2084,6 +2101,7 @@ async function adminInit() {
     sb.from("reports").select("*").order("created_at", { ascending: false }).limit(300)
       .then(r => { AD_REPORTS = r.data || []; if (r.error) adSqlHint(r.error); })
   );
+  if (adCan("orders")) jobs.push(adLoadOrders());
   if (adCan("requests")) jobs.push(
     sb.from("car_requests").select("*").order("created_at", { ascending: false }).limit(500)
       .then(r => { AD_REQUESTS = r.data || []; if (r.error) adSqlHint(r.error); })
@@ -2111,7 +2129,7 @@ function adminEnter() {
 }
 
 function showAdTab(name) {
-  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-requests", "ad-reports", "ad-users", "ad-team", "ad-log"].forEach(tb => {
+  ["ad-stats", "ad-dealers", "ad-agencies", "ad-listings", "ad-orders", "ad-requests", "ad-reports", "ad-users", "ad-team", "ad-log"].forEach(tb => {
     const el = document.getElementById("tab-" + tb);
     if (el) el.hidden = tb !== name;
   });
@@ -2121,6 +2139,7 @@ function showAdTab(name) {
 function renderAdmin() {
   if (adCan("dealers")) { adRenderBiz("dealer"); adRenderBiz("agency"); }
   if (adCan("listings")) adRenderListings();
+  if (adCan("orders")) adRenderOrders();
   if (adCan("requests")) adRenderRequests();
   if (adCan("reports")) adRenderReports();
   if (adCan("users")) adRenderUsers();
@@ -3533,3 +3552,90 @@ new MutationObserver(() => stampTableLabels())
 stampTableLabels();
 
 init();
+
+// ── ADMIN · COMMANDES (setup.sql §57) ──────────────────────────────
+// Read-only, and that is the point. There is no admin function that edits
+// an order: the record is worth something precisely because nobody can
+// rewrite it, the founder included. A mistake is corrected by a NEW offer
+// in the conversation, which lands beside the old one and leaves its own
+// trace. See §57 for the reasoning.
+async function adLoadOrders(q) {
+  try {
+    const { data, error } = await yayoSB().rpc("admin_find_orders", { q: q || null });
+    if (error) { adSqlHint(error); AD_ORDERS = []; return; }
+    AD_ORDERS = Array.isArray(data) ? data : [];
+  } catch (e) { adSqlHint(e); AD_ORDERS = []; }
+}
+
+// Typing a code re-asks the database rather than filtering what is already
+// loaded: the blank search only brought back the fifty most recent, and the
+// order being complained about is very often older than that.
+let AD_ORD_T = null;
+function adOrdersSearch() {
+  clearTimeout(AD_ORD_T);
+  AD_ORD_T = setTimeout(async () => {
+    const q = (document.getElementById("ad-ord-q") || {}).value || "";
+    if (DEMO_ADMIN) return adRenderOrders();
+    const box = document.getElementById("ad-ord-list");
+    if (box) box.innerHTML = `<div class="skel" style="height:90px;border-radius:14px"></div>`;
+    await adLoadOrders(q.trim());
+    adRenderOrders();
+  }, 300);
+}
+
+function adRenderOrders() {
+  const list = document.getElementById("ad-ord-list");
+  if (!list) return;
+  const q = ((document.getElementById("ad-ord-q") || {}).value || "").trim().toLowerCase();
+  // In demo there is no database to re-ask, so filter what is in memory.
+  const rows = (DEMO_ADMIN && q)
+    ? AD_ORDERS.filter(o => (o.code || "").toLowerCase().includes(q)
+        || (o.buyer_email || "").toLowerCase().includes(q))
+    : AD_ORDERS;
+  document.getElementById("ad-ord-empty").hidden = !!rows.length;
+
+  list.innerHTML = rows.map(o => {
+    const lines = o.lines || [];
+    return `
+    <div class="vd-card" style="margin-bottom:12px;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <b style="font-size:16px;letter-spacing:.5px">${escapeHtml(o.code)}</b>
+        <span class="status ${o.status === "cancelled" ? "off" : "active"}">${escapeHtml(o.status || "")}</span>
+      </div>
+      <p class="dash-sub" style="margin:6px 0 12px">
+        ${adDate(o.created_at)}${o.buyer_email ? " · ✉ " + escapeHtml(o.buyer_email) : ""}
+      </p>
+      ${lines.map(l => adOrderLine(l)).join("")}
+    </div>`;
+  }).join("");
+}
+
+// One line, and underneath it the offer it came from. The offer is the
+// evidence — who named the price and the moment the buyer said yes — so it
+// is shown next to the line rather than hidden behind another click.
+function adOrderLine(l) {
+  const off = l.offer, sh = l.ship;
+  const cancelled = l.status === "cancelled";
+  const when = s => s ? new Date(s).toLocaleString(YAYO_LANG === "ar" ? "ar" : YAYO_LANG === "en" ? "en-GB" : "fr-FR") : "—";
+  return `
+  <div class="ad-ord-line" style="border-top:1px solid var(--line);padding:10px 0${cancelled ? ";opacity:.55" : ""}">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <span><b>${escapeHtml(l.label || "—")}</b>
+        <span class="dash-sub"> · ${escapeHtml(t("off_kind_" + l.kind) || l.kind)}${l.seller ? " · " + escapeHtml(l.seller) : ""}</span>
+        ${cancelled ? `<span class="status off" style="margin-inline-start:6px">${escapeHtml(t("ad_ord_cancelled"))}</span>` : ""}
+      </span>
+      <b>${yoMoney(l.amount, l.currency)}</b>
+    </div>
+    ${off ? `<p class="dash-sub" style="margin:6px 0 0">
+        ${escapeHtml(t("ad_ord_offered"))} ${yoMoney(off.amount, off.currency)} ·
+        ${escapeHtml(t("ad_ord_sent"))} ${escapeHtml(when(off.sent_at))} ·
+        <b>${escapeHtml(t("ad_ord_accepted"))} ${escapeHtml(when(off.accepted_at))}</b>
+        ${off.note ? `<br>“${escapeHtml(off.note)}”` : ""}
+      </p>` : ""}
+    ${sh ? `<p class="dash-sub" style="margin:6px 0 0">
+        🚢 ${escapeHtml(t("sh_st_" + sh.status) || sh.status || "")}${sh.eta ? " · " + escapeHtml(t("ord_eta")) + " " + adDate(sh.eta) : ""}
+        ${sh.last_note ? `<br>${escapeHtml(sh.last_note)}` : ""}
+      </p>` : ""}
+    ${l.conversation_id ? `<a class="ord-ship-link" href="messages.html?c=${encodeURIComponent(l.conversation_id)}">${escapeHtml(t("ad_ord_convo"))} ›</a>` : ""}
+  </div>`;
+}

@@ -401,6 +401,23 @@ gtag('config', 'G-NR2LTEVKET');
         </div>
       </section>
 
+      <!-- ORDERS (Commandes) — the reading window on §57. Read-only: there is
+           no control here that changes an order, because the record's whole
+           value is that nobody can rewrite it. -->
+      <section id="tab-ad-orders" hidden>
+        <div class="vd-card">
+          <h2 class="vd-h" data-i18n="ad_h_orders">Commandes</h2>
+          <p class="dash-sub" data-i18n="ad_p_orders">Ce qui a été convenu, et quand. Cherchez un code de commande (YO-26-K3P9) ou l'e-mail d'un acheteur — vide, vous voyez les 50 dernières.</p>
+          <div class="ad-filters">
+            <input id="ad-ord-q" type="search" oninput="adOrdersSearch()"
+                   placeholder="YO-26-…" data-i18n-ph="ad_ord_ph" style="min-width:220px">
+          </div>
+          <div id="ad-ord-list"></div>
+          <p class="dash-empty" id="ad-ord-empty" hidden data-i18n="ad_no_orders">Aucune commande pour l'instant — une commande naît d'une offre acceptée.</p>
+          <p class="auth-error" id="ad-ord-err" hidden></p>
+        </div>
+      </section>
+
       <!-- CAR REQUESTS (Demandes) -->
       <section id="tab-ad-requests" hidden>
         <div class="vd-card">
